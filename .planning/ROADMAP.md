@@ -20,7 +20,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 ## Phases
 
-- [ ] **Phase 1: Capture Foundation** — All RE tools installed and verified; decrypted 5.0 BLE traffic visible end-to-end
+- [x] **Phase 1: Capture Foundation** — All RE tools installed and verified; decrypted 5.0 BLE traffic visible end-to-end (completed 2026-05-30)
 - [ ] **Phase 2: GATT Survey & Bonding** — UUID confirmed on user's device, bonding replicated without official app, standard HR/battery readable
 - [ ] **Phase 3: Framing Confirmation (Critical Gate)** — 4.0 inner framing CRC-validated on ≥20 frames OR Maverick wrapper characterised
 - [ ] **Phase 4: Protocol Decode & Schema** — All v1 biometric streams decoded and validated; `whoop_protocol_5.json` and `FINDINGS_5.md` complete
@@ -52,7 +52,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-  - [ ] 01-03-PLAN.md — Capture runbooks + live capture + evidence + README index (TOOL-01/02, wave 3, has checkpoint)
+  - [x] 01-03-PLAN.md — Capture runbooks + live capture + evidence + README index (TOOL-01/02, wave 3, has checkpoint)
 
 ### Phase 2: GATT Survey & Bonding
 
@@ -119,7 +119,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Capture Foundation | 2/3 | In Progress|  |
+| 1. Capture Foundation | 3/3 | Complete   | 2026-05-30 |
 | 2. GATT Survey & Bonding | 0/0 | Not started | - |
 | 3. Framing Confirmation (Critical Gate) | 0/0 | Not started | - |
 | 4. Protocol Decode & Schema | 0/0 | Not started | - |
