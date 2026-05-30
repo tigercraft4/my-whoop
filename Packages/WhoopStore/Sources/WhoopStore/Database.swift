@@ -151,6 +151,20 @@ extension WhoopStore {
                 t.add(column: "respRateBpm", .double)
             }
         }
+        migrator.registerMigration("v8") { db in
+            // 5.0 gyroscope columns for gravitySample (D-06, IOS-09). All three are nullable:
+            // they stay null until a REALTIME_RAW_DATA type-43 frame (via TOGGLE_IMU_MODE) is
+            // captured (PROTO-14 HYPOTHESIS). Adding them now prepares the schema for PROTO-14
+            // without needing a future v9 migration.
+            // NOTE: spo2Sample/skinTempSample are intentionally untouched (D-08): SpO2 and skin
+            // temperature keep their raw ADC format; conversion to SpO2%/°C happens server-side
+            // in units.py, not in the app. v8 only touches gravitySample.
+            try db.alter(table: "gravitySample") { t in
+                t.add(column: "gx", .double)
+                t.add(column: "gy", .double)
+                t.add(column: "gz", .double)
+            }
+        }
         return migrator
     }
 }
