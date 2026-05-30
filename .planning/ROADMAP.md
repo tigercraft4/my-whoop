@@ -78,7 +78,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-  - [ ] 02-03-PLAN.md — bond_5.py confirmed-write bonding + hr_5.py HR/battery streaming (wave 3)
+  - [x] 02-03-PLAN.md — bond_5.py confirmed-write bonding + hr_5.py HR/battery streaming (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -136,7 +136,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
-| 2. GATT Survey & Bonding | 2/4 | In Progress|  |
+| 2. GATT Survey & Bonding | 3/4 | In Progress|  |
 | 3. Framing Confirmation (Critical Gate) | 0/0 | Not started | - |
 | 4. Protocol Decode & Schema | 0/0 | Not started | - |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
