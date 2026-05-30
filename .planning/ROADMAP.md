@@ -129,11 +129,11 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 **Wave 2** *(blocked on 04-01)*
 
-  - [ ] 04-03-PLAN.md — command surface (observed-vs-r52) + events/battery + metadata/historical-offload + dual-epoch, from existing corpus (PROTO-06/08/09/10/15, wave 2)
+  - [x] 04-03-PLAN.md — command surface (observed-vs-r52) + events/battery + metadata/historical-offload + dual-epoch, from existing corpus (PROTO-06/08/09/10/15, wave 2)
 
 **Wave 3** *(blocked on 04-01, 04-02)*
 
-  - [ ] 04-04-PLAN.md — biometric streams from D-05 capture: HR/RR + IMU + SpO2/temp/respiration (VERIFIED-if-observed, else HYPOTHESIS) (PROTO-07/11/12/13/14/16, wave 3)
+  - [x] 04-04-PLAN.md — biometric streams from D-05 capture: HR/RR + IMU + SpO2/temp/respiration (VERIFIED-if-observed, else HYPOTHESIS) (PROTO-07/11/12/13/14/16, wave 3)
 
 **Wave 4** *(blocked on 04-03, 04-04)*
 
@@ -164,7 +164,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
 | 3. Framing Confirmation (Critical Gate) | 3/3 | Complete    | 2026-05-30 |
-| 4. Protocol Decode & Schema | 2/5 | In Progress|  |
+| 4. Protocol Decode & Schema | 4/5 | In Progress|  |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
 
 ---
