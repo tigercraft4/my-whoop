@@ -65,10 +65,18 @@ public struct Schema {
         self.enums = enums
         self.envelope = envelope
         self.packets = packets
+        // Index by numeric type, honoring aliases. Iterate in sorted-name order and let
+        // the FIRST packet claim a type so resolution is deterministic when two packets
+        // share a type (5.0 EVENT vs EVENT_BATTERY_LEVEL both type 48). "EVENT" sorts
+        // before "EVENT_BATTERY_LEVEL", so the generic EVENT spec (whose `event`
+        // post-hook branches on the event number, including BATTERY_LEVEL) wins — the
+        // 4.0 single-EVENT pattern. Swift's [String: PacketSpec] iteration order is
+        // otherwise non-deterministic across processes, which broke type-48 parity.
         var idx: [Int: PacketSpec] = [:]
-        for (_, spec) in packets {
-            idx[spec.type] = spec
-            for alias in spec.aliases {
+        for name in packets.keys.sorted() {
+            let spec = packets[name]!
+            if idx[spec.type] == nil { idx[spec.type] = spec }
+            for alias in spec.aliases where idx[alias] == nil {
                 idx[alias] = spec
             }
         }

@@ -13,13 +13,19 @@ class Schema:
         self.enums = raw["enums"]
         self.envelope = raw["envelope"]
         self.packets = raw["packets"]
-        # index packet spec by numeric type, honoring aliases
+        # index packet spec by numeric type, honoring aliases. Iterate in sorted-name
+        # order and let the FIRST packet claim a type — deterministic when two packets
+        # share a type (5.0 EVENT vs EVENT_BATTERY_LEVEL both type 48). "EVENT" sorts
+        # before "EVENT_BATTERY_LEVEL", so the generic EVENT spec (whose `event`
+        # post-hook branches on the event number, including BATTERY_LEVEL) wins — the
+        # 4.0 single-EVENT pattern. Without this the dict-insertion order made the
+        # winner non-deterministic and broke Python<->Swift parity for type-48 frames.
         self._by_type = {}
-        for name, spec in self.packets.items():
-            spec = {**spec, "name": name}
-            self._by_type[spec["type"]] = spec
+        for name in sorted(self.packets):
+            spec = {**self.packets[name], "name": name}
+            self._by_type.setdefault(spec["type"], spec)
             for alias in spec.get("aliases", []):
-                self._by_type[alias] = spec
+                self._by_type.setdefault(alias, spec)
 
     def enum_name(self, enum: str, value: int) -> str:
         # Suffixed "NAME(value)" form, matching the legacy whoop_fields `_name()`.

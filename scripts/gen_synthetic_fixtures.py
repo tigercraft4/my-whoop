@@ -338,6 +338,201 @@ def build_all():
     return frames, golden, realtime_parsed, biometric_parsed
 
 
+# ===========================================================================
+# WHOOP 5.0 (Maverick) synthetic fixtures + parity golden.
+#
+# The 5.0 wire frame is the Maverick OUTER WRAPPER around a FLAT body:
+#   [0xAA][0x01][length u16-LE][body (length bytes)][trailer 4B], total == length + 8.
+# The body is decoded BODY-ABSOLUTE (whoop_protocol_5.json offsets index the flat body):
+#   body[0]=role, body[1:4]=session token, body[4]=packet_type, body[5]=seq,
+#   body[6]=cmd, body[7:]=payload  (so payload[N] == body[7+N]).
+#
+# parse_body_5() below mirrors the Swift `parseBody()` in Interpreter.swift EXACTLY
+# (same envelope fields, same schema-driven static-field walk against load_schema_5(),
+# same shared post-hooks, crc_ok == None on this path). Parity holds BY CONSTRUCTION:
+# golden_5.json is produced by THIS function over the SAME frames the Swift paritysuite
+# decodes with parseFrame() (which strips the wrapper and calls the same parseBody()).
+# ===========================================================================
+
+from whoop_protocol.schema import load_schema_5  # noqa: E402
+from whoop_protocol.interpreter import FB, _POST_HOOKS, _read  # noqa: E402
+
+
+def build_maverick_frame(body: bytes, role: int = 0x01) -> bytes:
+    """Wrap a flat body in the Maverick envelope:
+        [0xAA][0x01][len u16-LE][body][trailer 4B], total == len + 8.
+
+    `body` is the FLAT body decoded body-absolute (body[0] should equal `role`). The
+    4-byte trailer is synthetic (all-zero): its checksum algorithm is OPEN (schema
+    Finding 6) and irrelevant here because parseFrame()/strip_maverick() use only the
+    length field, never the trailer. `role` is forced into body[0] so the wrapper's
+    role byte and body[0] agree (the strip path returns frame[4:4+length], i.e. body).
+    """
+    body = bytearray(body)
+    if body:
+        body[0] = role & 0xFF
+    length = len(body)
+    return bytes([0xAA, 0x01]) + struct.pack("<H", length) + bytes(body) + bytes(4)
+
+
+def _mv_body(packet_type: int, seq: int, cmd: int = 0, payload: bytes = b"",
+             role: int = 0x01, token: bytes = b"\x00\x00\x00") -> bytearray:
+    """Assemble a flat 5.0 body with the standard prefix:
+        body[0]=role, body[1:4]=token, body[4]=packet_type, body[5]=seq,
+        body[6]=cmd, body[7:]=payload.
+    """
+    body = bytearray()
+    body.append(role & 0xFF)             # body[0] role
+    body += (token + b"\x00\x00\x00")[:3]  # body[1:4] session token (synthetic zeros)
+    body.append(packet_type & 0xFF)      # body[4] packet_type
+    body.append(seq & 0xFF)              # body[5] seq
+    body.append(cmd & 0xFF)              # body[6] cmd / subseq / meta_type / event
+    body += payload                      # body[7:] payload
+    return body
+
+
+def parse_body_5(body: bytes) -> dict:
+    """Decode a Maverick-stripped FLAT body with the 5.0 schema. Mirrors the Swift
+    private parseBody() in Interpreter.swift exactly (envelope role@0 / packet_type@4 /
+    seq@5, schema-driven static fields body-absolute, shared post-hooks, crc_ok None)."""
+    body = bytes(body)
+    out = {"ok": False, "raw": body.hex(), "len_bytes": len(body)}
+    if len(body) < 6:
+        out["type_name"] = "INVALID/FRAGMENT"
+        return out
+
+    schema = load_schema_5()
+    t = body[4]
+    out["type_name"] = schema.type_name(t)
+    out["seq"] = body[5]
+    out["crc_ok"] = None  # T-05-02: the flat body carries no inner CRC32.
+
+    fb = FB(body)
+    # Maverick body envelope (no SOF/length/crc8/crc32 — those live in the wrapper).
+    fb.add(0, 1, "role", "frame", body[0])
+    fb.add(4, 1, "packet_type", "frame", schema.type_name(t))
+    fb.add(5, 1, "seq", "frame", body[5])
+
+    spec = schema.packet_for_type(t)
+    if spec is None:
+        fb.add(6, 1, "cmd", "cmd", body[6] if len(body) > 6 else None)
+        fb.region(7, len(body), "payload", "unknown")
+    else:
+        for fld in spec.get("fields", []):
+            off, ln, dtype = fld["off"], fld["len"], fld.get("dtype")
+            if dtype is None:
+                continue
+            val = _read(body, off, dtype)
+            if val is None:
+                continue
+            if "enum" in fld:
+                val = schema.enum_name(fld["enum"], val)
+            fb.add(off, ln, fld["name"], fld["cat"], val, fld.get("note"))
+        hook = _POST_HOOKS.get(spec.get("post"))
+        if hook is not None:
+            # length == len(body): the flat body has no crc32 trailer to exclude.
+            hook(fb, body, len(body), schema)
+
+    cmd_byte = body[6] if len(body) > 6 else 0
+    out["cmd_name"] = schema.enum_name("CommandNumber", cmd_byte) if t in (35, 36) else None
+    out["ok"] = True
+    out["fields"] = fb.fields
+    out["parsed"] = fb.parsed
+    return out
+
+
+def build_all_5():
+    """Synthesize 5.0 Maverick-wrapped frames covering each unambiguous packet type and
+    return (frames, golden) where frames=[{"hex": ...}] and golden=[parse_body_5(body)]."""
+    frames = []
+    golden = []
+
+    def emit(body: bytearray, role: int = 0x01):
+        frame = build_maverick_frame(bytes(body), role=role)
+        parsed = parse_body_5(frame[4:4 + len(body)])  # decode the stripped body
+        assert parsed.get("ok"), f"synthetic 5.0 body failed to parse: {bytes(body).hex()}"
+        frames.append({"hex": frame.hex()})
+        golden.append(parsed)
+        return parsed
+
+    # --- REALTIME_DATA (40): device_ts@8 u32, hr@12 u8, rr_count@13 u8, rr@14 u16 ---
+    # payload base = body[7]; subseq is body[6]. Build payload so device_ts lands at body[8].
+    for i in range(8):
+        hr = _hr_ramp(i, 84, 131)
+        rr = [60000 // hr] if i % 2 == 0 else []
+        # payload (body[7:]): [pad@7][device_ts@8..11][hr@12][rr_count@13][rr@14..]
+        payload = bytearray()
+        payload += bytes(1)                       # body[7] (payload[0], unused here)
+        payload += _le32(_DEVICE_CLOCK_REF + i)   # body[8..11] device_timestamp
+        payload += bytes([hr])                    # body[12] heart_rate
+        payload += bytes([len(rr)])               # body[13] rr_count
+        for v in rr:                              # body[14..] rr_interval(s)
+            payload += _le16(v)
+        if len(payload) < 12:
+            payload += bytes(12 - len(payload))
+        emit(_mv_body(40, seq=i % 256, cmd=(41 + i) & 0xFF, payload=bytes(payload)))
+
+    # --- EVENT (48): event@6 u8, event_timestamp@8 u32 (device epoch). Use NON-battery
+    #     events only (battery offsets are HYPOTHESIS in the 5.0 schema). ---
+    for ev in (9, 15, 46, 47):  # WRIST_ON, BOOT, RAW_DATA_COLLECTION_ON/OFF
+        # body[6]=event, body[8]=event_timestamp -> payload[1:5]. body[7] is a gap.
+        payload = bytes(1) + _le32(_DEVICE_CLOCK_REF + ev)
+        emit(_mv_body(48, seq=ev, cmd=ev, payload=payload))
+
+    # --- COMMAND_RESPONSE (36): resp_cmd@6, payload@7. GET_BATTERY_LEVEL pay[2:4]=soc*10 ---
+    pay_batt = bytearray(8)
+    pay_batt[2:4] = _le16(int(round(42.5 * 10)))
+    emit(_mv_body(36, seq=20, cmd=26, payload=bytes(pay_batt)))   # GET_BATTERY_LEVEL
+    # GET_CLOCK (11): pay[2:6] = clock u32
+    pay_clk = bytearray(8)
+    pay_clk[2:6] = _le32(_DEVICE_CLOCK_REF)
+    emit(_mv_body(36, seq=21, cmd=11, payload=bytes(pay_clk)))
+    # A plain command response with no special decode (resp_cmd 145 GET_HELLO).
+    emit(_mv_body(36, seq=22, cmd=145, payload=bytes(4)))
+
+    # --- METADATA (49): meta_type@6, HISTORY_END payload <LHLL> at body[7:] ---
+    emit(_mv_body(49, seq=0, cmd=1))                              # HISTORY_START
+    end_pay = _le32(_HIST_EPOCH) + _le16(0) + _le32(0) + _le32(12345)
+    emit(_mv_body(49, seq=0, cmd=2, payload=end_pay))            # HISTORY_END
+    emit(_mv_body(49, seq=0, cmd=3))                              # HISTORY_COMPLETE
+
+    # --- CONSOLE_LOGS (50): log text decoded from body[11:len-1] ---
+    # body[7:] payload; text must start at body[11] -> 4 pad bytes then text + trailing byte.
+    log_pay = bytes(4) + b"synthetic 5.0 console log" + b"\x00"
+    emit(_mv_body(50, seq=0, cmd=0, payload=log_pay))
+
+    return frames, golden
+
+
+def main_5():
+    """Generate the 5.0 Maverick parity fixtures (frames_5.json + golden_5.json)."""
+    os.makedirs(_OUT_DIR, exist_ok=True)
+    frames, golden = build_all_5()
+
+    type_counts = {}
+    for g in golden:
+        type_counts[g["type_name"]] = type_counts.get(g["type_name"], 0) + 1
+    expected = {"REALTIME_DATA", "EVENT", "COMMAND_RESPONSE", "METADATA", "CONSOLE_LOGS"}
+    missing = expected - set(type_counts)
+    assert not missing, f"5.0 parity fixture missing packet types: {sorted(missing)}"
+
+    # Every frame must be a valid Maverick wrapper (starts 0xAA 0x01).
+    for fr in frames:
+        b = bytes.fromhex(fr["hex"])
+        assert b[:2] == b"\xaa\x01", f"5.0 frame not Maverick-wrapped: {fr['hex'][:8]}"
+        length = b[2] | (b[3] << 8)
+        assert len(b) == length + 8, "5.0 frame length+8 invariant violated"
+
+    with open(os.path.join(_OUT_DIR, "frames_5.json"), "w") as fh:
+        json.dump(frames, fh, indent=0)
+    with open(os.path.join(_OUT_DIR, "golden_5.json"), "w") as fh:
+        json.dump(golden, fh, indent=0)
+
+    print(f"wrote {len(frames)} synthetic 5.0 Maverick frames to {_OUT_DIR}")
+    for tn in sorted(type_counts):
+        print(f"  {tn}: {type_counts[tn]}")
+
+
 def main():
     os.makedirs(_OUT_DIR, exist_ok=True)
     frames, golden, realtime_parsed, biometric_parsed = build_all()
@@ -403,6 +598,9 @@ def main():
     print(f"biometric_streams_golden: hr={len(bstreams['hr'])} rr={len(bstreams['rr'])} "
           f"spo2={len(bstreams['spo2'])} skin_temp={len(bstreams['skin_temp'])} "
           f"resp={len(bstreams['resp'])} gravity={len(bstreams['gravity'])}")
+
+    # WHOOP 5.0 (Maverick) parity fixtures, alongside the 4.0 set.
+    main_5()
 
 
 if __name__ == "__main__":

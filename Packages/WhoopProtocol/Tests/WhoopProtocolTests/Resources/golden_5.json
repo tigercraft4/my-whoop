@@ -1,0 +1,1795 @@
+[
+{
+"ok": true,
+"raw": "01000000280029000f3de1015401ca02000000",
+"len_bytes": 19,
+"type_name": "REALTIME_DATA",
+"seq": 0,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA",
+"raw": "28",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA(40)",
+"raw": "28",
+"note": "body[4] == 40 REALTIME_DATA. 159 frames decoded in Plan 04 (decode_biometrics_5.py)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "subseq",
+"cat": "frame",
+"value": 41,
+"raw": "29",
+"note": "body[6] is a per-frame SUB-SEQUENCE counter (41-243 monotonic), NOT a CommandNumber for this stream (Plan 04 empirical finding)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "device_timestamp",
+"cat": "time",
+"value": 31538447,
+"raw": "0f3de101",
+"note": "device-epoch u32 at payload[1:5] == body[8:12] (Plan 04 empirical reconciliation). epoch=device."
+},
+{
+"off": 12,
+"len": 1,
+"name": "heart_rate",
+"cat": "hr",
+"value": 84,
+"raw": "54",
+"note": "bpm. HR @ payload[5] == body[12] (EMPIRICALLY reconciled \u2014 the literal 4.0 offset decodes to all-zero/0x01 on 5.0). Smooth physiological series 84-131 bpm, mean 102, across 159 frames. PROTO-07 VERIFIED. Cross-validated by standard 0x2A37 parse_hr (D-08 substitute: RR<->HR self-consistency 8/8)."
+},
+{
+"off": 13,
+"len": 1,
+"name": "rr_count",
+"cat": "rr",
+"value": 1,
+"raw": "01",
+"note": "number of RR intervals following. rr_count @ payload[6] == body[13] (Plan 04)"
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr_interval",
+"cat": "rr",
+"value": 714,
+"raw": "ca02",
+"note": "RR interval(s) in ms, uint16-LE, repeated rr_count times from payload[7:] == body[14:]. 8/8 RR-bearing frames self-consistent with 60000/HR (e.g. HR=91 -> RR 645-694 ms). PROTO-07 VERIFIED."
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr[0]",
+"cat": "rr",
+"value": 714,
+"raw": "ca02",
+"note": "ms"
+}
+],
+"parsed": {
+"device_timestamp": 31538447,
+"heart_rate": 84,
+"rr_count": 1,
+"rr_interval": 714,
+"rr[0]": 714,
+"rr_intervals": [
+714
+]
+}
+},
+{
+"ok": true,
+"raw": "0100000028012a00103de10155000000000000",
+"len_bytes": 19,
+"type_name": "REALTIME_DATA",
+"seq": 1,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA",
+"raw": "28",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA(40)",
+"raw": "28",
+"note": "body[4] == 40 REALTIME_DATA. 159 frames decoded in Plan 04 (decode_biometrics_5.py)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "subseq",
+"cat": "frame",
+"value": 42,
+"raw": "2a",
+"note": "body[6] is a per-frame SUB-SEQUENCE counter (41-243 monotonic), NOT a CommandNumber for this stream (Plan 04 empirical finding)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "device_timestamp",
+"cat": "time",
+"value": 31538448,
+"raw": "103de101",
+"note": "device-epoch u32 at payload[1:5] == body[8:12] (Plan 04 empirical reconciliation). epoch=device."
+},
+{
+"off": 12,
+"len": 1,
+"name": "heart_rate",
+"cat": "hr",
+"value": 85,
+"raw": "55",
+"note": "bpm. HR @ payload[5] == body[12] (EMPIRICALLY reconciled \u2014 the literal 4.0 offset decodes to all-zero/0x01 on 5.0). Smooth physiological series 84-131 bpm, mean 102, across 159 frames. PROTO-07 VERIFIED. Cross-validated by standard 0x2A37 parse_hr (D-08 substitute: RR<->HR self-consistency 8/8)."
+},
+{
+"off": 13,
+"len": 1,
+"name": "rr_count",
+"cat": "rr",
+"value": 0,
+"raw": "00",
+"note": "number of RR intervals following. rr_count @ payload[6] == body[13] (Plan 04)"
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr_interval",
+"cat": "rr",
+"value": 0,
+"raw": "0000",
+"note": "RR interval(s) in ms, uint16-LE, repeated rr_count times from payload[7:] == body[14:]. 8/8 RR-bearing frames self-consistent with 60000/HR (e.g. HR=91 -> RR 645-694 ms). PROTO-07 VERIFIED."
+}
+],
+"parsed": {
+"device_timestamp": 31538448,
+"heart_rate": 85,
+"rr_count": 0,
+"rr_interval": 0,
+"rr_intervals": []
+}
+},
+{
+"ok": true,
+"raw": "0100000028022b00113de1015601b902000000",
+"len_bytes": 19,
+"type_name": "REALTIME_DATA",
+"seq": 2,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA",
+"raw": "28",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 2,
+"raw": "02",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA(40)",
+"raw": "28",
+"note": "body[4] == 40 REALTIME_DATA. 159 frames decoded in Plan 04 (decode_biometrics_5.py)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 2,
+"raw": "02",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "subseq",
+"cat": "frame",
+"value": 43,
+"raw": "2b",
+"note": "body[6] is a per-frame SUB-SEQUENCE counter (41-243 monotonic), NOT a CommandNumber for this stream (Plan 04 empirical finding)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "device_timestamp",
+"cat": "time",
+"value": 31538449,
+"raw": "113de101",
+"note": "device-epoch u32 at payload[1:5] == body[8:12] (Plan 04 empirical reconciliation). epoch=device."
+},
+{
+"off": 12,
+"len": 1,
+"name": "heart_rate",
+"cat": "hr",
+"value": 86,
+"raw": "56",
+"note": "bpm. HR @ payload[5] == body[12] (EMPIRICALLY reconciled \u2014 the literal 4.0 offset decodes to all-zero/0x01 on 5.0). Smooth physiological series 84-131 bpm, mean 102, across 159 frames. PROTO-07 VERIFIED. Cross-validated by standard 0x2A37 parse_hr (D-08 substitute: RR<->HR self-consistency 8/8)."
+},
+{
+"off": 13,
+"len": 1,
+"name": "rr_count",
+"cat": "rr",
+"value": 1,
+"raw": "01",
+"note": "number of RR intervals following. rr_count @ payload[6] == body[13] (Plan 04)"
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr_interval",
+"cat": "rr",
+"value": 697,
+"raw": "b902",
+"note": "RR interval(s) in ms, uint16-LE, repeated rr_count times from payload[7:] == body[14:]. 8/8 RR-bearing frames self-consistent with 60000/HR (e.g. HR=91 -> RR 645-694 ms). PROTO-07 VERIFIED."
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr[0]",
+"cat": "rr",
+"value": 697,
+"raw": "b902",
+"note": "ms"
+}
+],
+"parsed": {
+"device_timestamp": 31538449,
+"heart_rate": 86,
+"rr_count": 1,
+"rr_interval": 697,
+"rr[0]": 697,
+"rr_intervals": [
+697
+]
+}
+},
+{
+"ok": true,
+"raw": "0100000028032c00123de10157000000000000",
+"len_bytes": 19,
+"type_name": "REALTIME_DATA",
+"seq": 3,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA",
+"raw": "28",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 3,
+"raw": "03",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA(40)",
+"raw": "28",
+"note": "body[4] == 40 REALTIME_DATA. 159 frames decoded in Plan 04 (decode_biometrics_5.py)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 3,
+"raw": "03",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "subseq",
+"cat": "frame",
+"value": 44,
+"raw": "2c",
+"note": "body[6] is a per-frame SUB-SEQUENCE counter (41-243 monotonic), NOT a CommandNumber for this stream (Plan 04 empirical finding)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "device_timestamp",
+"cat": "time",
+"value": 31538450,
+"raw": "123de101",
+"note": "device-epoch u32 at payload[1:5] == body[8:12] (Plan 04 empirical reconciliation). epoch=device."
+},
+{
+"off": 12,
+"len": 1,
+"name": "heart_rate",
+"cat": "hr",
+"value": 87,
+"raw": "57",
+"note": "bpm. HR @ payload[5] == body[12] (EMPIRICALLY reconciled \u2014 the literal 4.0 offset decodes to all-zero/0x01 on 5.0). Smooth physiological series 84-131 bpm, mean 102, across 159 frames. PROTO-07 VERIFIED. Cross-validated by standard 0x2A37 parse_hr (D-08 substitute: RR<->HR self-consistency 8/8)."
+},
+{
+"off": 13,
+"len": 1,
+"name": "rr_count",
+"cat": "rr",
+"value": 0,
+"raw": "00",
+"note": "number of RR intervals following. rr_count @ payload[6] == body[13] (Plan 04)"
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr_interval",
+"cat": "rr",
+"value": 0,
+"raw": "0000",
+"note": "RR interval(s) in ms, uint16-LE, repeated rr_count times from payload[7:] == body[14:]. 8/8 RR-bearing frames self-consistent with 60000/HR (e.g. HR=91 -> RR 645-694 ms). PROTO-07 VERIFIED."
+}
+],
+"parsed": {
+"device_timestamp": 31538450,
+"heart_rate": 87,
+"rr_count": 0,
+"rr_interval": 0,
+"rr_intervals": []
+}
+},
+{
+"ok": true,
+"raw": "0100000028042d00133de1015801a902000000",
+"len_bytes": 19,
+"type_name": "REALTIME_DATA",
+"seq": 4,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA",
+"raw": "28",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 4,
+"raw": "04",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA(40)",
+"raw": "28",
+"note": "body[4] == 40 REALTIME_DATA. 159 frames decoded in Plan 04 (decode_biometrics_5.py)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 4,
+"raw": "04",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "subseq",
+"cat": "frame",
+"value": 45,
+"raw": "2d",
+"note": "body[6] is a per-frame SUB-SEQUENCE counter (41-243 monotonic), NOT a CommandNumber for this stream (Plan 04 empirical finding)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "device_timestamp",
+"cat": "time",
+"value": 31538451,
+"raw": "133de101",
+"note": "device-epoch u32 at payload[1:5] == body[8:12] (Plan 04 empirical reconciliation). epoch=device."
+},
+{
+"off": 12,
+"len": 1,
+"name": "heart_rate",
+"cat": "hr",
+"value": 88,
+"raw": "58",
+"note": "bpm. HR @ payload[5] == body[12] (EMPIRICALLY reconciled \u2014 the literal 4.0 offset decodes to all-zero/0x01 on 5.0). Smooth physiological series 84-131 bpm, mean 102, across 159 frames. PROTO-07 VERIFIED. Cross-validated by standard 0x2A37 parse_hr (D-08 substitute: RR<->HR self-consistency 8/8)."
+},
+{
+"off": 13,
+"len": 1,
+"name": "rr_count",
+"cat": "rr",
+"value": 1,
+"raw": "01",
+"note": "number of RR intervals following. rr_count @ payload[6] == body[13] (Plan 04)"
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr_interval",
+"cat": "rr",
+"value": 681,
+"raw": "a902",
+"note": "RR interval(s) in ms, uint16-LE, repeated rr_count times from payload[7:] == body[14:]. 8/8 RR-bearing frames self-consistent with 60000/HR (e.g. HR=91 -> RR 645-694 ms). PROTO-07 VERIFIED."
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr[0]",
+"cat": "rr",
+"value": 681,
+"raw": "a902",
+"note": "ms"
+}
+],
+"parsed": {
+"device_timestamp": 31538451,
+"heart_rate": 88,
+"rr_count": 1,
+"rr_interval": 681,
+"rr[0]": 681,
+"rr_intervals": [
+681
+]
+}
+},
+{
+"ok": true,
+"raw": "0100000028052e00143de10159000000000000",
+"len_bytes": 19,
+"type_name": "REALTIME_DATA",
+"seq": 5,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA",
+"raw": "28",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 5,
+"raw": "05",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA(40)",
+"raw": "28",
+"note": "body[4] == 40 REALTIME_DATA. 159 frames decoded in Plan 04 (decode_biometrics_5.py)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 5,
+"raw": "05",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "subseq",
+"cat": "frame",
+"value": 46,
+"raw": "2e",
+"note": "body[6] is a per-frame SUB-SEQUENCE counter (41-243 monotonic), NOT a CommandNumber for this stream (Plan 04 empirical finding)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "device_timestamp",
+"cat": "time",
+"value": 31538452,
+"raw": "143de101",
+"note": "device-epoch u32 at payload[1:5] == body[8:12] (Plan 04 empirical reconciliation). epoch=device."
+},
+{
+"off": 12,
+"len": 1,
+"name": "heart_rate",
+"cat": "hr",
+"value": 89,
+"raw": "59",
+"note": "bpm. HR @ payload[5] == body[12] (EMPIRICALLY reconciled \u2014 the literal 4.0 offset decodes to all-zero/0x01 on 5.0). Smooth physiological series 84-131 bpm, mean 102, across 159 frames. PROTO-07 VERIFIED. Cross-validated by standard 0x2A37 parse_hr (D-08 substitute: RR<->HR self-consistency 8/8)."
+},
+{
+"off": 13,
+"len": 1,
+"name": "rr_count",
+"cat": "rr",
+"value": 0,
+"raw": "00",
+"note": "number of RR intervals following. rr_count @ payload[6] == body[13] (Plan 04)"
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr_interval",
+"cat": "rr",
+"value": 0,
+"raw": "0000",
+"note": "RR interval(s) in ms, uint16-LE, repeated rr_count times from payload[7:] == body[14:]. 8/8 RR-bearing frames self-consistent with 60000/HR (e.g. HR=91 -> RR 645-694 ms). PROTO-07 VERIFIED."
+}
+],
+"parsed": {
+"device_timestamp": 31538452,
+"heart_rate": 89,
+"rr_count": 0,
+"rr_interval": 0,
+"rr_intervals": []
+}
+},
+{
+"ok": true,
+"raw": "0100000028062f00153de1015a019a02000000",
+"len_bytes": 19,
+"type_name": "REALTIME_DATA",
+"seq": 6,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA",
+"raw": "28",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 6,
+"raw": "06",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA(40)",
+"raw": "28",
+"note": "body[4] == 40 REALTIME_DATA. 159 frames decoded in Plan 04 (decode_biometrics_5.py)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 6,
+"raw": "06",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "subseq",
+"cat": "frame",
+"value": 47,
+"raw": "2f",
+"note": "body[6] is a per-frame SUB-SEQUENCE counter (41-243 monotonic), NOT a CommandNumber for this stream (Plan 04 empirical finding)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "device_timestamp",
+"cat": "time",
+"value": 31538453,
+"raw": "153de101",
+"note": "device-epoch u32 at payload[1:5] == body[8:12] (Plan 04 empirical reconciliation). epoch=device."
+},
+{
+"off": 12,
+"len": 1,
+"name": "heart_rate",
+"cat": "hr",
+"value": 90,
+"raw": "5a",
+"note": "bpm. HR @ payload[5] == body[12] (EMPIRICALLY reconciled \u2014 the literal 4.0 offset decodes to all-zero/0x01 on 5.0). Smooth physiological series 84-131 bpm, mean 102, across 159 frames. PROTO-07 VERIFIED. Cross-validated by standard 0x2A37 parse_hr (D-08 substitute: RR<->HR self-consistency 8/8)."
+},
+{
+"off": 13,
+"len": 1,
+"name": "rr_count",
+"cat": "rr",
+"value": 1,
+"raw": "01",
+"note": "number of RR intervals following. rr_count @ payload[6] == body[13] (Plan 04)"
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr_interval",
+"cat": "rr",
+"value": 666,
+"raw": "9a02",
+"note": "RR interval(s) in ms, uint16-LE, repeated rr_count times from payload[7:] == body[14:]. 8/8 RR-bearing frames self-consistent with 60000/HR (e.g. HR=91 -> RR 645-694 ms). PROTO-07 VERIFIED."
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr[0]",
+"cat": "rr",
+"value": 666,
+"raw": "9a02",
+"note": "ms"
+}
+],
+"parsed": {
+"device_timestamp": 31538453,
+"heart_rate": 90,
+"rr_count": 1,
+"rr_interval": 666,
+"rr[0]": 666,
+"rr_intervals": [
+666
+]
+}
+},
+{
+"ok": true,
+"raw": "0100000028073000163de1015b000000000000",
+"len_bytes": 19,
+"type_name": "REALTIME_DATA",
+"seq": 7,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA",
+"raw": "28",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 7,
+"raw": "07",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "REALTIME_DATA(40)",
+"raw": "28",
+"note": "body[4] == 40 REALTIME_DATA. 159 frames decoded in Plan 04 (decode_biometrics_5.py)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 7,
+"raw": "07",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "subseq",
+"cat": "frame",
+"value": 48,
+"raw": "30",
+"note": "body[6] is a per-frame SUB-SEQUENCE counter (41-243 monotonic), NOT a CommandNumber for this stream (Plan 04 empirical finding)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "device_timestamp",
+"cat": "time",
+"value": 31538454,
+"raw": "163de101",
+"note": "device-epoch u32 at payload[1:5] == body[8:12] (Plan 04 empirical reconciliation). epoch=device."
+},
+{
+"off": 12,
+"len": 1,
+"name": "heart_rate",
+"cat": "hr",
+"value": 91,
+"raw": "5b",
+"note": "bpm. HR @ payload[5] == body[12] (EMPIRICALLY reconciled \u2014 the literal 4.0 offset decodes to all-zero/0x01 on 5.0). Smooth physiological series 84-131 bpm, mean 102, across 159 frames. PROTO-07 VERIFIED. Cross-validated by standard 0x2A37 parse_hr (D-08 substitute: RR<->HR self-consistency 8/8)."
+},
+{
+"off": 13,
+"len": 1,
+"name": "rr_count",
+"cat": "rr",
+"value": 0,
+"raw": "00",
+"note": "number of RR intervals following. rr_count @ payload[6] == body[13] (Plan 04)"
+},
+{
+"off": 14,
+"len": 2,
+"name": "rr_interval",
+"cat": "rr",
+"value": 0,
+"raw": "0000",
+"note": "RR interval(s) in ms, uint16-LE, repeated rr_count times from payload[7:] == body[14:]. 8/8 RR-bearing frames self-consistent with 60000/HR (e.g. HR=91 -> RR 645-694 ms). PROTO-07 VERIFIED."
+}
+],
+"parsed": {
+"device_timestamp": 31538454,
+"heart_rate": 91,
+"rr_count": 0,
+"rr_interval": 0,
+"rr_intervals": []
+}
+},
+{
+"ok": true,
+"raw": "0100000030090900183de101",
+"len_bytes": 12,
+"type_name": "EVENT",
+"seq": 9,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "EVENT",
+"raw": "30",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 9,
+"raw": "09",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "EVENT(48)",
+"raw": "30",
+"note": "body[4] == 48 EVENT (Plan 03 decode_streams_5.py, 136 EVENT frames resolved)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 9,
+"raw": "09",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "event",
+"cat": "event",
+"value": "WRIST_ON(9)",
+"raw": "09",
+"note": "body[6] r52 EventNumber. OBSERVED: STRAP_CONDITION_REPORT(29 via remap), BLE_CONNECTION_UP/DOWN, BLE_REALTIME_HR_ON/OFF, BATTERY_LEVEL(3), EXTENDED_BATTERY_INFORMATION(63). Three unmapped (110/120/123) surfaced as 5.0-new candidates (Plan 03)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "event_timestamp",
+"cat": "time",
+"value": 31538456,
+"raw": "183de101",
+"note": "PROTO-15 DEVICE epoch (NOT unix). u32-LE at body[8] == payload[1]. 136 device-epoch values decoded (e.g. 1780152939). epoch=device \u2014 distinct from the GET_DATA_RANGE unix epoch (decode_5.parse_body_5)"
+}
+],
+"parsed": {
+"event": "WRIST_ON(9)",
+"event_timestamp": 31538456
+}
+},
+{
+"ok": true,
+"raw": "01000000300f0f001e3de101",
+"len_bytes": 12,
+"type_name": "EVENT",
+"seq": 15,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "EVENT",
+"raw": "30",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 15,
+"raw": "0f",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "EVENT(48)",
+"raw": "30",
+"note": "body[4] == 48 EVENT (Plan 03 decode_streams_5.py, 136 EVENT frames resolved)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 15,
+"raw": "0f",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "event",
+"cat": "event",
+"value": "BOOT(15)",
+"raw": "0f",
+"note": "body[6] r52 EventNumber. OBSERVED: STRAP_CONDITION_REPORT(29 via remap), BLE_CONNECTION_UP/DOWN, BLE_REALTIME_HR_ON/OFF, BATTERY_LEVEL(3), EXTENDED_BATTERY_INFORMATION(63). Three unmapped (110/120/123) surfaced as 5.0-new candidates (Plan 03)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "event_timestamp",
+"cat": "time",
+"value": 31538462,
+"raw": "1e3de101",
+"note": "PROTO-15 DEVICE epoch (NOT unix). u32-LE at body[8] == payload[1]. 136 device-epoch values decoded (e.g. 1780152939). epoch=device \u2014 distinct from the GET_DATA_RANGE unix epoch (decode_5.parse_body_5)"
+}
+],
+"parsed": {
+"event": "BOOT(15)",
+"event_timestamp": 31538462
+}
+},
+{
+"ok": true,
+"raw": "01000000302e2e003d3de101",
+"len_bytes": 12,
+"type_name": "EVENT",
+"seq": 46,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "EVENT",
+"raw": "30",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 46,
+"raw": "2e",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "EVENT(48)",
+"raw": "30",
+"note": "body[4] == 48 EVENT (Plan 03 decode_streams_5.py, 136 EVENT frames resolved)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 46,
+"raw": "2e",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "event",
+"cat": "event",
+"value": "RAW_DATA_COLLECTION_ON(46)",
+"raw": "2e",
+"note": "body[6] r52 EventNumber. OBSERVED: STRAP_CONDITION_REPORT(29 via remap), BLE_CONNECTION_UP/DOWN, BLE_REALTIME_HR_ON/OFF, BATTERY_LEVEL(3), EXTENDED_BATTERY_INFORMATION(63). Three unmapped (110/120/123) surfaced as 5.0-new candidates (Plan 03)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "event_timestamp",
+"cat": "time",
+"value": 31538493,
+"raw": "3d3de101",
+"note": "PROTO-15 DEVICE epoch (NOT unix). u32-LE at body[8] == payload[1]. 136 device-epoch values decoded (e.g. 1780152939). epoch=device \u2014 distinct from the GET_DATA_RANGE unix epoch (decode_5.parse_body_5)"
+}
+],
+"parsed": {
+"event": "RAW_DATA_COLLECTION_ON(46)",
+"event_timestamp": 31538493
+}
+},
+{
+"ok": true,
+"raw": "01000000302f2f003e3de101",
+"len_bytes": 12,
+"type_name": "EVENT",
+"seq": 47,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "EVENT",
+"raw": "30",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 47,
+"raw": "2f",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "EVENT(48)",
+"raw": "30",
+"note": "body[4] == 48 EVENT (Plan 03 decode_streams_5.py, 136 EVENT frames resolved)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 47,
+"raw": "2f",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "event",
+"cat": "event",
+"value": "RAW_DATA_COLLECTION_OFF(47)",
+"raw": "2f",
+"note": "body[6] r52 EventNumber. OBSERVED: STRAP_CONDITION_REPORT(29 via remap), BLE_CONNECTION_UP/DOWN, BLE_REALTIME_HR_ON/OFF, BATTERY_LEVEL(3), EXTENDED_BATTERY_INFORMATION(63). Three unmapped (110/120/123) surfaced as 5.0-new candidates (Plan 03)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "event_timestamp",
+"cat": "time",
+"value": 31538494,
+"raw": "3e3de101",
+"note": "PROTO-15 DEVICE epoch (NOT unix). u32-LE at body[8] == payload[1]. 136 device-epoch values decoded (e.g. 1780152939). epoch=device \u2014 distinct from the GET_DATA_RANGE unix epoch (decode_5.parse_body_5)"
+}
+],
+"parsed": {
+"event": "RAW_DATA_COLLECTION_OFF(47)",
+"event_timestamp": 31538494
+}
+},
+{
+"ok": true,
+"raw": "0100000024141a0000a90100000000",
+"len_bytes": 15,
+"type_name": "COMMAND_RESPONSE",
+"seq": 20,
+"crc_ok": null,
+"cmd_name": "GET_BATTERY_LEVEL(26)",
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "COMMAND_RESPONSE",
+"raw": "24",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 20,
+"raw": "14",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "COMMAND_RESPONSE(36)",
+"raw": "24",
+"note": "body[4] == 36 COMMAND_RESPONSE (Plan 03 command_surface_5.py over the 5028-frame corpus)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 20,
+"raw": "14",
+"note": "monotonic sequence; request->response pairing by seq (A7, 89/106 in-burst MATCHes, Plan 03)"
+},
+{
+"off": 6,
+"len": 1,
+"name": "resp_cmd",
+"cat": "cmd",
+"value": "GET_BATTERY_LEVEL(26)",
+"raw": "1a",
+"note": "body[6] CommandNumber being responded to. 10 OBSERVED commands (3,22,23,34,69,117,118,120,141,145); resolved via r52 CommandNumber (Plan 03)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "unix_range_start",
+"cat": "time",
+"value": 108800,
+"raw": "00a90100",
+"note": "PROTO-15 unix epoch. GET_DATA_RANGE (cmd 34) response payload carries u32-LE Unix seconds (19 candidates in corpus; headline 2026-05-08, decode_5.scan_unix_timestamps). Offset within payload is scanned (1.4e9..1.9e9 window); representative body offset shown. epoch=unix."
+},
+{
+"off": 7,
+"len": 8,
+"name": "response payload",
+"cat": "cmd",
+"value": "[8 bytes]",
+"raw": "0000a90100000000",
+"note": null
+}
+],
+"parsed": {
+"resp_cmd": "GET_BATTERY_LEVEL(26)",
+"unix_range_start": 108800,
+"response payload": "[8 bytes]",
+"battery_pct": 42.5
+}
+},
+{
+"ok": true,
+"raw": "0100000024150b00000f3de1010000",
+"len_bytes": 15,
+"type_name": "COMMAND_RESPONSE",
+"seq": 21,
+"crc_ok": null,
+"cmd_name": "GET_CLOCK(11)",
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "COMMAND_RESPONSE",
+"raw": "24",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 21,
+"raw": "15",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "COMMAND_RESPONSE(36)",
+"raw": "24",
+"note": "body[4] == 36 COMMAND_RESPONSE (Plan 03 command_surface_5.py over the 5028-frame corpus)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 21,
+"raw": "15",
+"note": "monotonic sequence; request->response pairing by seq (A7, 89/106 in-burst MATCHes, Plan 03)"
+},
+{
+"off": 6,
+"len": 1,
+"name": "resp_cmd",
+"cat": "cmd",
+"value": "GET_CLOCK(11)",
+"raw": "0b",
+"note": "body[6] CommandNumber being responded to. 10 OBSERVED commands (3,22,23,34,69,117,118,120,141,145); resolved via r52 CommandNumber (Plan 03)"
+},
+{
+"off": 8,
+"len": 4,
+"name": "unix_range_start",
+"cat": "time",
+"value": 3778875136,
+"raw": "000f3de1",
+"note": "PROTO-15 unix epoch. GET_DATA_RANGE (cmd 34) response payload carries u32-LE Unix seconds (19 candidates in corpus; headline 2026-05-08, decode_5.scan_unix_timestamps). Offset within payload is scanned (1.4e9..1.9e9 window); representative body offset shown. epoch=unix."
+},
+{
+"off": 7,
+"len": 8,
+"name": "response payload",
+"cat": "cmd",
+"value": "[8 bytes]",
+"raw": "00000f3de1010000",
+"note": null
+}
+],
+"parsed": {
+"resp_cmd": "GET_CLOCK(11)",
+"unix_range_start": 3778875136,
+"response payload": "[8 bytes]",
+"clock": 31538447
+}
+},
+{
+"ok": true,
+"raw": "0100000024169100000000",
+"len_bytes": 11,
+"type_name": "COMMAND_RESPONSE",
+"seq": 22,
+"crc_ok": null,
+"cmd_name": "GET_HELLO(145)",
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "COMMAND_RESPONSE",
+"raw": "24",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 22,
+"raw": "16",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "COMMAND_RESPONSE(36)",
+"raw": "24",
+"note": "body[4] == 36 COMMAND_RESPONSE (Plan 03 command_surface_5.py over the 5028-frame corpus)"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 22,
+"raw": "16",
+"note": "monotonic sequence; request->response pairing by seq (A7, 89/106 in-burst MATCHes, Plan 03)"
+},
+{
+"off": 6,
+"len": 1,
+"name": "resp_cmd",
+"cat": "cmd",
+"value": "GET_HELLO(145)",
+"raw": "91",
+"note": "body[6] CommandNumber being responded to. 10 OBSERVED commands (3,22,23,34,69,117,118,120,141,145); resolved via r52 CommandNumber (Plan 03)"
+},
+{
+"off": 7,
+"len": 4,
+"name": "response payload",
+"cat": "cmd",
+"value": "[4 bytes]",
+"raw": "00000000",
+"note": null
+}
+],
+"parsed": {
+"resp_cmd": "GET_HELLO(145)",
+"response payload": "[4 bytes]"
+}
+},
+{
+"ok": true,
+"raw": "01000000310001",
+"len_bytes": 7,
+"type_name": "METADATA",
+"seq": 0,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "METADATA",
+"raw": "31",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "METADATA(49)",
+"raw": "31",
+"note": "body[4] == 49 METADATA"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "meta_type",
+"cat": "meta",
+"value": "HISTORY_START(1)",
+"raw": "01",
+"note": "body[6] r52 MetadataType. OBSERVED: HISTORY_START(73 frames), HISTORY_END(79), HISTORY_COMPLETE(2) \u2014 the historical-offload framing markers (Plan 03 decode_streams_5.py)"
+}
+],
+"parsed": {
+"meta_type": "HISTORY_START(1)"
+}
+},
+{
+"ok": true,
+"raw": "0100000031000200f1536500000000000039300000",
+"len_bytes": 21,
+"type_name": "METADATA",
+"seq": 0,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "METADATA",
+"raw": "31",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "METADATA(49)",
+"raw": "31",
+"note": "body[4] == 49 METADATA"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "meta_type",
+"cat": "meta",
+"value": "HISTORY_END(2)",
+"raw": "02",
+"note": "body[6] r52 MetadataType. OBSERVED: HISTORY_START(73 frames), HISTORY_END(79), HISTORY_COMPLETE(2) \u2014 the historical-offload framing markers (Plan 03 decode_streams_5.py)"
+},
+{
+"off": 7,
+"len": 4,
+"name": "unix",
+"cat": "time",
+"value": 1700000000,
+"raw": "00f15365",
+"note": null
+},
+{
+"off": 11,
+"len": 2,
+"name": "subsec",
+"cat": "time",
+"value": 0,
+"raw": "0000",
+"note": null
+},
+{
+"off": 13,
+"len": 4,
+"name": "unk0",
+"cat": "meta",
+"value": 0,
+"raw": "00000000",
+"note": null
+},
+{
+"off": 17,
+"len": 4,
+"name": "trim_cursor",
+"cat": "meta",
+"value": 12345,
+"raw": "39300000",
+"note": "ack with this to advance"
+}
+],
+"parsed": {
+"meta_type": "HISTORY_END(2)",
+"unix": 1700000000,
+"subsec": 0,
+"unk0": 0,
+"trim_cursor": 12345
+}
+},
+{
+"ok": true,
+"raw": "01000000310003",
+"len_bytes": 7,
+"type_name": "METADATA",
+"seq": 0,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "METADATA",
+"raw": "31",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "METADATA(49)",
+"raw": "31",
+"note": "body[4] == 49 METADATA"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": "monotonic sequence"
+},
+{
+"off": 6,
+"len": 1,
+"name": "meta_type",
+"cat": "meta",
+"value": "HISTORY_COMPLETE(3)",
+"raw": "03",
+"note": "body[6] r52 MetadataType. OBSERVED: HISTORY_START(73 frames), HISTORY_END(79), HISTORY_COMPLETE(2) \u2014 the historical-offload framing markers (Plan 03 decode_streams_5.py)"
+}
+],
+"parsed": {
+"meta_type": "HISTORY_COMPLETE(3)"
+}
+},
+{
+"ok": true,
+"raw": "010000003200000000000073796e74686574696320352e3020636f6e736f6c65206c6f6700",
+"len_bytes": 37,
+"type_name": "CONSOLE_LOGS",
+"seq": 0,
+"crc_ok": null,
+"cmd_name": null,
+"fields": [
+{
+"off": 0,
+"len": 1,
+"name": "role",
+"cat": "frame",
+"value": 1,
+"raw": "01",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "CONSOLE_LOGS",
+"raw": "32",
+"note": null
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": null
+},
+{
+"off": 4,
+"len": 1,
+"name": "packet_type",
+"cat": "frame",
+"value": "CONSOLE_LOGS(50)",
+"raw": "32",
+"note": "body[4] == 50 CONSOLE_LOGS"
+},
+{
+"off": 5,
+"len": 1,
+"name": "seq",
+"cat": "frame",
+"value": 0,
+"raw": "00",
+"note": "monotonic sequence"
+},
+{
+"off": 7,
+"len": 30,
+"name": "console log text",
+"cat": "text",
+"value": "[30 bytes]",
+"raw": "0000000073796e74686574696320352e3020636f6e736f6c65206c6f6700",
+"note": "synthetic 5.0 console log"
+}
+],
+"parsed": {
+"console log text": "[30 bytes]",
+"log": "synthetic 5.0 console log"
+}
+}
+]
