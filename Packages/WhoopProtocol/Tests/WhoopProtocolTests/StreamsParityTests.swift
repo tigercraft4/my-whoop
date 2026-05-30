@@ -8,6 +8,11 @@ final class StreamsParityTests: XCTestCase {
     private let deviceClockRef = 31_538_447
     private let wallClockRef = 1_736_365_593
 
+    // frames.json / streams_golden.json are the 4.0 fixture set; decode against the 4.0
+    // schema (5.0 is the runtime default).
+    override func setUp() { super.setUp(); overrideSchemaResource("whoop_protocol") }
+    override func tearDown() { overrideSchemaResource(nil); super.tearDown() }
+
     private struct FrameEntry: Decodable { let hex: String }
     private struct HRGold: Decodable, Equatable { let ts: Int; let bpm: Int }
     private struct RRGold: Decodable, Equatable { let ts: Int; let rr_ms: Int }

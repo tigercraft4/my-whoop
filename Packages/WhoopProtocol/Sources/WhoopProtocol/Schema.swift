@@ -181,22 +181,38 @@ private struct RawSchema: Decodable {
 
 private var _cachedSchema: Schema?
 
+/// Resource basename of the schema `loadSchema()` resolves at runtime. The production
+/// default is the WHOOP 5.0 (Maverick) schema (D-01). A test override hook
+/// (`overrideSchemaResource`) can point the decoder at the 4.0 schema so the legacy
+/// 4.0 parity tests keep validating the 4.0 decode path without fabricating 5.0 offsets
+/// (the 4.0 protocol is otherwise out of scope for this fork). Resetting the override to
+/// nil restores the 5.0 default and clears the cache.
+private var _schemaResourceName = "whoop_protocol_5"
+
+/// Test-only: switch the schema `loadSchema()` resolves and clear the cache. Pass nil to
+/// restore the 5.0 production default. Used by the 4.0-legacy parity tests.
+func overrideSchemaResource(_ name: String?) {
+    _schemaResourceName = name ?? "whoop_protocol_5"
+    _cachedSchema = nil
+}
+
 public func loadSchema() -> Schema {
     if let cached = _cachedSchema { return cached }
-    guard let url = Bundle.module.url(forResource: "whoop_protocol_5", withExtension: "json") else {
-        fatalError("whoop_protocol_5.json missing from Bundle.module resources")
+    let resource = _schemaResourceName
+    guard let url = Bundle.module.url(forResource: resource, withExtension: "json") else {
+        fatalError("\(resource).json missing from Bundle.module resources")
     }
     let data: Data
     do {
         data = try Data(contentsOf: url)
     } catch {
-        fatalError("failed to read whoop_protocol_5.json: \(error)")
+        fatalError("failed to read \(resource).json: \(error)")
     }
     let raw: RawSchema
     do {
         raw = try JSONDecoder().decode(RawSchema.self, from: data)
     } catch {
-        fatalError("failed to decode whoop_protocol_5.json: \(error)")
+        fatalError("failed to decode \(resource).json: \(error)")
     }
     var packets: [String: PacketSpec] = [:]
     for (name, rp) in raw.packets {

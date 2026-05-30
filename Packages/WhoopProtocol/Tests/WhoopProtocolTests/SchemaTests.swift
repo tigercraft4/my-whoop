@@ -2,6 +2,13 @@ import XCTest
 @testable import WhoopProtocol
 
 final class SchemaTests: XCTestCase {
+    // These assertions describe the WHOOP 4.0 schema structure (type-47 HISTORICAL_DATA
+    // versions, type-43 optical variant, the `timestamp` first field). The 5.0 (Maverick)
+    // schema is structurally different and is the runtime default, so pin these to the 4.0
+    // schema. enum/typeName helpers (4.0 == 5.0 r52 enums) are unaffected by the override.
+    override func setUp() { super.setUp(); overrideSchemaResource("whoop_protocol") }
+    override func tearDown() { overrideSchemaResource(nil); super.tearDown() }
+
     func testTypeName() {
         let s = loadSchema()
         XCTAssertEqual(s.typeName(40), "REALTIME_DATA")
