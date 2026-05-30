@@ -95,6 +95,13 @@ None - no external service configuration required.
 - v0 schema committed and parseable; ready for Phase 4 to populate `enums`/`packets` body field maps.
 - Trailer checksum algorithm remains OPEN (HYPOTHESIS) — documented, non-blocking for body decode (wrapper-strip exposes the flat body directly).
 
+## Self-Check: PASSED
+
+- FOUND: protocol/whoop_protocol_5.json
+- FOUND: .planning/phases/03-framing-confirmation-critical-gate/03-02-SUMMARY.md
+- FOUND commit: 7099f1f (Task 1, feat)
+- FOUND commit: d51841a (SUMMARY, docs)
+
 ---
 *Phase: 03-framing-confirmation-critical-gate*
 *Completed: 2026-05-30*
