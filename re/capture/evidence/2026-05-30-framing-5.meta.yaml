@@ -1,0 +1,42 @@
+source: "tshark extraction of two local PacketLogger captures (Phase 1 iOS ATT session + Phase 2 SMP-bond session), validated by re/survey_5/validate_frames_5.py"
+tool: "tshark 4.6.6 + re/survey_5/validate_frames_5.py"
+tool_version: "tshark 4.6.6 / Python 3.11.15"
+captured: "2026-05-30"
+
+device_identity: "[REDACTED]"   # real BD_ADDR / CoreBluetooth UUID / serial / name live only in the gitignored .pklg captures + device_local_5.py
+
+# Phase 3 critical gate (PROTO-04 / PROTO-05). Numbers below are the ACTUAL output of
+#   cd re/survey_5 && python validate_frames_5.py <phase1.pklg> <phase2.pklg>
+# run 2026-05-30 over the two captured sessions (D-01). They reproduce RESEARCH Findings 3-4 exactly.
+results:
+  total_frames_validated: 5028          # aa-SOF frames on the four custom-service handles, across both sessions
+
+  # 4.0 inner-framing CRC gate (CRC8 poly 0x07 + CRC32-LE zlib) — PROTO-04 DOCUMENTED NEGATIVE.
+  # The 4.0 inner layout is NOT reused verbatim on 5.0; every captured frame fails the gate.
+  crc8_4_0_pass: 0                       # frames passing the 4.0 CRC8 check
+  crc32_4_0_pass: 0                      # frames passing the 4.0 CRC32-LE check
+  crc_4_0_pass_rate: "0%"               # 0/10056 CRC8+CRC32 checks over 5028 frames
+
+  # Maverick OUTER WRAPPER overhead invariant: total ATT value length == body length + 8
+  # (4-byte header [SOF][version][len u16-LE] + body + 4-byte trailer). PROTO-05 CONFIRMED.
+  wrapper_overhead_consistent: "5028/5028"
+  maverick_wrapper: "CONFIRMED"
+
+  # Per-characteristic frame counts (value handle -> custom-service UUID prefix).
+  frames_by_characteristic:
+    "0x099b": { uuid: "FD4B0002", role: "cmd-in (write)",     frames: 155 }
+    "0x099d": { uuid: "FD4B0003", role: "cmd-resp (notify)",  frames: 158 }
+    "0x09a0": { uuid: "FD4B0004", role: "events (notify)",    frames: 1 }
+    "0x09a3": { uuid: "FD4B0005", role: "data (notify)",      frames: 4714 }
+
+  # Curated Phase-4 starting corpus (full report covers all 5028; fixture capped per handle, Pitfall 5).
+  golden_corpus: "re/survey_5/frames_5_golden.json — 46 wrapper-stripped entries spanning FD4B0002/03/04/05"
+
+# Go/no-go verdict (ROADMAP criterion 4 / D-03b — the Phase 4 entry condition).
+verdict: "wrapper characterised, decode work cleared with wrapper-strip step"
+
+raw_artifacts_local_only:
+  - "re/capture/samples/whoop- iPhone de Francisco.pklg"   # Phase 1 iOS ATT capture — gitignored, never committed
+  - "re/capture/samples/2026-05-30-smp-bond-full.pklg"     # Phase 2 SMP-bond capture — gitignored, never committed
+
+notes: "No BD_ADDR, SMP pairing-key bytes, serial, CoreBluetooth UUID, or device name are committed in this sidecar or in FINDINGS_5.md — device identity is [REDACTED] (DISCLAIMER section 2, RESEARCH Pitfall 5). Only protocol-structure facts (frame counts, CRC pass rate, wrapper overhead invariant) are committable; the raw .pklg captures listed under raw_artifacts_local_only stay local and are confirmed gitignored via re/capture/samples/ (git check-ignore exits 0). The committed frames_5_golden.json carries wrapper-stripped flat bodies only, with the trailer (per-frame checksum, algorithm OPEN) preserved as opaque hex for Phase 4 — no key material."
