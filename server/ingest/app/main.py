@@ -107,6 +107,11 @@ class DecodedStreams(BaseModel):
 class DecodedBatch(BaseModel):
     device: DecodedDevice
     streams: DecodedStreams
+    # WHOOP device generation that produced these streams (Phase 05, D-10 / SRV-01).
+    # Optional + defaulted for backward compatibility: clients that omit it (e.g. the
+    # 4.0 reference app) are classified '5.0' on this 5.0-only deployment. Validated
+    # as a plain string by Pydantic; never feeds dynamic SQL (persisted parametrised).
+    device_generation: str | None = "5.0"
 
 
 @app.get("/healthz")
