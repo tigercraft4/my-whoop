@@ -44,8 +44,8 @@ Read raw biometrics off your own WHOOP 5.0 **locally over BLE**, for interoperab
 |---|---|---|---|---|
 | `FD4B0002-CCE1-4033-93CE-002D5875F58A` | cmd-in | write | no CCCD | `0x099b` |
 | `FD4B0003-CCE1-4033-93CE-002D5875F58A` | cmd-resp | notify | yes | `0x099d` |
-| `FD4B0004-CCE1-4033-93CE-002D5875F58A` | events | notify | yes | `0x09a3` |
-| `FD4B0005-CCE1-4033-93CE-002D5875F58A` | data | notify | yes | — |
+| `FD4B0004-CCE1-4033-93CE-002D5875F58A` | events | notify | yes | `0x09a0` |
+| `FD4B0005-CCE1-4033-93CE-002D5875F58A` | data | notify | yes | `0x09a3` |
 | `FD4B0007-CCE1-4033-93CE-002D5875F58A` | diagnostics / memfault | notify | yes | — |
 
 All seven expected characteristics from the 4.0 analog are accounted for: cmd-in (...0002), cmd-resp (...0003), events (...0004), data (...0005), diagnostics (...0007), plus standard HR (`0x2A37`) and battery (`0x2A19`). No `...0006` characteristic was observed (same gap as 4.0).
@@ -107,7 +107,7 @@ Closes the Phase 1 loop (D-02). Phase 1 (`re/capture/evidence/2026-05-30-ios.met
 |---|---|---|---|
 | `0x099b` | `FD4B0002-CCE1-4033-93CE-002D5875F58A` | cmd-in (write) | ATT Write Requests by WHOOP app |
 | `0x099d` | `FD4B0003-CCE1-4033-93CE-002D5875F58A` | cmd-resp (notify) | ATT Handle Value Notifications |
-| `0x09a3` | `FD4B0004-CCE1-4033-93CE-002D5875F58A` | events (notify) | ATT Handle Value Notifications |
+| `0x09a3` | `FD4B0005-CCE1-4033-93CE-002D5875F58A` | data (notify) | ATT Handle Value Notifications — corrected from events by Wave 2 Bleak survey |
 
 This confirms RESEARCH assumption A1 (the `FD4B0002/0003/0004` offsets map to cmd-in/cmd-resp/events, mirroring the 4.0 `61080002/0003/0004` layout). The Wave 2/3 Bleak scripts can now use confirmed UUID constants instead of placeholders.
 
