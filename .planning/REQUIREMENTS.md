@@ -10,10 +10,10 @@
 
 ### RE Tooling & Capture Setup
 
-- [ ] **TOOL-01**: Developer can capture live BLE traffic from WHOOP 5.0 using PacketLogger on Mac (iPhone tethered, iOS Bluetooth Logging mobileconfig installed)
-- [ ] **TOOL-02**: Developer has a documented, reproducible workflow for Android HCI snoop log capture (Developer Options → btsnoop_hci.log → adb bugreport extraction)
-- [ ] **TOOL-03**: Developer can decompile the official WHOOP Android APK using JADX-GUI to reference packet type / command enum definitions
-- [ ] **TOOL-04**: Developer can load `.pklg` and `.btsnoop` captures in Wireshark and filter by ATT/GATT layer
+- [x] **TOOL-01**: Developer can capture live BLE traffic from WHOOP 5.0 using PacketLogger on Mac (iPhone tethered, iOS Bluetooth Logging mobileconfig installed)
+- [x] **TOOL-02**: Developer has a documented, reproducible workflow for Android HCI snoop log capture (Developer Options → btsnoop_hci.log → adb bugreport extraction)
+- [x] **TOOL-03**: Developer can decompile the official WHOOP Android APK using JADX-GUI to reference packet type / command enum definitions
+- [x] **TOOL-04**: Developer can load `.pklg` and `.btsnoop` captures in Wireshark and filter by ATT/GATT layer
 
 ### Protocol Discovery (RE Phase)
 
