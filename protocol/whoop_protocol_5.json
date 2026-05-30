@@ -143,6 +143,7 @@
       "variants": {
         "1917": {
           "kind": "imu",
+          "offset_base": "body-absolute",
           "hr_off": 21, "rr_count_off": 22, "rr_first_off": 23,
           "samples": 100,
           "axes": [["accelX", 89, "accel"], ["accelY", 289, "accel"], ["accelZ", 489, "accel"],
@@ -154,7 +155,7 @@
           "tail_from": 1292,
           "confidence": "HYPOTHESIS",
           "epoch": "device",
-          "note": "Gen4-VERIFIED 4.0 layout kept as a DECODE-READY TEMPLATE for 5.0 — type 43 was NOT observed in the Phase 4 D-05 capture (raw_imu_present=false). NO 5.0 offsets fabricated (Pitfall 5). Apply ONLY when a real type-43 frame appears; needs a TOGGLE_IMU_MODE/START_RAW_DATA capture (Phase 5) to grade VERIFIED. PROTO-14 HYPOTHESIS. (4.0 axis offsets/scales are frame-relative within the 1917-byte payload.)"
+          "note": "Gen4-VERIFIED 4.0 layout kept as a DECODE-READY TEMPLATE for 5.0 — type 43 was NOT observed in the Phase 4 D-05 capture (raw_imu_present=false). NO 5.0 offsets fabricated (Pitfall 5). Apply ONLY when a real type-43 frame appears; needs a TOGGLE_IMU_MODE/START_RAW_DATA capture (Phase 5) to grade VERIFIED. PROTO-14 HYPOTHESIS. WR-03 reference frame: axis offsets in this schema are BODY-ABSOLUTE (apply against raw body bytes). The Python decoder in decode_biometrics_5.py uses PAYLOAD-RELATIVE offsets (subtract 7 = the 7-byte body prefix: role[1]+token[3]+ptype[1]+seq[1]+subseq[1]). Both reference the same physical bytes; body-absolute = payload-relative + 7."
         }
       },
       "note": "PROTO-14 IMU: HYPOTHESIS. Type 43 absent from the 5.0 captures; the 4.0 Gen4-VERIFIED layout is a decode-ready template only. No 5.0 offsets fabricated."

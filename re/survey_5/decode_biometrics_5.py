@@ -101,10 +101,24 @@ PT_RELATIVE_PUFFIN_EVENTS = 53  # PROTO-11 SpO2 candidate (per Sivasai2207)
 PT_EVENT = 48               # EVENT (TEMPERATURE_LEVEL event 17 lives here)
 EVENT_TEMPERATURE_LEVEL = 17
 
-# IMU layout (Gen4-VERIFIED, FINDINGS.md §9b). data-relative offsets (data = payload after
-# type/seq/cmd). NOT applied unless type 43 is actually present (PROTO-14 capture-gated).
+# IMU layout (Gen4-VERIFIED, FINDINGS.md §9b). NOT applied unless type 43 is actually
+# present (PROTO-14 capture-gated).
+#
+# REFERENCE FRAME (WR-03): offsets here are PAYLOAD-RELATIVE (= body[7:], i.e. the bytes
+# after role[1] + token[3] + ptype[1] + seq[1] + subseq[1] = 7 bytes).  The JSON schema
+# (protocol/whoop_protocol_5.json variants["1917"].axes) stores the same axes as
+# BODY-ABSOLUTE offsets (payload-relative + 7).  Both sets describe identical physical
+# bytes; they differ only in their reference frame:
+#
+#   decode_biometrics_5.py (this file) — PAYLOAD-RELATIVE
+#     accelX=82, accelY=282, accelZ=482, gyroX=685, gyroY=885, gyroZ=1085
+#   whoop_protocol_5.json variants["1917"].axes — BODY-ABSOLUTE (each = above + 7)
+#     accelX=89, accelY=289, accelZ=489, gyroX=692, gyroY=892, gyroZ=1092
+#
+# When type-43 frames are eventually captured, apply these constants against
+# `payload` (= body[7:]), NOT against the raw body bytes.
 IMU_SAMPLES_PER_AXIS = 100
-IMU_AXES = [  # (name, data_offset, scale, unit)
+IMU_AXES = [  # (name, payload_relative_offset, scale, unit) — PAYLOAD-RELATIVE (= body[7:])
     ("accelX", 82, 0.000244140625, "g"),
     ("accelY", 282, 0.000244140625, "g"),
     ("accelZ", 482, 0.000244140625, "g"),
