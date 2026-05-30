@@ -1,0 +1,58 @@
+source: "macOS Bleak 3.0.2 (CoreBluetooth) + iPhone nRF Connect"
+tool: "nRF Connect for iOS (visual enumeration) + re/survey_5/survey_gatt_5.py (programmatic cross-check)"
+tool_version: "bleak 3.0.2 / Python 3.11.15 / nRF Connect (App Store current)"
+captured: "2026-05-30"
+
+device_identity: "[REDACTED]"   # real CoreBluetooth UUID / serial / name live only in gitignored device_local_5.py + gatt_dump_5.json
+
+# Confirmed WHOOP 5.0 custom GATT service (this unit)
+custom_service_uuid: "FD4B0001-CCE1-4033-93CE-002D5875F58A"
+
+# Custom + standard characteristic UUIDs by role
+characteristic_uuids:
+  cmd_in:        "FD4B0002-CCE1-4033-93CE-002D5875F58A"   # write, no CCCD
+  cmd_resp:      "FD4B0003-CCE1-4033-93CE-002D5875F58A"   # notify
+  events:        "FD4B0004-CCE1-4033-93CE-002D5875F58A"   # notify
+  data:          "FD4B0005-CCE1-4033-93CE-002D5875F58A"   # notify
+  diagnostics:   "FD4B0007-CCE1-4033-93CE-002D5875F58A"   # notify (memfault)
+  heart_rate:    "00002A37-0000-1000-8000-00805f9b34fb"   # standard HR Measurement, notify
+  battery_level: "00002A19-0000-1000-8000-00805f9b34fb"   # standard Battery Level, notify/read
+
+# Phase 1 ATT handle -> UUID closure (D-02). Phase 1 captured handles only.
+# Bleak char.handle returns the DECLARATION handle on macOS/CoreBluetooth; value handle = declaration + 1.
+handle_uuid_map:
+  "0x099b": "FD4B0002-CCE1-4033-93CE-002D5875F58A"   # cmd-in (write)
+  "0x099d": "FD4B0003-CCE1-4033-93CE-002D5875F58A"   # cmd-resp (notify)
+  "0x09a3": "FD4B0005-CCE1-4033-93CE-002D5875F58A"   # data (notify) — corrected from events by Wave 2 Bleak survey
+bleak_declaration_handles:
+  fd4b0002: "0x099a"
+  fd4b0003: "0x099c"
+  fd4b0004: "0x099f"   # value handle 0x09a0
+  fd4b0005: "0x09a2"   # value handle 0x09a3
+  fd4b0007: "0x09a5"
+
+# Standard services present
+standard_services:
+  heart_rate: "0x180D"
+  device_information: "0x180A"
+  battery_service: "0x180F"
+
+# Device Information (public product strings only — no private identifiers)
+device_information:
+  manufacturer: "WHOOP Inc."
+  hardware_revision: "WG50_r52"   # matches whoop-vault r52 enum maps (Phase 3 input)
+
+# Legacy 4.0 UUID family check (D-01c, ROADMAP criterion 2)
+legacy_61080001_verdict: "absent"
+
+# Bonding outcome (D-03 / D-03b, ROADMAP criterion 3) — see FINDINGS_5.md section 3
+bond_outcome: "confirmed-write trick is iOS-only; macOS CoreBluetooth does NOT auto-bond. bond_5.py (fresh-state) produced: client.pair() -> NotImplementedError (expected on macOS); start_notify(cmd-resp) -> CBATTErrorDomain Code=15 'Encryption is insufficient'; write_gatt_char(cmd-in, response=True) -> 'Insufficient Authentication'; no macOS pairing dialog. D-03b fallback (PacketLogger SMP capture from the official app) required for the SMP-visible evidence on ROADMAP criterion 3."
+
+# Standard HR + battery confirmation (D-03, ROADMAP criterion 4) — see FINDINGS_5.md §4
+hr_battery_confirmed: "yes — hr_5.py (strap worn, 2026-05-30): battery 23%; 12 HR notifications over 12s -> HR=71 bpm (10x), HR=72 bpm (2x). Standard characteristics readable WITHOUT bonding."
+
+raw_artifacts_local_only:
+  - "re/survey_5/gatt_dump_5.json"   # full programmatic dump — embeds real device name + CoreBluetooth address; gitignored, never committed
+  - "nRF Connect screenshots"        # contain device identifiers; local only
+
+notes: "Phase 2 GATT survey closes the Phase 1 handle->UUID loop and resolves RESEARCH assumptions A1 (cmd-in/resp/data UUID offsets) and A2 (legacy UUID absent). No raw device identifiers (serial, MAC, CoreBluetooth UUID, device name) committed in this sidecar or in FINDINGS_5.md — device identity is [REDACTED]. No SMP pairing-key material is present: the confirmed-write trick did not trigger SMP on macOS, so no SMP capture or pairing-key bytes were produced in this wave (D-03b fallback documented for the developer per re/capture/ios-packetlogger.md + scrub policy in DISCLAIMER section 2)."

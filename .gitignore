@@ -57,6 +57,9 @@ ios/OpenWhoop/Config/Secrets.xcconfig
 re/device_local.py
 re/survey_5/device_local_5.py
 
+# Programmatic GATT dump — embeds the real CoreBluetooth device name + address (local only)
+re/survey_5/gatt_dump_5.json
+
 # RE config/probe capture logs (key names, not source)
 re/config_dump.jsonl
 re/*.out
