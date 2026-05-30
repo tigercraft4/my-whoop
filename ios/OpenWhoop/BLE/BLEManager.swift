@@ -716,13 +716,36 @@ extension BLEManager: CBPeripheralDelegate {
                            didWriteValueFor characteristic: CBCharacteristic,
                            error: Error?) {
         if let error = error {
+            // Encryption/authentication insufficient → iOS auto-starts BLE pairing.
+            // Retry the bond write after 2s so it lands on the newly-encrypted link.
+            if let attErr = error as? CBATTError,
+               (attErr.code == .insufficientEncryption || attErr.code == .insufficientAuthentication),
+               !didBond {
+                log("Bonding: link encrypting — retrying write in 2s")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                    guard let self, let p = self.peripheral, let ch = self.cmdCharacteristic else { return }
+                    self.seq = self.seq &+ 1
+                    let frame = WhoopCommand.getBatteryLevel.frame(seq: self.seq, payload: [0x00])
+                    p.writeValue(Data(frame), for: ch, type: .withResponse)
+                    self.log("Bonding: retry write sent")
+                }
+                return
+            }
             log("Confirmed write failed: \(error.localizedDescription)")
             return
         }
         if !didBond {
             didBond = true
             state.bonded = true
-            log("BONDED (confirmed write acknowledged) — custom channels should now flow")
+            log("BONDED — re-subscribing encrypted characteristics")
+            // Re-subscribe to custom notify chars that failed pre-bond with Authentication insufficient.
+            if let svc = peripheral.services?.first(where: { $0.uuid == BLEManager.customService }),
+               let chars = svc.characteristics {
+                for c in chars where c.uuid != BLEManager.cmdWriteChar {
+                    peripheral.setNotifyValue(true, for: c)
+                    log("Re-subscribing \(c.uuid)")
+                }
+            }
         }
         // Run the connect handshake EXACTLY ONCE per connection. didWriteValueFor re-fires on EVERY
         // .withResponse write — the bond write, every SEND_HISTORICAL, every HISTORY_END ack. Without
