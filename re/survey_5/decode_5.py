@@ -29,6 +29,7 @@ Run:
     cd re/survey_5 && python decode_5.py --rebuild-corpus       # D-04 corpus expansion
 """
 import json
+import re
 import struct
 import sys
 from datetime import datetime, timezone
@@ -203,13 +204,20 @@ def _gate_print(bytype):
             continue
         if tname.startswith("type"):
             all_ptypes_known = False
-        # cmd resolution check: any cmd that fell through to 'cmd{N}'/'event{N}'/'meta{N}'.
-        unresolved = [i for i in items
-                      if i["cmd_name"].startswith(("cmd", "event", "meta"))
-                      and i["cmd_name"][len("cmd"):].lstrip("dmevnta").isdigit()]
+        # cmd resolution check: any cmd that fell through to a bare fallback name.
+        # Use re.match to reliably detect 'cmd{N}', 'event{N}', 'meta{N}' — the
+        # prior lstrip("dmevnta") heuristic was fragile (character-set strip, not
+        # prefix strip) and would miss names like 'event_unknown'.
+        _FALLBACK_RE = re.compile(r"^(?:cmd|event|meta)\d+$")
+        unresolved = [i for i in items if _FALLBACK_RE.match(i["cmd_name"])]
+        if unresolved:
+            all_cmds_known = False
         cmd_names = sorted({i["cmd_name"] for i in items})
         ex = items[0]
         print(f"  {tname}: {len(items)} frames | cmds: {', '.join(cmd_names)}")
+        if unresolved:
+            print(f"    WARN: {len(unresolved)} frames with unresolved cmd names: "
+                  f"{sorted({i['cmd_name'] for i in unresolved})}")
         print(f"      e.g. seq={ex['seq']} cmd={ex['cmd']}({ex['cmd_name']}) "
               f"payload[:24]={ex['payload'][:48]}")
         # Surface PROTO-15 timestamps under COMMAND_RESPONSE.
@@ -232,11 +240,13 @@ def run_gate(corpus_path: Path) -> int:
     with open(corpus_path) as f:
         records = json.load(f)
     decoded, bytype = decode_corpus(records)
-    all_ptypes_known, _all_cmds_known, ts_candidates = _gate_print(bytype)
+    all_ptypes_known, all_cmds_known, ts_candidates = _gate_print(bytype)
 
     print(f"\nDecoded {len(decoded)} records from {corpus_path.name}")
     print(f"PROTO-15 Unix timestamp candidates: {ts_candidates}")
 
+    if not all_cmds_known:
+        print("GATE WARN: some cmd names did not resolve to a known r52 enum entry")
     if not all_ptypes_known:
         print("GATE FAIL: at least one ptype did not resolve to a known r52 PacketType")
         return 1
