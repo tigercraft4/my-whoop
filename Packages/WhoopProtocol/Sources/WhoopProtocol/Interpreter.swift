@@ -87,6 +87,17 @@ final class FieldBuilder {
 
 public func parseFrame(_ frame: [UInt8]) -> ParsedFrame {
     let rawHex = frame.map { String(format: "%02x", $0) }.joined()
+
+    // D-02: Maverick outer wrapper. Detect BEFORE the 4.0 SOF check; when present, strip
+    // the 4-byte header + 4-byte trailer and process the FLAT body via the schema-driven
+    // path. The body has NO inner CRC32 (T-05-02), so the CRC gate is skipped on this path.
+    // body[4]/body[5] coincide numerically with the 4.0 frame[4]/frame[5] (type/seq).
+    let isMaverick = frame.count >= 9 && frame[0] == 0xAA && frame[1] == 0x01
+        && frame.count == (Int(frame[2]) | (Int(frame[3]) << 8)) + 8
+    if isMaverick, let body = stripMaverick(frame) {
+        return parseBody(body, rawHex: rawHex)
+    }
+
     if frame.count < 8 || frame[0] != 0xAA {
         return ParsedFrame(ok: false, typeName: "INVALID/FRAGMENT", seq: nil, cmdName: nil,
                            crcOK: nil, lenBytes: frame.count, rawHex: rawHex,
@@ -146,6 +157,61 @@ public func parseFrame(_ frame: [UInt8]) -> ParsedFrame {
 
     return ParsedFrame(ok: true, typeName: typeName, seq: seq, cmdName: cmdName,
                        crcOK: crcOK, lenBytes: frame.count, rawHex: rawHex,
+                       fields: fb.fields, parsed: fb.parsed)
+}
+
+/// Decode a Maverick-stripped FLAT body via the schema-driven path (D-02). The body has
+/// no 4.0 envelope: there is no SOF/length/crc8 prefix and no crc32 trailer to verify
+/// (T-05-02 — the body carries no inner CRC). body[4]=packet_type, body[5]=seq are the
+/// same numeric offsets as the 4.0 frame[4]/frame[5]. Schema field offsets are body-absolute.
+private func parseBody(_ body: [UInt8], rawHex: String) -> ParsedFrame {
+    let schema = loadSchema()
+    // Guard: a Maverick body must be long enough to carry type+seq at body[4]/body[5].
+    guard body.count >= 6 else {
+        return ParsedFrame(ok: false, typeName: "INVALID/FRAGMENT", seq: nil, cmdName: nil,
+                           crcOK: nil, lenBytes: body.count, rawHex: rawHex,
+                           fields: [], parsed: [:])
+    }
+
+    let t = Int(body[4])
+    let typeName = schema.typeName(t)
+    let seq = Int(body[5])
+
+    let fb = FieldBuilder(body)
+    // Maverick body envelope (no SOF/length/crc8/crc32 — those live in the stripped wrapper).
+    fb.add(0, 1, "role", "frame", value: .int(Int(body[0])))
+    fb.add(4, 1, "packet_type", "frame", value: .string(typeName))
+    fb.add(5, 1, "seq", "frame", value: .int(seq))
+
+    let spec = schema.packet(forType: t)
+    if spec == nil {
+        fb.add(6, 1, "cmd", "cmd", value: body.count > 6 ? .int(Int(body[6])) : nil)
+        fb.region(7, body.count, "payload", "unknown")
+    } else {
+        for fld in spec!.fields {
+            guard let dtype = fld.dtype else { continue }
+            guard let val = readDType(body, fld.off, dtype) else { continue }
+            let value: ParsedValue
+            if let enumKey = fld.`enum` {
+                value = .string(schema.enumName(enumKey, val))
+            } else {
+                value = .int(val)
+            }
+            fb.add(fld.off, fld.len, fld.name, fld.cat, value: value, note: fld.note)
+        }
+        // per-type post-hook for irregular fields. length = body.count (the body is flat,
+        // with no crc32 trailer to exclude — the whole body is decodable payload).
+        if let postName = spec!.post, let hook = postHooks[postName] {
+            hook(fb, body, body.count, schema)
+        }
+    }
+
+    let cmdByte = body.count > 6 ? Int(body[6]) : 0
+    let cmdName = (t == 35 || t == 36) ? schema.enumName("CommandNumber", cmdByte) : nil
+
+    // crcOK is nil on the Maverick path: the flat body carries no inner CRC32 (T-05-02).
+    return ParsedFrame(ok: true, typeName: typeName, seq: seq, cmdName: cmdName,
+                       crcOK: nil, lenBytes: body.count, rawHex: rawHex,
                        fields: fb.fields, parsed: fb.parsed)
 }
 
