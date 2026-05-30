@@ -198,3 +198,19 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 ---
 
 *Last updated: 2026-05-30 (initial roadmap)*
+
+---
+
+## Backlog
+
+### Phase 999.1: Follow-up — Phase 1 Android device items (BACKLOG)
+
+**Goal:** Resolve Phase 1 verification failures that require a physical Android device
+**Source phase:** 1
+**Deferred at:** 2026-05-30 during /gsd-progress --next advancement to Phase 2
+**Root cause:** No Android device available during Phase 1 execution — runbooks are complete and ready
+**Plans:**
+- [ ] Android btsnoop live capture: enable HCI snoop, run `adb bugreport`, produce evidence triplet under `re/capture/evidence/` (ROADMAP criterion 2, TOOL-02)
+- [ ] JADX-GUI APK live navigation: pull split APK via `adb shell pm path`, navigate to Maverick/packet-type enums, produce enum notes cross-referenced against whoop-vault r52 (ROADMAP criterion 4, TOOL-03)
+
+**Unblocked by:** Access to a physical Android device running the WHOOP app
