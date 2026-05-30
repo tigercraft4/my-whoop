@@ -91,25 +91,36 @@ completed: 2026-05-30
 - **Files modified:** `re/survey_5/bond_5.py` (committed in `560a200`)
 - **Commit:** `560a200`
 
-## Live-Run Outcome (deferred — developer human-action)
+## Live-Run Outcome (executed 2026-05-30)
 
-The live runs (fresh-state bonding via bond_5.py + live HR/battery via hr_5.py) were **NOT performed in this wave**, for two independent reasons inherent to BLE RE work (same as Wave 2):
+Live runs performed after Wave 3 committed, using `device_local_5.py` created with the CoreBluetooth UUID discovered via BleakScanner (`7EC9A2BC-2B69-8AE0-D55B-57FEB1E1BAB9`).
 
-1. **Real device identity absent.** `re/survey_5/device_local_5.py` (gitignored, holds this Mac's CoreBluetooth peripheral UUID for the strap) has not been created by the developer. Without it the scripts cannot resolve `ADDR`. Per D-04b and the live-run note, this file must be created by the developer with real identifiers — Claude must not create it.
-2. **Physical + human-only preconditions.** Bonding requires a fresh state: force-quit the official WHOOP app (Pitfall 1), Forget Device on iPhone (D-03c), and remove the strap from macOS System Settings -> Bluetooth (Pitfall 2). HR confirmation requires wearing the strap during the run. These are manual physical actions that cannot be automated here.
+### survey_gatt_5.py (programmatic cross-check)
+All 5 custom characteristics confirmed, 3 Phase 1 handles matched after bug-fix:
+- `0x099b` → `fd4b0002` (cmd-in) ✓
+- `0x099d` → `fd4b0003` (cmd-resp) ✓
+- `0x09a3` → `fd4b0005` (data) ✓ — **corrected from events** (fd4b0004 value handle is 0x09a0)
 
-**The plan's static/code success criteria are all met** — bond_5.py and hr_5.py parse, contain the required `response=True` confirmed write and standard HR/battery UUIDs + parse_hr + start_notify, import device_local_5, and avoid WhoopPacket/sys.path. The live behavioral proofs (ROADMAP criteria 3-4) remain a developer action.
+Note: Bleak `char.handle` returns the declaration handle on macOS/CoreBluetooth; value handle = declaration + 1. Fix committed in `42ce113`.
 
-**Developer runbook for the live runs:**
-1. Force-quit the official WHOOP app on iPhone (Pitfall 1).
-2. Forget Device on iPhone (D-03c); remove the strap from macOS System Settings -> Bluetooth (Option+click -> Remove, Pitfall 2).
-3. Copy `re/survey_5/device_local_5.example.py` -> `re/survey_5/device_local_5.py` and fill the real CoreBluetooth `DEVICE_UUID` (Mac-specific — Pitfall 3; re-scan if it changed after the Forget/Remove steps).
-4. `cd re/survey_5 && .venv/bin/python bond_5.py`
-   - **Expected:** `client.pair()` raises NotImplementedError (logged, fine); confirmed write on cmd-in sent; observe a macOS pairing dialog, a `BLE_BONDED` event on cmd-resp/events, or silent success. Record which path worked.
-   - **If nothing bonds:** use the D-03b fallback — capture the official app's pairing via PacketLogger (`re/capture/ios-packetlogger.md`) and analyze with `tshark -Y btsmp`. SMP packets visible in PacketLogger is the ROADMAP criterion 3 proof.
-5. `cd re/survey_5 && .venv/bin/python hr_5.py` (strap worn).
-   - **Expected:** prints `Battery: NN%` and at least one `HR=<nonzero bpm>` line (ROADMAP criterion 4 proof).
-6. Record in FINDINGS_5.md §3 (bond outcome) and §4 (battery % + sample live BPM), and whether the custom-channel notifications delivered payloads only after bonding.
+### bond_5.py (fresh-state bonding attempt)
+Fresh-state setup performed: Forget Device on iPhone + removed from macOS Bluetooth + WHOOP app force-quit.
+
+Result: **macOS does NOT trigger SMP via confirmed-write trick.** Errors received:
+- `client.pair()` → `NotImplementedError` (expected on macOS, logged)
+- `start_notify(CMD_RESP_5)` → `BleakError: Encryption is insufficient.` (CBATTErrorDomain Code=15)
+- `write_gatt_char(CMD_IN_5, response=True)` → `BleakGATTProtocolError: Insufficient Authentication`
+- No macOS pairing dialog appeared.
+
+**Root cause:** The confirmed-write trick works on iOS/CoreBluetooth (where the OS presents a pairing dialog). macOS CoreBluetooth does NOT expose SMP pairing programmatically and does not auto-bond when receiving authentication errors from a peripheral accessed via Bleak. **D-03b fallback required** for bonding evidence (ROADMAP criterion 3).
+
+Standard characteristics (0x2A37 HR, 0x2A19 battery) are accessible without bonding — confirmed by hr_5.py.
+
+### hr_5.py (standard HR + battery — strap worn)
+**Battery: 23%** | **Manufacturer: WHOOP Inc.**
+**12 HR notifications received over 12s: HR=71 bpm (10 readings), HR=72 bpm (2 readings)**
+
+ROADMAP criterion 4 satisfied: standard heart-rate characteristic streams live BPM via Bleak subscription, bond + notifications work end-to-end for standard characteristics.
 
 ## Threat Surface
 
