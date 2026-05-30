@@ -3,7 +3,9 @@ tool: PacketLogger
 tool_version: "Additional Tools for Xcode (PacketLogger)"
 tshark_version: "4.6.6"
 captured: "2026-05-30"
-raw_sha256: "547a6f9724a415f623f096c7f26cd8bea54c527daeb567442771db3bc88db6d2"
+raw_sha256: "c032e494447a3478d7494d2d1a2a8b21ba0ac33b92bd67a5f96551006163e5a6"
+raw_file: "re/capture/samples/2026-05-30-smp-bond-full.pklg"
+att_packet_count: 4216
 
 # WHOOP 5.0 SMP pairing handshake — captured while official iOS WHOOP app re-paired
 # after fresh-state setup (Forget Device on iPhone, removed Mac bond per Pitfalls 1-3)
