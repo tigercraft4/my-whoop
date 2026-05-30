@@ -75,6 +75,8 @@ public final class BLEManager: NSObject, ObservableObject {
     /// this guard those re-entries re-blasted hello/SET_CLOCK at the strap mid-offload and stopped it
     /// from streaming type-47 — THE iOS "won't serve" root cause. Reset on disconnect.
     private var connectHandshakeDone = false
+    private var bondRetryCount = 0
+    private static let maxBondRetries = 3
     /// Re-entrancy guard for captureRawAccel: true while a bounded on-demand window is running.
     /// A second tap is a no-op until the active capture's asyncAfter block fires and clears this.
     private var rawCaptureInFlight = false
@@ -601,6 +603,7 @@ extension BLEManager: CBCentralManagerDelegate {
         didBond = false
         clockRequested = false
         connectHandshakeDone = false
+        bondRetryCount = 0
         // Reset backfill state so the next connect starts a fresh offload.
         backfillStarted = false
         backfilling = false
@@ -721,13 +724,18 @@ extension BLEManager: CBPeripheralDelegate {
             if let attErr = error as? CBATTError,
                (attErr.code == .insufficientEncryption || attErr.code == .insufficientAuthentication),
                !didBond {
-                log("Bonding: link encrypting — retrying write in 2s")
+                bondRetryCount += 1
+                guard bondRetryCount <= BLEManager.maxBondRetries else {
+                    log("Bonding: encryption failed after \(BLEManager.maxBondRetries) retries — pair via Settings → Bluetooth → Forget This Device, then reconnect")
+                    return
+                }
+                log("Bonding: link encrypting — retrying write in 2s (attempt \(bondRetryCount)/\(BLEManager.maxBondRetries))")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                     guard let self, let p = self.peripheral, let ch = self.cmdCharacteristic else { return }
                     self.seq = self.seq &+ 1
                     let frame = WhoopCommand.getBatteryLevel.frame(seq: self.seq, payload: [0x00])
                     p.writeValue(Data(frame), for: ch, type: .withResponse)
-                    self.log("Bonding: retry write sent")
+                    self.log("Bonding: retry write sent (\(self.bondRetryCount)/\(BLEManager.maxBondRetries))")
                 }
                 return
             }
