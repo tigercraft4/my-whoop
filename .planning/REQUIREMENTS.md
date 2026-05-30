@@ -20,8 +20,8 @@
 - [ ] **PROTO-01**: WHOOP 5.0 GATT service UUID(s) confirmed on user's specific device (fd4b0001-... and/or legacy 61080001-... presence documented)
 - [ ] **PROTO-02**: BLE bonding replicated without the official WHOOP app (confirmed-write trick or equivalent on 5.0)
 - [ ] **PROTO-03**: GATT characteristics enumerated and mapped (7 characteristics: cmd-in, cmd-resp, events, data, diagnostics + standard HR + battery)
-- [ ] **PROTO-04**: 4.0 inner framing (0xAA SOF / CRC8 poly 0x07 / CRC32-zlib) validated against 20+ captured 5.0 frames (≥98% pass rate gate)
-- [ ] **PROTO-05**: Maverick outer wrapper (version, length, role bytes, CRC16) characterised if 4.0 CRC validation fails — structure documented in whoop_protocol_5.json
+- [x] **PROTO-04**: 4.0 inner framing (0xAA SOF / CRC8 poly 0x07 / CRC32-zlib) validated against 20+ captured 5.0 frames (≥98% pass rate gate)
+- [x] **PROTO-05**: Maverick outer wrapper (version, length, role bytes, CRC16) characterised if 4.0 CRC validation fails — structure documented in whoop_protocol_5.json
 - [ ] **PROTO-06**: Command surface probed (IDs 0–255 enumerated via probe harness; known commands from 4.0 cross-checked)
 - [ ] **PROTO-07**: Live HR + RR intervals decoded from realtime stream
 - [ ] **PROTO-08**: Battery level decoded
