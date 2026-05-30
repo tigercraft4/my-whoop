@@ -5,6 +5,12 @@ import XCTest
 /// test at tests/test_historical_v24.py: a SYNTHETIC record (HR=63, one R-R, on-wrist) built
 /// by scripts/gen_synthetic_fixtures.historical_v24(). No real on-device capture is embedded.
 final class HistoricalV24Tests: XCTestCase {
+    // type-47 V24 is a WHOOP 4.0 layout; the 5.0 (Maverick) schema deliberately carries no
+    // V24 versions map (biometric_verdicts: HYPOTHESIS, no fabricated offsets). Decode these
+    // 4.0 fixtures against the 4.0 schema so the legacy decode path stays validated.
+    override func setUp() { super.setUp(); overrideSchemaResource("whoop_protocol") }
+    override func tearDown() { overrideSchemaResource(nil); super.tearDown() }
+
     // A synthetic V24 record (unix anchored to 1700000000, gravity a synthetic ~1g unit vector).
     private let v24Hex =
         "aa5a008e2f18000000000000f153650000000000003f0152030000000000000000dc053075" +

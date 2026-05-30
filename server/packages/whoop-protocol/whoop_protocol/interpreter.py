@@ -47,7 +47,13 @@ def _read(frame, off, dtype):
             return None
         v = frame[off] | (frame[off + 1] << 8) | (frame[off + 2] << 16)
         return v - 0x1000000 if v & 0x800000 else v
-    fmt, n = _DTYPE[dtype]
+    spec = _DTYPE.get(dtype)
+    if spec is None:
+        # Unknown scalar dtype (e.g. "bytes"/"ascii" payload regions): no scalar value,
+        # mirroring the Swift readDType() default-nil. The static-field walk skips these
+        # (the bytes/ascii regions are surfaced by per-type post-hooks instead).
+        return None
+    fmt, n = spec
     if off + n > len(frame):
         return None
     return struct.unpack(fmt, frame[off:off + n])[0]

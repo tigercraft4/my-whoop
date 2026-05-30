@@ -5,6 +5,12 @@ final class HistoricalStreamsParityTests: XCTestCase {
     private let deviceClockRef = 31_538_447
     private let wallClockRef = 1_736_365_593
 
+    // type-43 IMU replay frames + golden are the WHOOP 4.0 raw-data layout. The 5.0 schema's
+    // type-43 is a HYPOTHESIS template with no decodable variant here, so decode against the
+    // 4.0 schema (no fabricated 5.0 offsets).
+    override func setUp() { super.setUp(); overrideSchemaResource("whoop_protocol") }
+    override func tearDown() { overrideSchemaResource(nil); super.tearDown() }
+
     private struct FrameEntry: Decodable { let hex: String }
     private struct HRGold: Decodable, Equatable { let ts: Int; let bpm: Int }
     private struct RRGold: Decodable, Equatable { let ts: Int; let rr_ms: Int }

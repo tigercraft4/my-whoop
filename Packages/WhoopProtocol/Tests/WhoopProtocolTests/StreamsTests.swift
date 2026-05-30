@@ -8,6 +8,11 @@ final class StreamsTests: XCTestCase {
     private let deviceClockRef = 31_538_447
     private let wallClockRef = 1_736_365_593
 
+    // Built from the 4.0 synthetic frame builders (frame-absolute offsets); decode against the
+    // 4.0 schema since 5.0 (body-absolute) is the runtime default.
+    override func setUp() { super.setUp(); overrideSchemaResource("whoop_protocol") }
+    override func tearDown() { overrideSchemaResource(nil); super.tearDown() }
+
     private func bytes(_ s: String) -> [UInt8] {
         var out = [UInt8](); out.reserveCapacity(s.count / 2)
         var i = s.startIndex

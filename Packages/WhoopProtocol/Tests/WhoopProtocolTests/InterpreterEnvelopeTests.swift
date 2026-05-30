@@ -2,6 +2,11 @@ import XCTest
 @testable import WhoopProtocol
 
 final class InterpreterEnvelopeTests: XCTestCase {
+    // Decodes a 4.0-format REALTIME_DATA frame with 4.0 frame-absolute field offsets, so it
+    // must run against the 4.0 schema (5.0 is the runtime default with body-absolute offsets).
+    override func setUp() { super.setUp(); overrideSchemaResource("whoop_protocol") }
+    override func tearDown() { overrideSchemaResource(nil); super.tearDown() }
+
     static func hex(_ s: String) -> [UInt8] { FramingTests.hex(s) }
 
     func testRealtimeDataEnvelopeAndStaticFields() {

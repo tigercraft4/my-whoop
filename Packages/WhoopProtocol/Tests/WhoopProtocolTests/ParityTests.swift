@@ -15,6 +15,12 @@ private struct FrameEntry: Decodable {
 }
 
 final class ParityTests: XCTestCase {
+    // frames.json / golden.json are the 4.0 fixture set (type-40/43/47/48/49/50 in the 4.0
+    // frame-absolute layout). Decode against the 4.0 schema; the 5.0 (Maverick) parity guard
+    // lives in Parity5Tests over frames_5.json. 5.0 is otherwise the runtime default.
+    override func setUp() { super.setUp(); overrideSchemaResource("whoop_protocol") }
+    override func tearDown() { overrideSchemaResource(nil); super.tearDown() }
+
     private func resourceURL(_ name: String, _ ext: String) throws -> URL {
         let url = Bundle.module.url(forResource: name, withExtension: ext)
         return try XCTUnwrap(url, "missing test resource \(name).\(ext) — run scripts/gen_golden.py")
