@@ -208,3 +208,94 @@ The Hardware Revision reads `WG50_r52` (section 1), which matches the whoop-vaul
 > **wrapper characterised, decode work cleared with wrapper-strip step**
 
 Phase 3 (the critical gate) is closed: the 4.0 inner framing is conclusively not reused (0% gate), the Maverick outer wrapper is characterised with HIGH confidence (5028/5028), and a working `strip_maverick()` exposes the flat body for decoding. The OPEN trailer-checksum algorithm is recorded but does not gate Phase 4. This verdict is the committed Phase 4 entry condition per D-03b — Phase 4 may begin.
+
+---
+
+## 8. Decode & Schema (Phase 4)
+
+**Source:** the full 5028-frame corpus (Phase 1 iOS ATT + Phase 2 SMP-bond sessions) plus the D-05 biometric capture (`capture_all-V3.pklg`, gitignored / local-only), decoded by `re/survey_5/decode_5.py` + `command_surface_5.py` + `decode_streams_5.py` + `decode_biometrics_5.py`, run 2026-05-30. Confidence policy (load-bearing): **VERIFIED** only where a captured frame / ground-truth read backs the decode; **HYPOTHESIS** for r52-expected-but-unobserved commands (D-07) and capture-absent biometrics (A1–A3) with honest provenance — no fabricated VERIFIED fields (Pitfall 5).
+
+### Body layout confirmed (offset-4, NO inner CRC) — the corrected D-01
+
+The wrapper-stripped flat body is keyed at **body offset 4**, not offset 1. Verified 46/46 on the golden gate, then over the full corpus via `parse_body_5`:
+
+```
+body[0]    role    0x00 cmd-in write / 0x01 notify   (== frame role)
+body[1:4]  token   3-byte per-session token          (HYPOTHESIS, A5)
+body[4]    ptype   r52 PacketType
+body[5]    seq     monotonic sequence
+body[6]    cmd     r52 CommandNumber / EventNumber / MetadataType (context = ptype)
+body[7:]   payload
+```
+
+There is **no inner CRC32** on the body (the 4.0 `crc_ok` check is not carried over). Every schema packet field offset in `whoop_protocol_5.json` is **BODY-ABSOLUTE** (an index into this flat body), reconciled against the 4.0 frame-relative offsets — `payload[N] == body[7+N]`.
+
+### Command surface (PROTO-06) — observed-vs-r52
+
+`command_surface_5.py` enumerates every command ID observed in the corpus (body[6] of COMMAND/COMMAND_RESPONSE + cmd-in WRITE), pairs cmd-in writes to cmd-resp by `seq` (A7), and reconciles against the complete r52 `CommandNumber` map.
+
+- **10 OBSERVED (VERIFIED):** `TOGGLE_REALTIME_HR`(3), `SEND_HISTORICAL_DATA`(22), `HISTORICAL_DATA_RESULT`(23), `GET_DATA_RANGE`(34), `DISABLE_ALARM`(69), `START_FF_KEY_EXCHANGE`(117), `SEND_NEXT_FF`(118), `SET_FF_VALUE`(120), `GET_ADVERTISING_NAME`(141), `GET_HELLO`(145).
+- **67 UNOBSERVED → HYPOTHESIS**, note "not observed in captures, expected from r52 enum map" (D-07).
+- **Reused-4.0 cross-validation:** of the 14 IDs reused from 4.0, **3/14 OBSERVED** (3, 22, 145); 11 absent.
+- **Method (D-06):** capture-analysis over the full corpus (worktree-resolved captures, golden-corpus CI fallback). `seq` is reused across separate command sessions, so naive `seq->cmd` pairing produces cross-session collisions — A7 is confirmed by the 89/106 in-burst MATCHes, collisions reported honestly rather than hidden.
+
+### Events incl. battery (PROTO-08/09)
+
+`decode_streams_5.py` resolves all 136 EVENT frames to r52 `EventNumber` names — `STRAP_CONDITION_REPORT`, `BLE_CONNECTION_UP`/`DOWN`, `BLE_REALTIME_HR_ON`/`OFF`, `BATTERY_LEVEL`(3), `EXTENDED_BATTERY_INFORMATION`(63), plus three unmapped (event 110/120/123, surfaced as 5.0-new candidates). Each EVENT carries a device-epoch u32 at body[8].
+
+**Battery (PROTO-08) is HYPOTHESIS.** `BATTERY_LEVEL`(3) and `EXTENDED_BATTERY_INFORMATION`(63) are decoded under the 4.0 A6 layout, but no candidate u16 in the event payload cleanly matches the CONFIRMED `0x2A19` = 23% standard read. The 5.0 SOC offset is therefore reported HYPOTHESIS (validated against ground truth, not fabricated), with a dedicated `GET_BATTERY_LEVEL`(26) capture flagged for Phase 5.
+
+### Dual-epoch timestamps (PROTO-15)
+
+Two distinct u32 epochs coexist on the wire:
+
+- **Unix epoch** — `GET_DATA_RANGE` (COMMAND_RESPONSE cmd 34) payload carries u32-LE Unix seconds (19 candidates; headline 2026-05-08). Tagged `epoch: unix`.
+- **Device epoch** — every EVENT body[8] (and REALTIME_DATA payload[1:5]) carries a device-relative u32 (e.g. 1780152939). Tagged `epoch: device`.
+
+The schema records the epoch per field so Phase 5 converts device-epoch values via the unix-anchored offset rather than treating them as Unix seconds.
+
+### Historical offload protocol (PROTO-10) — documentation-only (D-09)
+
+Store-then-ack offload, documented from METADATA counts + scrubbed CONSOLE_LOGS narration (live kill-process test deferred to Phase 5):
+
+1. `SEND_HISTORICAL_DATA`(22) request.
+2. Strap brackets data with METADATA `HISTORY_START`(73 frames) / `HISTORY_END`(79) markers; `HISTORY_COMPLETE`(2) terminates.
+3. Each chunk acked with `HISTORICAL_DATA_RESULT`(23); `GET_DATA_RANGE`(34) / `SET_READ_POINTER`(33) drive the read cursor.
+4. The **trim cursor** `0xPAGE:OFFSET` (`0x00000004:000130ef`, surfaced from scrubbed console logs) is the store-then-ack persistence pointer — the offload-and-clear mechanism.
+
+### Biometric streams (PROTO-07/11/12/13/14)
+
+`decode_biometrics_5.py` over the D-05 capture. The 5.0 `REALTIME_DATA` (type 40) layout was reconciled **empirically** — the literal 4.0 offsets decode to all-zero/`0x01` on 5.0:
+
+- **HR @ payload[5]** (== body[12]), **rr_count @ payload[6]**, **RR uint16-LE ms @ payload[7:]**, device-epoch @ payload[1:5]. `body[6]` is a per-frame sub-sequence counter (41–243), NOT a CommandNumber.
+- HR is a smooth physiological series (84–131 bpm, mean 102) across 159 frames; RR intervals are self-consistent with `60000/HR` (8/8 RR-bearing frames) — the internal D-08 alignment in lieu of a same-frame HR-strap log, corroborating the standard `0x2A37` `parse_hr` path.
+
+IMU/SpO₂/skin-temp/respiration bytes are genuinely **absent** from the capture (0 type-43, 0 type-53, 0 event-17 frames), so they stay HYPOTHESIS with 4.0-cloud-computed provenance — no 5.0 offsets fabricated. PROTO-16: every verdict carries `firmware = WG50_r52`.
+
+#### Confidence per stream
+
+| Stream | Requirement | Confidence | Provenance |
+|--------|-------------|------------|------------|
+| HR / RR (REALTIME_DATA 40) | PROTO-07 | **VERIFIED** | std 0x2A37 `parse_hr` verbatim + custom type-40 reconciled (HR @ payload[5], RR @ payload[7:]); RR↔HR self-consistent 8/8 |
+| Command surface | PROTO-06 | **VERIFIED** (10 observed) / HYPOTHESIS (67 r52-expected) | capture-analysis over full corpus + reused-14 cross-validation |
+| Events | PROTO-09 | **VERIFIED** | 136 EVENTs resolved to r52 EventNumber + device-epoch body[8] |
+| Battery SOC | PROTO-08 | HYPOTHESIS | 4.0 A6 layout does not cleanly resolve 23% on 5.0; GET_BATTERY_LEVEL capture flagged for Phase 5 |
+| Historical offload | PROTO-10 | **VERIFIED** (framing, doc-only) | METADATA markers + scrubbed CONSOLE_LOGS; trim cursor `0x00000004:000130ef`; live test deferred (D-09) |
+| Dual-epoch | PROTO-15 | **VERIFIED** | unix (GET_DATA_RANGE) + device (EVENT body[8]) both decoded |
+| IMU / gravity (RAW 43) | PROTO-14 | HYPOTHESIS | type 43 absent (`raw_imu_present=false`); 4.0 Gen4 template ready; needs TOGGLE_IMU_MODE capture |
+| SpO₂ | PROTO-11 | HYPOTHESIS | type 53 byte not observed; 4.0 = cloud-computed off-wire |
+| Skin temperature | PROTO-12 | HYPOTHESIS | event 17 TEMPERATURE_LEVEL not observed; 4.0 never captured it |
+| Respiration | PROTO-13 | HYPOTHESIS | no respiration field on the wire; likely derived/sleep metric, may be cloud-only |
+
+### Committed artifacts
+
+- `protocol/whoop_protocol_5.json` — the canonical 5.0 schema: four r52 enum maps (verbatim), body field maps for every decoded packet type, every field epoch/provenance/confidence tagged, dual-epoch represented, biometric verdicts map. The single source of truth Phase 5's Swift package consumes.
+- `scripts/sync-schema-5.sh` — JSON-validating sync of the canonical schema into `Packages/WhoopProtocol/.../Resources/whoop_protocol_5.json`.
+- `re/survey_5/decode_5.py` — the offset-4 body decoder (`parse_body_5`), r52 resolver, dual-epoch scanner, corpus rebuilder.
+- `re/survey_5/command_surface_5.py` — observed-vs-r52 CommandNumber reconciliation + reused-14 cross-validation.
+- `re/survey_5/decode_streams_5.py` — EVENT/battery, METADATA/historical-offload, dual-epoch decoders.
+- `re/survey_5/decode_biometrics_5.py` — per-stream biometric decoders + VERIFIED/HYPOTHESIS verdicts.
+- `re/survey_5/frames_5_golden.json` — 123 curated cross-type fixtures (COMMAND/COMMAND_RESPONSE/EVENT/METADATA/CONSOLE_LOGS/HISTORICAL_DATA/REALTIME_DATA), round-trip-verified through `parse_body_5`.
+- `re/capture/evidence/*.meta.yaml` — redacted biometric-capture evidence sidecar (raw `.pklg` gitignored / local-only).
+
+**DISCLAIMER §2 restated:** only protocol-structure facts are committed here — no BD_ADDR, serial, SMP keys, or device UUID. Device identity is `[REDACTED]`; raw captures are gitignored. Console-log narration is digit-run-scrubbed (T-04-04). Independent reverse-engineering for interoperability; not affiliated with WHOOP, Inc.
