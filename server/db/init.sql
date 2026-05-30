@@ -104,6 +104,21 @@ CREATE TABLE IF NOT EXISTS gravity_samples (
 );
 SELECT create_hypertable('gravity_samples', 'ts', if_not_exists => TRUE);
 
+-- ── WHOOP 5.0 generation tag (Phase 05, D-09 / SRV-04) ────────────────────────
+-- Idempotent migration: tag every decoded-stream hypertable with the device
+-- generation that produced the row. DEFAULT '5.0' classifies existing rows as 5.0
+-- (this is a 5.0-only deployment); ADD COLUMN IF NOT EXISTS keeps the startup
+-- re-apply (bootstrap_schema) a no-op once the column exists. Backward-compatible:
+-- clients that omit device_generation get the '5.0' default at ingest time.
+ALTER TABLE hr_samples        ADD COLUMN IF NOT EXISTS device_generation TEXT DEFAULT '5.0';
+ALTER TABLE rr_intervals      ADD COLUMN IF NOT EXISTS device_generation TEXT DEFAULT '5.0';
+ALTER TABLE events            ADD COLUMN IF NOT EXISTS device_generation TEXT DEFAULT '5.0';
+ALTER TABLE battery           ADD COLUMN IF NOT EXISTS device_generation TEXT DEFAULT '5.0';
+ALTER TABLE spo2_samples      ADD COLUMN IF NOT EXISTS device_generation TEXT DEFAULT '5.0';
+ALTER TABLE skin_temp_samples ADD COLUMN IF NOT EXISTS device_generation TEXT DEFAULT '5.0';
+ALTER TABLE resp_samples      ADD COLUMN IF NOT EXISTS device_generation TEXT DEFAULT '5.0';
+ALTER TABLE gravity_samples   ADD COLUMN IF NOT EXISTS device_generation TEXT DEFAULT '5.0';
+
 -- ── Derived daily-analysis tables (Task 2.5) ──────────────────────────────────
 -- These hold the OUTPUT of the analysis pipeline (sleep/recovery/strain/exercise),
 -- one row per night/workout/day. They are LOW VOLUME (a handful of rows per device
