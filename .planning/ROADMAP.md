@@ -162,8 +162,8 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 **Wave 2** *(05-02 blocked on 05-01; 05-05 blocked on 05-01+05-03)*
 
-  - [ ] 05-02-PLAN.md — Golden fixtures 5.0 + Parity5Tests + SchemaSyncTests fix (D-03, SWIFT-05, wave 2)
-  - [ ] 05-05-PLAN.md — iOS BLE wiring: UUIDs FD4B0001 (D-04, IOS-01) + Commands enum revisto (D-05) + offline/state-preservation (IOS-07/08, wave 2)
+  - [x] 05-02-PLAN.md — Golden fixtures 5.0 + Parity5Tests + SchemaSyncTests fix (D-03, SWIFT-05, wave 2)
+  - [x] 05-05-PLAN.md — iOS BLE wiring: UUIDs FD4B0001 (D-04, IOS-01) + Commands enum revisto (D-05) + offline/state-preservation (IOS-07/08, wave 2)
 
 **Wave 3** *(blocked on 05-05+05-02+05-04)*
 
@@ -181,7 +181,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
 | 3. Framing Confirmation (Critical Gate) | 3/3 | Complete    | 2026-05-30 |
 | 4. Protocol Decode & Schema | 5/5 | Complete    | 2026-05-30 |
-| 5. iOS App & Server Port | 3/6 | In Progress|  |
+| 5. iOS App & Server Port | 5/6 | In Progress|  |
 
 ---
 
