@@ -55,6 +55,7 @@ ios/OpenWhoop/Config/Secrets.xcconfig
 # Personal device identity for RE scripts (real BLE UUID/MAC/serial — never commit;
 # device_local.example.py IS committed as a template)
 re/device_local.py
+re/survey_5/device_local_5.py
 
 # RE config/probe capture logs (key names, not source)
 re/config_dump.jsonl
