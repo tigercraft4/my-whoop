@@ -91,6 +91,28 @@ public func verifyFrame(_ frame: [UInt8]) -> FrameCheck {
     return FrameCheck(ok: ok, length: length, crc8OK: crc8OK, crc32OK: crc32OK)
 }
 
+/// Strip the Maverick outer wrapper, returning the flat body (D-02).
+///
+/// Maverick layout (PROTO-05, verified on 5028 frames):
+///   offset 0     SOF      0xAA
+///   offset 1     version  0x01
+///   offset 2-3   length   u16-LE body length
+///   offset 4..   body     flat payload (length bytes)
+///   last 4       trailer  per-frame checksum (algorithm open; NOT verified here)
+///   total == length + 8  (4-byte header + body + 4-byte trailer)
+///
+/// Returns `frame[4..<4+length]` when the wrapper is valid, otherwise nil. Pure
+/// function with bounds-guards (T-05-01): a wrapper with an inconsistent length
+/// returns nil rather than reading out of range. The body is FLAT decode input —
+/// there is NO nested 0xAA frame and NO inner CRC32 to re-check (Finding 5 / T-05-02).
+/// Byte-for-byte equivalent to strip_maverick() in re/survey_5/validate_frames_5.py.
+public func stripMaverick(_ frame: [UInt8]) -> [UInt8]? {
+    guard frame.count >= 9, frame[0] == 0xAA, frame[1] == 0x01 else { return nil }
+    let length = Int(frame[2]) | (Int(frame[3]) << 8)
+    guard frame.count == length + 8 else { return nil }
+    return Array(frame[4..<4 + length])
+}
+
 /// Reconstruct a complete frame from a bare payload (data == frame[7:]).
 /// Some captures store only the data portion; rebuild the envelope with a correct zlib
 /// crc32 and a placeholder crc8 byte (0x00). Mirrors framing.py frame_from_payload.
