@@ -650,10 +650,10 @@ extension BLEManager: CBCentralManagerDelegate {
         Task { @MainActor in await bootstrapStore() }
         if p.state == .connected {
             state.connected = true
-            log("Restored CONNECTED peripheral \(p.identifier) — re-discovering services")
-            p.discoverServices([
-                BLEManager.customService, BLEManager.heartRateService, BLEManager.batteryService,
-            ])
+            log("Restored CONNECTED peripheral \(p.identifier) — will re-discover services on poweredOn")
+            // Do NOT call p.discoverServices() here: willRestoreState fires before
+            // centralManagerDidUpdateState(.poweredOn), so the central is not yet ready.
+            // centralManagerDidUpdateState handles re-discovery once the central is powered on.
         } else {
             state.connected = false
             log("Restored DISCONNECTED peripheral \(p.identifier) — reconnect on poweredOn")
