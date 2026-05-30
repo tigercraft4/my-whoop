@@ -70,7 +70,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 **Wave 1**
 
-  - [ ] 02-01-PLAN.md — nRF Connect GATT enumeration + FINDINGS_5.md bootstrap + device_local_5 gitignore (wave 1, has checkpoint)
+  - [x] 02-01-PLAN.md — nRF Connect GATT enumeration + FINDINGS_5.md bootstrap + device_local_5 gitignore (wave 1, has checkpoint)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -136,7 +136,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
-| 2. GATT Survey & Bonding | 0/4 | Planned | - |
+| 2. GATT Survey & Bonding | 1/4 | In Progress|  |
 | 3. Framing Confirmation (Critical Gate) | 0/0 | Not started | - |
 | 4. Protocol Decode & Schema | 0/0 | Not started | - |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
