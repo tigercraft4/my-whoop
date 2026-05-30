@@ -204,8 +204,6 @@ def build_report(captures):
     stats = {}  # handle -> dict(count, crc8_ok, crc32_ok, wrapper_ok, example)
     for cap in captures:
         print(f"\n--- {Path(cap).name} ---")
-        frames = list(reassemble(f for _, f in extract_frames(Path(cap))))
-        # extract_frames already pairs handle+frame; re-run to keep the handle alongside.
         for handle, frame in extract_frames(Path(cap)):
             frame = next(reassemble([frame]), None)
             if frame is None:
