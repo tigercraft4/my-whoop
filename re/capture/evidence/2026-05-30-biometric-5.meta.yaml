@@ -1,0 +1,43 @@
+source: "Targeted D-05 PacketLogger capture — worn WHOOP 5.0 strap + on-device WHOOP-app session (realtime HR/RR streaming, sleep review, workout history, events tab). Extracted with tshark + re/survey_5/validate_frames_5.py and decoded with re/survey_5/decode_5.py. Capture session is a human-only physical action (macOS Bleak cannot bond to the 5.0 strap — Phase 2 finding)."
+tool: "PacketLogger + tshark 4.6.6"
+tool_version: "PacketLogger (iOS Bluetooth Logging) / tshark 4.6.6 / Python 3.11.15"
+captured: "2026-05-30"
+
+device_identity: "[REDACTED]"   # real BD_ADDR / CoreBluetooth UUID / serial / iPhone UDID / strap name live only in the gitignored .pklg under re/capture/samples/ and in device_local_5.py
+
+# PROTO-16 — firmware/hardware revision recorded for every capture (schema-drift detection).
+# Drafted value mirrors the schema baseline (protocol/whoop_protocol_5.json: WG50_r52).
+# Task 2 confirms / overrides this with the actual revision the human reads from
+# Device Information 0x2A26 (Firmware Revision) / 0x2A27 (Hardware Revision) during the session.
+firmware_revision: "WG50_r52"
+firmware_revision_source: "Device Information 0x2A26 (Firmware Revision String) / 0x2A27 (Hardware Revision String)"
+
+# Filled by Task 2 (post-checkpoint) from validate_frames_5.build_report([<new pklg>])
+# + decode_5.parse_body_5 over the human-supplied capture. These are the Wave 3 (Plan 04) inputs.
+results: {}
+#   frames_by_characteristic: { handle -> { uuid, role, frames } }   # per-characteristic counts
+#   realtime_hr_present:  null   # REALTIME_DATA (PacketType 40) observed?  (raw realtime HR/RR stream)
+#   raw_imu_present:      null   # REALTIME_RAW_DATA (PacketType 43) observed?  (raw IMU — PROTO-14 risk gate)
+#   sleep_review_present: null   # historical-backfill (non-console) packets from the sleep-review nav?
+#   distinct_packet_types: []    # all PacketTypes seen across the capture body decode
+
+raw_artifacts_local_only:
+  - "re/capture/samples/<DATE>-biometric-5.pklg"   # the new D-05 capture — gitignored (re/capture/samples/*), NEVER committed; exact filename supplied by the human at the checkpoint and finalised in Task 2
+
+notes: >-
+  DISCLAIMER section 2 / RESEARCH Pitfall 5: no BD_ADDR, SMP pairing-key bytes, serial,
+  CoreBluetooth UUID, iPhone UDID, or device name are committed in this sidecar — device
+  identity is [REDACTED]. Only protocol-structure facts (per-characteristic frame counts,
+  observed PacketTypes, presence/absence of realtime-HR / raw-IMU / sleep-review packets,
+  firmware revision string) are committable. The raw .pklg capture listed under
+  raw_artifacts_local_only stays local and is confirmed gitignored via re/capture/samples/*
+  (.gitignore:79). The capture itself is a human-only physical action (worn strap +
+  on-device app navigation) per D-03/D-05 — this is why Plan 04-02 is autonomous:false.
+  Readiness note (Task 1): tshark 4.6.6 present; raw .pklg captures confirmed gitignored
+  (git check-ignore on a sample .pklg exits 0). NOTE — the literal acceptance one-liner
+  `git check-ignore re/capture/samples/.gitkeep` exits 1, because .gitkeep is intentionally
+  force-tracked (.gitignore:80 `!re/capture/samples/.gitkeep`) so the empty samples dir is
+  committed; the security-relevant invariant (raw .pklg ignored) holds and is the actual
+  intent of the criterion. Readiness note for Task 2: PyYAML is not installed in
+  re/survey_5/.venv — the continuation agent must add PyYAML (well-known, legitimate) or
+  parse the sidecar without yaml before running the Task 2 verify one-liner.
