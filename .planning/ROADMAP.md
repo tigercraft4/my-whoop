@@ -152,7 +152,23 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
   4. App functions fully offline (`AppConfig.uploaderConfig()` returns nil on placeholder values) AND CoreBluetooth state preservation (`CBCentralManagerOptionRestoreIdentifierKey`, `willRestoreState`) reconnects in background after force-quit
   5. Server runs via `docker compose up -d --build`; `POST /v1/ingest-decoded` accepts 5.0 decoded streams with `device_generation` field; `compute_day()` analysis runs after ingest; `GET /v1/daily-metrics`, `/v1/sleep-sessions`, `/v1/workouts` return 5.0 data from the migrated TimescaleDB hypertables
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+**Wave 1** *(parallel)*
+
+  - [ ] 05-01-PLAN.md — Swift decoder core: loadSchema 5.0 (D-01) + stripMaverick/parseFrame (D-02) + GravitySample gyro (D-06) + Python load_schema_5 (SWIFT-01/02/03/04/06, wave 1)
+  - [ ] 05-03-PLAN.md — WhoopStore migration v8: gyro columns nullable em gravitySample (D-06/D-08, IOS-09, wave 1)
+  - [ ] 05-04-PLAN.md — Server port: device_generation no init.sql (D-09) + DecodedBatch (D-10) + docker compose e2e (SRV-01..05, wave 1)
+
+**Wave 2** *(05-02 blocked on 05-01; 05-05 blocked on 05-01+05-03)*
+
+  - [ ] 05-02-PLAN.md — Golden fixtures 5.0 + Parity5Tests + SchemaSyncTests fix (D-03, SWIFT-05, wave 2)
+  - [ ] 05-05-PLAN.md — iOS BLE wiring: UUIDs FD4B0001 (D-04, IOS-01) + Commands enum revisto (D-05) + offline/state-preservation (IOS-07/08, wave 2)
+
+**Wave 3** *(blocked on 05-05+05-02+05-04)*
+
+  - [ ] 05-06-PLAN.md — iPhone e2e: 5 vistas + backfill 14+ dias + kill-process store-then-ack (D-11, IOS-02/03/04/05/06, wave 3, has checkpoint — autonomous: false)
+
 **UI hint**: yes
 
 ---
