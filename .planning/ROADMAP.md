@@ -100,8 +100,8 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 **Wave 1**
 
-  - [ ] 03-01-PLAN.md — validate_frames_5.py: 4.0 CRC gate (documents 0% result) + parse_maverick/strip_maverick + tshark extraction + frames_5_golden.json corpus (PROTO-04/05, wave 1)
-  - [ ] 03-02-PLAN.md — whoop_protocol_5.json v0: Maverick wrapper envelope + GATT constants + WG50_r52 firmware, confidence-tagged (PROTO-05, wave 1)
+  - [x] 03-01-PLAN.md — validate_frames_5.py: 4.0 CRC gate (documents 0% result) + parse_maverick/strip_maverick + tshark extraction + frames_5_golden.json corpus (PROTO-04/05, wave 1)
+  - [x] 03-02-PLAN.md — whoop_protocol_5.json v0: Maverick wrapper envelope + GATT constants + WG50_r52 firmware, confidence-tagged (PROTO-05, wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -146,7 +146,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 |-------|----------------|--------|-----------|
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
-| 3. Framing Confirmation (Critical Gate) | 0/3 | Planned | - |
+| 3. Framing Confirmation (Critical Gate) | 2/3 | In Progress|  |
 | 4. Protocol Decode & Schema | 0/0 | Not started | - |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
 
