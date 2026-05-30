@@ -4,6 +4,7 @@ import os
 from functools import lru_cache
 
 _SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema", "whoop_protocol.json")
+_SCHEMA_PATH_5 = os.path.join(os.path.dirname(__file__), "schema", "whoop_protocol_5.json")
 
 
 class Schema:
@@ -39,4 +40,12 @@ class Schema:
 @lru_cache(maxsize=1)
 def load_schema() -> Schema:
     with open(_SCHEMA_PATH) as fh:
+        return Schema(json.load(fh))
+
+
+@lru_cache(maxsize=1)
+def load_schema_5() -> Schema:
+    """Load the WHOOP 5.0 (Maverick) decode schema. Mirror of load_schema() for the
+    whoop_protocol_5.json variant; load_schema() (4.0) is kept intact alongside it."""
+    with open(_SCHEMA_PATH_5) as fh:
         return Schema(json.load(fh))
