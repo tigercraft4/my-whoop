@@ -69,3 +69,13 @@ ios/build/
 
 # Mac-side device-soak captures (gitignored; not the committed hist_biometric.bin fixture)
 fixtures/soak_*.bin
+
+# Raw BLE/HCI captures — kept LOCAL (may contain device IDs / SMP bonding material).
+# Redacted hex excerpts + SHA256 checksums + metadata sidecars under re/capture/evidence/ ARE committed.
+re/capture/samples/*
+!re/capture/samples/.gitkeep
+!re/capture/samples/README.md
+
+# Decompiled WHOOP APK + JADX project output — DO NOT publish (DISCLAIMER §2; D-04).
+# Source APK via `adb pull` from your own device; record only enum names + numeric values in jadx.md.
+re/capture/samples/apk/
