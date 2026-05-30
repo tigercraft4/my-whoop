@@ -156,9 +156,9 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 **Wave 1** *(parallel)*
 
-  - [ ] 05-01-PLAN.md — Swift decoder core: loadSchema 5.0 (D-01) + stripMaverick/parseFrame (D-02) + GravitySample gyro (D-06) + Python load_schema_5 (SWIFT-01/02/03/04/06, wave 1)
-  - [ ] 05-03-PLAN.md — WhoopStore migration v8: gyro columns nullable em gravitySample (D-06/D-08, IOS-09, wave 1)
-  - [ ] 05-04-PLAN.md — Server port: device_generation no init.sql (D-09) + DecodedBatch (D-10) + docker compose e2e (SRV-01..05, wave 1)
+  - [x] 05-01-PLAN.md — Swift decoder core: loadSchema 5.0 (D-01) + stripMaverick/parseFrame (D-02) + GravitySample gyro (D-06) + Python load_schema_5 (SWIFT-01/02/03/04/06, wave 1)
+  - [x] 05-03-PLAN.md — WhoopStore migration v8: gyro columns nullable em gravitySample (D-06/D-08, IOS-09, wave 1)
+  - [x] 05-04-PLAN.md — Server port: device_generation no init.sql (D-09) + DecodedBatch (D-10) + docker compose e2e (SRV-01..05, wave 1)
 
 **Wave 2** *(05-02 blocked on 05-01; 05-05 blocked on 05-01+05-03)*
 
@@ -181,7 +181,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
 | 3. Framing Confirmation (Critical Gate) | 3/3 | Complete    | 2026-05-30 |
 | 4. Protocol Decode & Schema | 5/5 | Complete    | 2026-05-30 |
-| 5. iOS App & Server Port | 0/0 | Not started | - |
+| 5. iOS App & Server Port | 3/6 | In Progress|  |
 
 ---
 
