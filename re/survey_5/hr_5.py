@@ -19,6 +19,8 @@ HR_MEAS = "00002a37-0000-1000-8000-00805f9b34fb"
 
 def parse_hr(data: bytearray):
     """Parse standard Heart Rate Measurement (0x2A37): flags, HR, optional RR intervals."""
+    if len(data) < 2:
+        return 0, [], list(data)
     flags = data[0]
     hr_16bit = flags & 0x01
     idx = 1
@@ -29,9 +31,7 @@ def parse_hr(data: bytearray):
     rr_present = (flags >> 4) & 0x01
     rrs = []
     if rr_present:
-        while idx + 1 < len(data) + 1 and idx + 1 <= len(data):
-            if idx + 2 > len(data):
-                break
+        while idx + 2 <= len(data):
             rr_raw = int.from_bytes(data[idx:idx + 2], "little")
             rrs.append(round(rr_raw / 1024 * 1000, 1))  # 1/1024s units -> ms
             idx += 2

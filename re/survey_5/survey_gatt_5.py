@@ -18,6 +18,7 @@ Run from inside re/survey_5/ so `device_local_5` is importable:
 """
 import asyncio
 import json
+from pathlib import Path
 
 from bleak import BleakClient, BleakScanner
 
@@ -29,7 +30,7 @@ from device_local_5 import DEVICE_UUID as ADDR
 #   0x099b -> FD4B0002 (cmd-in),  0x099d -> FD4B0003 (cmd-resp),  0x09a3 -> FD4B0005 (data)
 PHASE1_HANDLES = {0x099b, 0x099d, 0x09a3}
 
-OUT_PATH = "gatt_dump_5.json"
+OUT_PATH = Path(__file__).parent / "gatt_dump_5.json"
 
 
 async def main():
@@ -83,7 +84,7 @@ async def main():
 
     with open(OUT_PATH, "w") as f:
         json.dump(result, f, indent=2)
-    print(f"\n{OUT_PATH} written ({len(result['services'])} services)")
+    print(f"\n{OUT_PATH.name} written ({len(result['services'])} services)")
 
 
 asyncio.run(main())

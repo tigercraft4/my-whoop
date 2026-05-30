@@ -30,7 +30,7 @@ from device_local_5 import DEVICE_UUID as ADDR
 # Custom service: FD4B0001-CCE1-4033-93CE-002D5875F58A
 CMD_IN_5 = "FD4B0002-CCE1-4033-93CE-002D5875F58A"   # cmd-in,   write,  handle 0x099b
 CMD_RESP_5 = "FD4B0003-CCE1-4033-93CE-002D5875F58A"  # cmd-resp, notify, handle 0x099d
-EVENTS_5 = "FD4B0004-CCE1-4033-93CE-002D5875F58A"    # events,   notify, handle 0x09a3
+EVENTS_5 = "FD4B0004-CCE1-4033-93CE-002D5875F58A"    # events,   notify, handle 0x09a0
 
 _PLACEHOLDER = "XXXX"
 for _name, _uuid in (("CMD_IN_5", CMD_IN_5), ("CMD_RESP_5", CMD_RESP_5), ("EVENTS_5", EVENTS_5)):
@@ -68,11 +68,11 @@ async def main():
 
         # 2. Subscribe to the custom notify channels first so any BLE_BONDED / response
         #    event is observable. Raw-hex callback (framing unconfirmed).
-        try:
-            await client.start_notify(CMD_RESP_5, mk("cmd_resp"))
-            await client.start_notify(EVENTS_5, mk("events"))
-        except Exception as e:
-            print(f"start_notify raised: {type(e).__name__}: {e}", flush=True)
+        for _ch_name, _ch_uuid in (("cmd_resp", CMD_RESP_5), ("events", EVENTS_5)):
+            try:
+                await client.start_notify(_ch_uuid, mk(_ch_name))
+            except Exception as e:
+                print(f"start_notify raised: {type(e).__name__}: {e} [{_ch_name}]", flush=True)
 
         # 3. Bonding trigger: confirmed write (response=True) on cmd-in.
         #    response=True is MANDATORY — Write Without Response (ATT Write Command)
