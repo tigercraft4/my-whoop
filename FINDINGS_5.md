@@ -17,9 +17,9 @@ Read raw biometrics off your own WHOOP 5.0 **locally over BLE**, for interoperab
 | Legacy `61080001-...` service | **Absent** — not in discovered services (see section 2) |
 | Handle -> UUID map (closes Phase 1 loop) | 0x099b / 0x099d / 0x09a3 resolved (see section 5) |
 | Service visible **pre-bonding** | Custom service enumerable before bonding (Pitfall 4 does NOT apply) |
-| **Bonding** (confirmed-write trick) | Pending Wave 3 — not yet attempted programmatically |
-| Heart rate (standard `0x2A37`) | Pending Wave 3 — characteristic present, programmatic read pending |
-| Battery (standard `0x2A19`) | Pending Wave 3 — characteristic present, programmatic read pending |
+| **Bonding** (confirmed-write trick) | macOS does NOT auto-bond — confirmed-write trick is iOS-only; D-03b SMP-capture fallback required (see section 3) |
+| Heart rate (standard `0x2A37`) | **Confirmed** — live BPM via Bleak, unbonded (HR=71/72 bpm, see section 4) |
+| Battery (standard `0x2A19`) | **Confirmed** — read via Bleak, unbonded (23%, see section 4) |
 | Command/response protocol | Phase 3 (framing/CRC confirmation) |
 | Decoded data streams (HR/RR, IMU, PPG, historical) | Phase 4 |
 
@@ -76,26 +76,45 @@ Implication (D-01c, RESEARCH assumption A2 resolved): Phase 5 / downstream code 
 
 ## 3. Bonding
 
-**Status: pending Wave 3.** Bonding has not yet been attempted programmatically on the 5.0.
+**Status: confirmed-write trick is iOS-only — macOS CoreBluetooth does NOT auto-bond.** Run live 2026-05-30 with `re/survey_5/bond_5.py` from a fresh state (Forget Device on iPhone + removed the Mac-side bond entry + official WHOOP app force-quit, per D-03c and Pitfalls 1–3).
 
-Plan (per D-03 / D-03c, ported from the 4.0 confirmed-write mechanism in `re/bond_attempt.py`):
-1. Forget Device on iPhone -> close official WHOOP app -> remove the Mac-side bond entry if present (System Settings -> Bluetooth -> Option+click -> Remove).
-2. Run `bond_5.py`: subscribe to cmd-resp (`FD4B0003-...`) and events (`FD4B0004-...`), then issue a **confirmed write** (`write_gatt_char(FD4B0002-..., b"\x00", response=True)`) on the cmd-in characteristic to trigger CoreBluetooth "just-works" bonding.
-3. Fallback (D-03b) if the confirmed-write trick fails: PacketLogger SMP capture of the official app handshake per `re/capture/ios-packetlogger.md`, then `tshark -Y btsmp`.
+### Live outcome (`bond_5.py`, fresh state, 2026-05-30)
 
-Record the bond outcome (BLE_BONDED event on the events characteristic, or SMP capture result) here when Wave 3 completes.
+The ported 4.0 confirmed-write mechanism (`write_gatt_char(FD4B0002-..., b"\x00", response=True)` on cmd-in, per D-03) connected pre-bonding but did **not** trigger bonding on macOS:
+
+| Step | Result |
+|---|---|
+| `client.pair()` | `NotImplementedError` — expected on macOS CoreBluetooth (RESEARCH anti-patterns) |
+| `start_notify(cmd-resp FD4B0003-...)` | `BleakError: Encryption is insufficient` (CBATTErrorDomain Code=15) |
+| `write_gatt_char(cmd-in FD4B0002-..., b"\x00", response=True)` | `BleakGATTProtocolError: Insufficient Authentication` |
+| macOS pairing dialog | **Did not appear** |
+
+**Finding (resolves RESEARCH assumption A6):** the confirmed-write "just-works" bonding trick works on **iOS** CoreBluetooth (where the OS presents a pairing dialog), but **macOS** CoreBluetooth does not expose SMP pairing programmatically and does not auto-bond when a Bleak-accessed peripheral returns authentication errors. The custom data channels (cmd-resp / events / data / diagnostics notifications) require an encrypted link, so they cannot be exercised from macOS Bleak until a bond exists.
+
+### D-03b fallback (required for ROADMAP criterion 3 SMP evidence)
+
+Because macOS Bleak cannot produce the bond, the SMP-visible evidence for ROADMAP criterion 3 must come from the **PacketLogger SMP capture of the official app's pairing handshake** — the documented D-03b path:
+1. Forget Device on iPhone, then re-pair via the official WHOOP app while capturing with PacketLogger per `re/capture/ios-packetlogger.md`.
+2. Extract the SMP handshake with `tshark -Y btsmp` per `re/capture/wireshark.md`.
+3. Scrub BD_ADDR and any pairing-key bytes from the committed `.hex` (DISCLAIMER §2 + Pitfall 5) before adding it to `re/capture/evidence/`.
+
+This fallback is left as a developer action; the Phase 2 evidence sidecar (`re/capture/evidence/2026-05-30-gatt-survey-5.meta.yaml`) records the macOS bond outcome above. Standard HR/battery (section 4) work **without** any bond, so Phase 3 framing work on the custom channels does depend on completing the D-03b iOS bond first.
 
 ---
 
 ## 4. Standard Characteristics
 
-**Status: pending Wave 3** for programmatic read/subscribe.
+**Status: CONFIRMED — both work via Bleak WITHOUT bonding.** Run live 2026-05-30 with `re/survey_5/hr_5.py` (strap worn). This resolves RESEARCH assumptions A3/A4/A5 and satisfies ROADMAP criterion 4.
 
-Both standard characteristics are present in the GATT map (section 1):
-- **Heart Rate Measurement** (`0x2A37`, service `0x180D`) — notify property confirmed. Expected to work unbonded (4.0 precedent, RESEARCH assumption A3). `hr_5.py` (Wave 3) will subscribe and record live BPM + R-R intervals using the validated `parse_hr()` from `re/standard_ble.py`.
-- **Battery Level** (`0x2A19`, service `0x180F`) — notify/read confirmed. `hr_5.py` will `read_gatt_char` the single uint8 percentage.
+| Characteristic | UUID / Service | Access | Live result (2026-05-30) |
+|---|---|---|---|
+| Heart Rate Measurement | `0x2A37` / `0x180D` | `start_notify` (notify) | **12 notifications over 12 s → HR = 71 bpm (10×), 72 bpm (2×)** |
+| Battery Level | `0x2A19` / `0x180F` | `read_gatt_char` (uint8 %) | **23%** |
+| Manufacturer Name | `0x2A29` / `0x180A` | `read_gatt_char` | **`WHOOP Inc.`** |
 
-Sample BPM and battery % to be filled in after the Wave 3 `hr_5.py` run.
+- HR parsing used the validated `parse_hr()` (flags byte + uint8/uint16 HR + optional R-R intervals) ported verbatim from `re/standard_ble.py` (T-02-07 input-validation mitigation — guards `len(data)` before indexing).
+- **No bond was needed** for any of the above: the standard GATT profiles are readable on the unencrypted link, matching the 4.0 precedent. This confirms ROADMAP criterion 4 (live BPM via Bleak subscription) end-to-end on the 5.0 strap.
+- Off-wrist behaviour (HR reads 0 while charging) was not re-checked this run — open question 5, section 6.
 
 ---
 
@@ -110,6 +129,21 @@ Closes the Phase 1 loop (D-02). Phase 1 (`re/capture/evidence/2026-05-30-ios.met
 | `0x09a3` | `FD4B0005-CCE1-4033-93CE-002D5875F58A` | data (notify) | ATT Handle Value Notifications — corrected from events by Wave 2 Bleak survey |
 
 This confirms RESEARCH assumption A1 (the `FD4B0002/0003/0004` offsets map to cmd-in/cmd-resp/events, mirroring the 4.0 `61080002/0003/0004` layout). The Wave 2/3 Bleak scripts can now use confirmed UUID constants instead of placeholders.
+
+---
+
+## Phase 2 Success Criteria
+
+The four ROADMAP Phase 2 success criteria, each mapped to its evidence in this document and the committed sidecar `re/capture/evidence/2026-05-30-gatt-survey-5.meta.yaml`:
+
+| # | ROADMAP criterion | Status | Evidence |
+|---|---|---|---|
+| 1 | GATT services + all 7 characteristics enumerated (cmd-in `…0002`, cmd-resp `…0003`, events `…0004`, data `…0005`, diagnostics `…0007`, standard HR + battery), UUIDs documented per device | **MET** | Section 1 (GATT Map) — visual nRF Connect + programmatic Bleak cross-check; sidecar `characteristic_uuids` map |
+| 2 | Presence/absence of legacy `61080001-…` confirmed on this unit | **MET** | Section 2 (Legacy UUID Verdict = **ABSENT**); sidecar `legacy_61080001_verdict: absent` |
+| 3 | Bleak bonds from a fresh state without the official app, confirmed-write trick or equivalent, SMP packets visible in PacketLogger | **PARTIAL — fell back to D-03b** | Section 3: confirmed-write trick is iOS-only; macOS does **not** auto-bond. SMP-visible evidence must come from the documented D-03b PacketLogger capture of the official-app pairing (developer action). The macOS bond outcome is recorded in the sidecar `bond_outcome`. |
+| 4 | Standard HR characteristic streams live BPM via Bleak | **MET** | Section 4: `hr_5.py` live run — HR=71/72 bpm over 12 s, battery 23%, all **unbonded**; sidecar `hr_battery_confirmed` |
+
+**Net:** Criteria 1, 2, and 4 are fully met. Criterion 3's intent (bonding replicated without the official app) is informed by a definitive negative result — the 4.0 confirmed-write trick does **not** auto-bond on macOS — and the SMP-visible evidence is deferred to the D-03b iOS PacketLogger capture, which the phase verifier should treat as the remaining developer action to fully close criterion 3.
 
 ---
 
