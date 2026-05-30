@@ -120,7 +120,24 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
   4. `protocol/whoop_protocol_5.json` is complete, every field tagged with `"epoch": "device"|"unix"`, provenance note, and confidence level (`VERIFIED` for ground-truth-matched, `HYPOTHESIS` otherwise); firmware version recorded in every capture session's metadata
   5. Cross-source golden fixtures (iOS PacketLogger + Android btsnoop) exist for every decoded packet type and round-trip through both the Python decoder and the schema validator; `scripts/sync-schema-5.sh` syncs the canonical schema to the Swift bundle resource
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+**Wave 1** *(parallel)*
+
+  - [ ] 04-01-PLAN.md — decode_5.py body-offset-4 decoder + D-01 gate + full-corpus extraction with stream_type (PROTO-06/15, SCHEMA-04, wave 1)
+  - [ ] 04-02-PLAN.md — D-05 targeted PacketLogger biometric capture + redacted evidence sidecar with firmware revision (PROTO-16/07/11/12/13/14, wave 1, has checkpoint — autonomous: false)
+
+**Wave 2** *(blocked on 04-01)*
+
+  - [ ] 04-03-PLAN.md — command surface (observed-vs-r52) + events/battery + metadata/historical-offload + dual-epoch, from existing corpus (PROTO-06/08/09/10/15, wave 2)
+
+**Wave 3** *(blocked on 04-01, 04-02)*
+
+  - [ ] 04-04-PLAN.md — biometric streams from D-05 capture: HR/RR + IMU + SpO2/temp/respiration (VERIFIED-if-observed, else HYPOTHESIS) (PROTO-07/11/12/13/14/16, wave 3)
+
+**Wave 4** *(blocked on 04-03, 04-04)*
+
+  - [ ] 04-05-PLAN.md — complete whoop_protocol_5.json (enums+packets) + sync-schema-5.sh + golden fixtures + FINDINGS_5.md §Phase 4 (SCHEMA-01/02/03/04/05, wave 4)
 
 ### Phase 5: iOS App & Server Port
 
@@ -147,7 +164,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
 | 3. Framing Confirmation (Critical Gate) | 3/3 | Complete    | 2026-05-30 |
-| 4. Protocol Decode & Schema | 0/0 | Not started | - |
+| 4. Protocol Decode & Schema | 0/5 | Planned | - |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
 
 ---
