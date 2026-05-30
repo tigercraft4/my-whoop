@@ -1,0 +1,35 @@
+{
+  "version": 0,
+  "schema_note": "WHOOP 5.0 (Maverick) protocol schema v0. Mirrors the 4.0 whoop_protocol.json top-level layout (version/enums/envelope/packets) so the Phase 5 Swift (Schema.swift / WhoopProtocol) and Python (whoop_protocol) loaders stay compatible. This envelope describes the Maverick OUTER WRAPPER (NOT the 4.0 inner frame). enums and packets are intentionally minimal in v0 — Phase 4 populates body field maps. Single source of truth for the 5.0 GATT UUIDs (D-04b).",
+  "framing_notes": "Maverick outer wrapper, empirically verified on 5028 captured ATT frames across two sessions (Phase 1 + Phase 2). Layout: [0xAA SOF][0x01 version][length u16-LE][role 1B][... body (length bytes, FLAT) ...][trailer 4B]. total_len == length + 8 (4-byte header + body + 4-byte trailer) for 5028/5028 frames. The body is FLAT — it is NOT a nested 0xAA 4.0 frame (RESEARCH Finding 5). The 4-byte trailer's checksum algorithm is OPEN (RESEARCH Finding 6): standard CRC16/CRC32 variants ruled out by exhaustive negative test.",
+  "enums": {},
+  "envelope": [
+    {"off": 0, "len": 1, "name": "SOF", "cat": "frame", "value": "0xAA", "confidence": "VERIFIED", "note": "constant 0xAA, 5028/5028 frames"},
+    {"off": 1, "len": 1, "name": "version", "cat": "frame", "value": "0x01", "confidence": "VERIFIED", "note": "protocol/version byte, constant 0x01, 5028/5028 frames"},
+    {"off": 2, "len": 2, "name": "length", "cat": "frame", "dtype": "u16", "endian": "LE", "confidence": "VERIFIED", "note": "u16-LE body length; total_len == length + 8 for 5028/5028 frames"},
+    {"off": 4, "len": 1, "name": "role", "cat": "frame", "confidence": "VERIFIED", "note": "role/direction discriminator: 0x00 = cmd-in write, 0x01 = notify"},
+    {"off": 5, "len": -1, "name": "body", "cat": "body", "confidence": "VERIFIED", "note": "flat body region, length bytes; NOT a nested 0xAA frame (Finding 5). Phase 4 populates field maps."},
+    {"off": -4, "len": 4, "name": "trailer", "cat": "frame", "confidence": "HYPOTHESIS", "note": "checksum algorithm OPEN; standard CRC16/CRC32 variants ruled out (Finding 6). Likely non-standard checksum or computed over a transformed input."}
+  ],
+  "packets": {},
+  "gatt": {
+    "confidence": "VERIFIED",
+    "source": "re/capture/evidence/2026-05-30-gatt-survey-5.meta.yaml",
+    "service": "FD4B0001-CCE1-4033-93CE-002D5875F58A",
+    "characteristics": {
+      "cmd_in": "FD4B0002-CCE1-4033-93CE-002D5875F58A",
+      "cmd_resp": "FD4B0003-CCE1-4033-93CE-002D5875F58A",
+      "events": "FD4B0004-CCE1-4033-93CE-002D5875F58A",
+      "data": "FD4B0005-CCE1-4033-93CE-002D5875F58A",
+      "diagnostics": "FD4B0007-CCE1-4033-93CE-002D5875F58A",
+      "heart_rate": "00002A37-0000-1000-8000-00805f9b34fb",
+      "battery_level": "00002A19-0000-1000-8000-00805f9b34fb"
+    },
+    "legacy_61080001": "ABSENT"
+  },
+  "firmware_revision": {
+    "value": "WG50_r52",
+    "source": "Device Information 0x2A27",
+    "confidence": "VERIFIED"
+  }
+}
