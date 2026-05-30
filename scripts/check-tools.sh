@@ -26,7 +26,7 @@ assert_min() {
 
 # Wireshark CLI (tshark) >= 4.4.0
 if command -v tshark >/dev/null 2>&1; then
-  WS_VER="$(tshark --version 2>/dev/null | sed -n '1s/.* \([0-9][0-9.]*\).*/\1/p')"
+  WS_VER="$(tshark --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
   assert_min wireshark "$WS_VER" 4.4.0
 else
   echo "FAIL wireshark (tshark): not found — run: brew bundle --file=Brewfile"
@@ -44,7 +44,7 @@ fi
 
 # adb >= 35.0.0 (Android Platform Tools 35.x ships adb 35.x)
 if command -v adb >/dev/null 2>&1; then
-  ADB_VER="$(adb --version 2>/dev/null | sed -n '1s/.* version \([0-9][0-9.]*\).*/\1/p')"
+  ADB_VER="$(adb --version 2>/dev/null | grep -oE 'Version [0-9]+\.[0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
   assert_min adb "$ADB_VER" 35.0.0
 else
   echo "FAIL adb (android-platform-tools): not found — run: brew bundle --file=Brewfile"
