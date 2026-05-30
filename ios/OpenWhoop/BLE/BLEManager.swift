@@ -3,18 +3,18 @@ import CoreBluetooth
 import WhoopProtocol
 import WhoopStore
 
-/// CoreBluetooth engine for the WHOOP 4.0: scan-by-service → connect → discover →
+/// CoreBluetooth engine for the WHOOP 5.0: scan-by-service → connect → discover →
 /// BOND (one confirmed write) → subscribe → reassemble char-05 frames → FrameRouter.
 /// Cannot run in the simulator; verified manually on-device (Task C6).
 @MainActor
 public final class BLEManager: NSObject, ObservableObject {
 
-    // MARK: GATT UUIDs (authoritative, from FINDINGS.md)
-    static let customService   = CBUUID(string: "61080001-8d6d-82b8-614a-1c8cb0f8dcc6")
-    static let cmdWriteChar    = CBUUID(string: "61080002-8d6d-82b8-614a-1c8cb0f8dcc6") // CMD → strap
-    static let cmdNotifyChar   = CBUUID(string: "61080003-8d6d-82b8-614a-1c8cb0f8dcc6") // responses
-    static let eventNotifyChar = CBUUID(string: "61080004-8d6d-82b8-614a-1c8cb0f8dcc6") // events
-    static let dataNotifyChar  = CBUUID(string: "61080005-8d6d-82b8-614a-1c8cb0f8dcc6") // data (frag)
+    // MARK: GATT UUIDs (authoritative, from FINDINGS_5.md §1 — WHOOP 5.0)
+    static let customService   = CBUUID(string: "FD4B0001-CCE1-4033-93CE-002D5875F58A")
+    static let cmdWriteChar    = CBUUID(string: "FD4B0002-CCE1-4033-93CE-002D5875F58A") // CMD → strap
+    static let cmdNotifyChar   = CBUUID(string: "FD4B0003-CCE1-4033-93CE-002D5875F58A") // responses
+    static let eventNotifyChar = CBUUID(string: "FD4B0004-CCE1-4033-93CE-002D5875F58A") // events
+    static let dataNotifyChar  = CBUUID(string: "FD4B0005-CCE1-4033-93CE-002D5875F58A") // data (frag)
     static let heartRateService = CBUUID(string: "180D")
     static let heartRateChar    = CBUUID(string: "2A37") // HR + R-R (works unbonded)
     static let batteryService   = CBUUID(string: "180F")
@@ -128,7 +128,7 @@ public final class BLEManager: NSObject, ObservableObject {
         guard collector == nil else { return }
         guard let path = try? StorePaths.defaultDatabasePath() else { return }
         guard let store = try? await WhoopStore(path: path) else { return }
-        try? await store.upsertDevice(id: deviceId, mac: nil, name: "WHOOP 4.0")
+        try? await store.upsertDevice(id: deviceId, mac: nil, name: "WHOOP 5.0")
         // Research toggle — OFF by default. When disabled the app is decoded-only and never
         // persists raw frames. Flip "enableRawCapture" in UserDefaults to capture raw again.
         let enableRawCapture = UserDefaults.standard.bool(forKey: "enableRawCapture")
@@ -692,7 +692,7 @@ extension BLEManager: CBPeripheralDelegate {
                 // GET_BATTERY_LEVEL is benign and what the Mac prototype uses.
                 seq = seq &+ 1
                 let bondFrame = WhoopCommand.getBatteryLevel.frame(seq: seq, payload: [0x00])
-                log("Bonding: confirmed write GET_BATTERY_LEVEL to 61080002")
+                log("Bonding: confirmed write GET_BATTERY_LEVEL to FD4B0002")
                 peripheral.writeValue(Data(bondFrame), for: c, type: .withResponse)
             case BLEManager.cmdNotifyChar,
                  BLEManager.eventNotifyChar,

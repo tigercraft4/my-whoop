@@ -7,8 +7,21 @@ import WhoopProtocol
 /// This is intentionally a *subset*: destructive / dangerous commands
 /// (reboot, firmware load, force-trim, ship-mode, power-cycle, fuel-gauge reset, BLE DFU)
 /// are deliberately EXCLUDED so the in-app command sender can never brick or wipe the device.
+///
+/// WHOOP 5.0 review (D-05, plan 05-05): the Phase-4 capture (FINDINGS_5.md §8) VERIFIED 10
+/// command codes on 5.0 — TOGGLE_REALTIME_HR(3), SET_CLOCK(10), GET_CLOCK(11),
+/// SEND_HISTORICAL_DATA(22), HISTORICAL_DATA_RESULT(23), GET_BATTERY_LEVEL(26),
+/// GET_DATA_RANGE(34), GET_HELLO_HARVARD(35), EXIT_HIGH_FREQ_SYNC(97),
+/// GET_EXTENDED_BATTERY_INFO(98). The remaining cases are inherited from the 4.0 protocol
+/// and are NOT yet confirmed against 5.0 captures — each is annotated `HYPOTHESIS (5.0
+/// unverified)`. They are RETAINED (not removed) because each is referenced by production
+/// code (BLEManager handshake/raw-capture/alarm API, SmartAlarmController, LiveViewModel) or
+/// by the OpenWhoopTests target; removing them would break compilation, which D-05 explicitly
+/// forbids. Their safety status is unchanged — all are non-destructive / reversible.
 public enum WhoopCommand: UInt8, CaseIterable {
+    // MARK: VERIFIED on WHOOP 5.0 (FINDINGS_5.md §8)
     case toggleRealtimeHR      = 3
+    /// HYPOTHESIS (5.0 unverified) — inherited from 4.0; not seen in the Phase-4 capture.
     case reportVersionInfo     = 7
     case setClock              = 10
     case getClock              = 11
@@ -17,31 +30,45 @@ public enum WhoopCommand: UInt8, CaseIterable {
     case getBatteryLevel       = 26
     case getDataRange          = 34
     case getHelloHarvard       = 35
+    // MARK: HYPOTHESIS (5.0 unverified) — inherited from 4.0, retained because referenced
+    /// HYPOTHESIS (5.0 unverified) — used by BLEManager connect handshake.
     case getAdvertisingNameHarvard = 76
+    /// HYPOTHESIS (5.0 unverified) — used by BLEManager.captureRawAccel (on-demand IMU).
     case startRawData          = 81
+    /// HYPOTHESIS (5.0 unverified) — used by BLEManager.captureRawAccel (on-demand IMU).
     case stopRawData           = 82
+    /// HYPOTHESIS (5.0 unverified) — used by SmartAlarmController. We never auto-ENTER on connect.
     case enterHighFreqSync     = 96
     /// Leave high-frequency-sync mode. Sent defensively on connect to release a strap left parked in
     /// high-freq by an older app build (we no longer ENTER it — see the sync-hardening design). Payload
     /// [0x00]. Safe/reversible.
     case exitHighFreqSync      = 97
+    // MARK: VERIFIED on WHOOP 5.0 (FINDINGS_5.md §8)
     case getExtendedBatteryInfo = 98
+    // MARK: HYPOTHESIS (5.0 unverified) — inherited from 4.0, retained because referenced
+    /// HYPOTHESIS (5.0 unverified) — used by BLEManager.captureRawAccel (on-demand IMU).
     case toggleIMUMode         = 106
+    /// HYPOTHESIS (5.0 unverified) — referenced only by OpenWhoopTests; no production call site.
     case enableOpticalData     = 107
     /// Fire a preset haptic pattern. Payload = `[patternId, numLoops, 0, 0, 0]` (5 bytes, from
     /// the device's preset table). patternId indexes the device's preset patterns (GET_ALL_HAPTICS_PATTERN
     /// reports 7 on harvard); the official app fires id=2. Safe/reversible — just buzzes the motor.
+    /// HYPOTHESIS (5.0 unverified) — used by BLEManager.testAlarmBuzz / LiveViewModel.
     case runHapticsPattern     = 79
     /// Stop an in-progress haptic pattern. Payload `[0x00]`. Safe/reversible.
+    /// HYPOTHESIS (5.0 unverified) — used by LiveViewModel.stopHaptics.
     case stopHaptics           = 122
     /// The REAL control for the type-43 "R10/R11" realtime-raw stream (payload [0x01]=on / [0x00]=off).
     /// STOP_RAW_DATA(82) does NOT affect it; this one does. Sending [0x00] on connect stops the ~2/s
     /// raw flood that otherwise eats BLE airtime and dominates the strap's flash (blocking dense
     /// biometric retention + disconnected operation). Safe/reversible (just a data stream). Verified
     /// on-device: 2.1/s → 0/s, and it persists across reconnect.
+    /// HYPOTHESIS (5.0 unverified) — used by BLEManager connect handshake. Safe/reversible.
     case sendR10R11Realtime    = 63
 
-    // MARK: Alarm commands (confirmed for interoperability)
+    // MARK: Alarm commands (HYPOTHESIS — 5.0 unverified; observed for 4.0 interoperability)
+    // Retained because the BLEManager alarm API (armStrapAlarm/getStrapAlarm/disableStrapAlarm/
+    // testAlarmBuzz) and OpenWhoopTests reference them. All non-destructive / reversible.
     /// Arm the strap's FIRMWARE alarm for a specific UTC time. The strap will buzz at that time
     /// even if the app is backgrounded or killed (event STRAP_DRIVEN_ALARM_EXECUTED=57).
     /// Payload: `setAlarmPayload(epochSec:)` → [0x01] + u32 LE + [0x00, 0x00] (7 bytes).
@@ -106,13 +133,18 @@ public enum WhoopCommand: UInt8, CaseIterable {
     /// COMMAND packet type byte (PacketType.COMMAND).
     static let commandType: UInt8 = 35
 
-    /// Build a complete, framed COMMAND packet ready to write to char 61080002.
+    /// Build a complete, framed COMMAND packet ready to write to char FD4B0002 (cmdWriteChar).
     ///
     /// Layout (verified against whoomp's WhoopPacket.framed_packet):
     /// `[0xAA][len u16 LE][crc8(len bytes)][type=35][seq][cmd][payload...][crc32 LE]`
     /// - `len` = (3 + payload.count) + 4  (inner type+seq+cmd+payload, plus the 4 envelope bytes)
     /// - `crc8` is over the 2 length bytes only
     /// - `crc32` (zlib) is over the inner `[type][seq][cmd][payload]`
+    ///
+    /// NOTE (05-05 / D-05): this remains the 4.0 framing. WHOOP 5.0 *notifications* arrive
+    /// Maverick-wrapped (`[0xAA][0x01][len u16][body][trailer]` — handled in WhoopProtocol), but
+    /// whether OUTBOUND command writes also need Maverick-wrapping is an OPEN QUESTION pending
+    /// on-device validation (plan 05-06). Do NOT change this until the iPhone test resolves it.
     public func frame(seq: UInt8, payload: [UInt8] = [0x00]) -> [UInt8] {
         let inner: [UInt8] = [Self.commandType, seq, rawValue] + payload
         let length = UInt16(inner.count + 4)
