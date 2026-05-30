@@ -66,7 +66,23 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
   3. Bleak script bonds to the strap from a fresh state (Forget Device first) without the official WHOOP app running, using the confirmed-write trick or 5.0 equivalent, and SMP packets are visible in PacketLogger
   4. Standard heart-rate characteristic streams live BPM values via Bleak subscription, confirming bond + notifications work end-to-end
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1**
+
+  - [ ] 02-01-PLAN.md — nRF Connect GATT enumeration + FINDINGS_5.md bootstrap + device_local_5 gitignore (wave 1, has checkpoint)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+  - [ ] 02-02-PLAN.md — re/survey_5/ scaffolding + Python 3.11 venv (bleak 3.0.2) + survey_gatt_5.py programmatic enumeration (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+  - [ ] 02-03-PLAN.md — bond_5.py confirmed-write bonding + hr_5.py HR/battery streaming (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+  - [ ] 02-04-PLAN.md — Evidence commit + FINDINGS_5.md completion + re/survey_5/README.md (wave 4)
 
 ### Phase 3: Framing Confirmation (Critical Gate)
 
@@ -120,7 +136,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
-| 2. GATT Survey & Bonding | 0/0 | Not started | - |
+| 2. GATT Survey & Bonding | 0/4 | Planned | - |
 | 3. Framing Confirmation (Critical Gate) | 0/0 | Not started | - |
 | 4. Protocol Decode & Schema | 0/0 | Not started | - |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
