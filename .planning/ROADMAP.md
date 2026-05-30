@@ -125,7 +125,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 **Wave 1** *(parallel)*
 
   - [x] 04-01-PLAN.md — decode_5.py body-offset-4 decoder + D-01 gate + full-corpus extraction with stream_type (PROTO-06/15, SCHEMA-04, wave 1)
-  - [ ] 04-02-PLAN.md — D-05 targeted PacketLogger biometric capture + redacted evidence sidecar with firmware revision (PROTO-16/07/11/12/13/14, wave 1, has checkpoint — autonomous: false)
+  - [x] 04-02-PLAN.md — D-05 targeted PacketLogger biometric capture + redacted evidence sidecar with firmware revision (PROTO-16/07/11/12/13/14, wave 1, has checkpoint — autonomous: false)
 
 **Wave 2** *(blocked on 04-01)*
 
@@ -164,7 +164,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
 | 3. Framing Confirmation (Critical Gate) | 3/3 | Complete    | 2026-05-30 |
-| 4. Protocol Decode & Schema | 1/5 | In Progress|  |
+| 4. Protocol Decode & Schema | 2/5 | In Progress|  |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
 
 ---

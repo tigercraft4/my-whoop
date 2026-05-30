@@ -98,6 +98,13 @@ completed: 2026-05-30
 - **Wave 3 (Plan 04) inputs ready:** the capture provides REALTIME_DATA (type 40) for HR/RR decode and HISTORICAL_DATA + METADATA for sleep-review backfill decode.
 - **PROTO-14 risk surfaced:** raw IMU (REALTIME_RAW_DATA type 43) is NOT in this capture; Wave 3 must either treat raw IMU as out-of-scope for now or schedule a dedicated TOGGLE_IMU_MODE capture.
 
+## Self-Check: PASSED
+- FOUND: re/capture/evidence/2026-05-30-biometric-5.meta.yaml
+- FOUND: .planning/phases/04-protocol-decode-schema/04-02-SUMMARY.md
+- FOUND commit 490419d (Task 2 sidecar)
+- FOUND commit c4e779b (SUMMARY)
+- OK: re/capture/samples/capture_all-V3.pklg not tracked (gitignored, git check-ignore exit 0)
+
 ---
 *Phase: 04-protocol-decode-schema*
 *Completed: 2026-05-30*
