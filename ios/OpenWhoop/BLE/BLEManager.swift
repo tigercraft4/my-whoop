@@ -77,6 +77,7 @@ public final class BLEManager: NSObject, ObservableObject {
     private var connectHandshakeDone = false
     private var bondRetryCount = 0
     private static let maxBondRetries = 3
+    private var backfillLiveFrameCount = 0
     /// Re-entrancy guard for captureRawAccel: true while a bounded on-demand window is running.
     /// A second tap is a no-op until the active capture's asyncAfter block fires and clears this.
     private var rawCaptureInFlight = false
@@ -279,6 +280,7 @@ public final class BLEManager: NSObject, ObservableObject {
         }
         backfiller.begin()
         backfilling = true
+        backfillLiveFrameCount = 0
         // Payload MUST be [0x00], NOT empty: verified on-device that this strap serves type-47 only with
         // [0x00] (empty → 0 frames on a clean stable link with ~2k records pending); the Mac ground-truth
         // offload (re/sync_openwhoop.py, re/diagnose_biometrics.py) uses [0x00] too. Plain offload — the
@@ -856,15 +858,16 @@ extension BLEManager: CBPeripheralDelegate {
                     }
                 }
                 if backfilling {
-                    // Historical offload path: route ONLY genuine offload frames (47/48/49/50)
-                    // through the serial drain (preserves START/data/END chunk order) and re-arm the
-                    // idle watchdog on them. The live type-40/43 flood (esp. the ~2/s, ~1.9 KB type-43
-                    // raw) is IGNORED by extractHistoricalStreams, so feeding it to the drain only
-                    // delays each chunk's insert→trim-ack — the strap then stalls waiting for the ack
-                    // and the 20 s watchdog fires (the residual timeout). Drop the flood during offload.
+                    let ftype = frame.count > 4 ? frame[4] : 0xFF
                     if BLEManager.isOffloadFrame(frame) {
+                        log("Backfill: offload frame type=\(ftype) len=\(frame.count)")
                         armBackfillTimeout()
                         routeBackfillFrame(frame)
+                    } else {
+                        backfillLiveFrameCount += 1
+                        if backfillLiveFrameCount <= 5 || backfillLiveFrameCount % 50 == 0 {
+                            log("Backfill: live frame type=\(ftype) (total live=\(backfillLiveFrameCount))")
+                        }
                     }
                 } else {
                     // Live path (unchanged): synchronous ingest preserves delegate arrival order.
