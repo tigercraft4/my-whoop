@@ -457,7 +457,7 @@ are **capture-gated**. The D-05 targeted capture is the single dependency that u
 core protocol (framing, body layout, commands, events, metadata, historical narration, dual-epoch)
 is VERIFIED and not assumption-dependent.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Do SpO₂ / skin-temp / respiration appear on the 5.0 BLE wire at all?**
    - What we know: 4.0 computed these in the cloud — NOT on the wire (FINDINGS.md §6/§9b). PROTO-11
