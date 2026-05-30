@@ -86,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-30 — Phase 3 complete (framing confirmation critical gate passed)*
+*Last updated: 2026-05-30 — Phase 4 complete (protocol decode & schema — decode_5.py, command surface, biometrics VERIFIED/HYPOTHESIS, whoop_protocol_5.json canonical schema)*
