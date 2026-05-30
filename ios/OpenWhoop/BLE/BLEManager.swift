@@ -178,6 +178,7 @@ public final class BLEManager: NSObject, ObservableObject {
 
     public func disconnect() {
         intentionalDisconnect = true
+        guard central.state == .poweredOn else { return }
         if let p = peripheral {
             central.cancelPeripheralConnection(p)
         }
