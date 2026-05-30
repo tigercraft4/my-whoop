@@ -160,6 +160,11 @@ HANDLE_UUID = {
 OUT_PATH = Path(__file__).parent / "frames_5_golden.json"
 RUNBOOK = REPO_ROOT / "re/capture/ios-packetlogger.md"
 MIN_FRAMES = 20
+# The golden corpus is a CURATED Phase-4 starting fixture (mirrors the small 4.0
+# frames.json), not a full dump of all 5028 captured frames. Cap per characteristic so
+# the committed JSON stays small and minimises committed protocol bytes (RESEARCH Pitfall 5),
+# while still spanning cmd-in / cmd-resp / events / data with >=20 total entries (D-02c).
+GOLDEN_PER_HANDLE_CAP = 15
 
 
 def extract_frames(capture_path: Path):
@@ -265,9 +270,23 @@ def main(argv=None):
     else:
         print(f"Maverick wrapper: PARTIAL ({total - total_wrapper_ok} frames failed the len+8 invariant)")
 
+    # Curate the golden corpus: cap per characteristic so the committed fixture stays small
+    # (the report stats above already cover all 5028 frames). Preserve a balanced span across
+    # cmd-in / cmd-resp / events / data, and keep the first example of each first.
+    per_handle = {}
+    golden = []
+    for rec in records:
+        h = rec["handle"]
+        if per_handle.get(h, 0) >= GOLDEN_PER_HANDLE_CAP:
+            continue
+        per_handle[h] = per_handle.get(h, 0) + 1
+        golden.append(rec)
+
     with open(OUT_PATH, "w") as f:
-        json.dump(records, f, indent=2)
-    print(f"\n{OUT_PATH.name} written ({len(records)} wrapper-stripped frames)")
+        json.dump(golden, f, indent=2)
+    spanned = sorted({r["characteristic"] for r in golden})
+    print(f"\n{OUT_PATH.name} written ({len(golden)} of {len(records)} wrapper-stripped frames "
+          f"curated; spans {', '.join(spanned)})")
     return 0
 
 
