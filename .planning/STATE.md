@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
+last_updated: "2026-05-30T13:05:06.598Z"
+progress:
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+---
+
 # State — WHOOP 5.0
 
 **Project:** my-whoop (clean fork for WHOOP 5.0)
@@ -71,6 +85,7 @@ None.
 **Next session should**: Run `/gsd:plan-phase 1` to plan the Capture Foundation phase (tools setup: PacketLogger + mobileconfig, Android HCI snoop, JADX-GUI, Wireshark).
 
 **Files of interest for next session**:
+
 - `.planning/ROADMAP.md` — phase structure and success criteria
 - `.planning/REQUIREMENTS.md` — v1 requirements (TOOL-01..04 for Phase 1)
 - `.planning/research/SUMMARY.md` — research context, especially "Recommended Stack" table
