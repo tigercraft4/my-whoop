@@ -1,0 +1,33 @@
+# SMP handshake — WHOOP 5.0 pairing via official iOS app (PacketLogger capture 2026-05-30)
+# BD_ADDR REDACTED per evidence policy (DISCLAIMER §2)
+# Key material (LTK, IRK, EDIV/Rand) REDACTED — not committed
+#
+# SMP frame sequence (opcodes only — no key bytes):
+#
+# frame  20  t=9.937s   opcode=0x05  Sent Pairing Failed: Unspecified Reason
+#                                    (bond_5.py attempt earlier in session)
+#
+# frame 231  t=16.933s  opcode=0x01  Sent Pairing Request
+#                                    AuthReq: Bonding, MITM, SecureConnection
+#                                    Initiator Keys: LTK, IRK, Linkkey
+#                                    Responder Keys: LTK, IRK, Linkkey
+#
+# frame 233  t=16.992s  opcode=0x02  Rcvd Pairing Response
+#                                    AuthReq: Bonding (no SecureConnection from strap)
+#                                    Initiator Keys: IRK
+#                                    Responder Keys: LTK
+#                                    → LE Legacy Pairing (not Secure Connections)
+#
+# frame 292  t=21.940s  opcode=0x03  Sent Pairing Confirm   [16 bytes, REDACTED]
+# frame 293  t=22.003s  opcode=0x03  Rcvd Pairing Confirm   [16 bytes, REDACTED]
+# frame 294  t=22.003s  opcode=0x04  Sent Pairing Random    [16 bytes, REDACTED]
+# frame 295  t=22.063s  opcode=0x04  Rcvd Pairing Random    [16 bytes, REDACTED]
+#
+# frame 306  t=22.273s  opcode=0x06  Rcvd Encryption Information (LTK)  [REDACTED]
+# frame 307  t=22.276s  opcode=0x07  Rcvd Central Identification (EDIV/Rand)  [REDACTED]
+# frame 308  t=22.276s  opcode=0x08  Sent Identity Information (IRK)  [REDACTED]
+# frame 309  t=22.276s  opcode=0x09  Sent Identity Address Information  [BD_ADDR REDACTED]
+#
+# Total SMP frames: 10 (including 1 failed attempt from bond_5.py)
+# Pairing type: LE Legacy Pairing (WHOOP 5.0 does not set SecureConnection in Pairing Response)
+# Pairing outcome: SUCCESS — bond established, key distribution complete

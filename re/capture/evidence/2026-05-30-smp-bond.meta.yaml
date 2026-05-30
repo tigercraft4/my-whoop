@@ -1,0 +1,72 @@
+source: ios
+tool: PacketLogger
+tool_version: "Additional Tools for Xcode (PacketLogger)"
+tshark_version: "4.6.6"
+captured: "2026-05-30"
+raw_sha256: "547a6f9724a415f623f096c7f26cd8bea54c527daeb567442771db3bc88db6d2"
+
+# WHOOP 5.0 SMP pairing handshake — captured while official iOS WHOOP app re-paired
+# after fresh-state setup (Forget Device on iPhone, removed Mac bond per Pitfalls 1-3)
+# BD_ADDR: [REDACTED] per evidence policy (DISCLAIMER §2)
+
+pairing_type: "LE Legacy Pairing"
+# Note: WHOOP 5.0 Pairing Response does NOT set the SecureConnection flag —
+# the strap negotiates down to LE Legacy despite the iPhone requesting SecureConnection.
+# This means the LTK is derived via the legacy confirm/random exchange (STK path).
+
+smp_frames: 10
+smp_sequence:
+  - frame: 20
+    opcode: "0x05"
+    direction: "iPhone → strap"
+    description: "Pairing Failed: Unspecified Reason (from earlier bond_5.py attempt)"
+  - frame: 231
+    opcode: "0x01"
+    direction: "iPhone → strap"
+    description: "Pairing Request — AuthReq: Bonding+MITM+SecureConnection; Keys: LTK+IRK+Linkkey"
+  - frame: 233
+    opcode: "0x02"
+    direction: "strap → iPhone"
+    description: "Pairing Response — AuthReq: Bonding only (no SecureConnection); Keys: LTK (resp)+IRK (init)"
+  - frame: 292
+    opcode: "0x03"
+    direction: "iPhone → strap"
+    description: "Pairing Confirm [REDACTED]"
+  - frame: 293
+    opcode: "0x03"
+    direction: "strap → iPhone"
+    description: "Pairing Confirm [REDACTED]"
+  - frame: 294
+    opcode: "0x04"
+    direction: "iPhone → strap"
+    description: "Pairing Random [REDACTED]"
+  - frame: 295
+    opcode: "0x04"
+    direction: "strap → iPhone"
+    description: "Pairing Random [REDACTED]"
+  - frame: 306
+    opcode: "0x06"
+    direction: "strap → iPhone"
+    description: "Encryption Information (LTK) [REDACTED]"
+  - frame: 307
+    opcode: "0x07"
+    direction: "strap → iPhone"
+    description: "Central Identification (EDIV/Rand) [REDACTED]"
+  - frame: 308
+    opcode: "0x08"
+    direction: "iPhone → strap"
+    description: "Identity Information (IRK) [REDACTED]"
+  - frame: 309
+    opcode: "0x09"
+    direction: "iPhone → strap"
+    description: "Identity Address Information [BD_ADDR REDACTED]"
+
+pairing_outcome: "SUCCESS — bond established, key distribution complete"
+roadmap_criterion_3: "SATISFIED — SMP packets visible in PacketLogger; LE Legacy Pairing confirmed"
+
+key_findings:
+  - "WHOOP 5.0 uses LE Legacy Pairing (downgrades from SecureConnection request)"
+  - "Strap distributes LTK + EDIV/Rand to iPhone (Responder Key Distribution)"
+  - "iPhone distributes IRK + Identity Address to strap (Initiator Key Distribution)"
+  - "Confirmed-write trick (bond_5.py) produced Pairing Failed 0x05 — iOS app pairing path required"
+  - "bond_5.py D-03b fallback correctly predicted: official app SMP needed for macOS context"
