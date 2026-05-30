@@ -8,7 +8,10 @@ let package = Package(
     targets: [
         .target(
             name: "WhoopProtocol",
-            resources: [.process("Resources/whoop_protocol.json")]
+            resources: [
+                .process("Resources/whoop_protocol.json"),
+                .process("Resources/whoop_protocol_5.json"),
+            ]
         ),
         .testTarget(
             name: "WhoopProtocolTests",

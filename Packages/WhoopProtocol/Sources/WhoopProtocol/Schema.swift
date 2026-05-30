@@ -175,20 +175,20 @@ private var _cachedSchema: Schema?
 
 public func loadSchema() -> Schema {
     if let cached = _cachedSchema { return cached }
-    guard let url = Bundle.module.url(forResource: "whoop_protocol", withExtension: "json") else {
-        fatalError("whoop_protocol.json missing from Bundle.module resources")
+    guard let url = Bundle.module.url(forResource: "whoop_protocol_5", withExtension: "json") else {
+        fatalError("whoop_protocol_5.json missing from Bundle.module resources")
     }
     let data: Data
     do {
         data = try Data(contentsOf: url)
     } catch {
-        fatalError("failed to read whoop_protocol.json: \(error)")
+        fatalError("failed to read whoop_protocol_5.json: \(error)")
     }
     let raw: RawSchema
     do {
         raw = try JSONDecoder().decode(RawSchema.self, from: data)
     } catch {
-        fatalError("failed to decode whoop_protocol.json: \(error)")
+        fatalError("failed to decode whoop_protocol_5.json: \(error)")
     }
     var packets: [String: PacketSpec] = [:]
     for (name, rp) in raw.packets {

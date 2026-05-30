@@ -72,8 +72,15 @@ public struct GravitySample: Equatable, Codable {
     public let y: Double
     public let z: Double
     public let unit: String     // "g"
-    public init(ts: Int, x: Double, y: Double, z: Double, unit: String = "g") {
+    // Gyroscope axes (rad/s) — nil until a type-43 REALTIME_RAW_DATA frame is captured
+    // (D-06 / PROTO-14 HYPOTHESIS; raw IMU was absent from the Phase 4 D-05 capture).
+    public let gx: Double?
+    public let gy: Double?
+    public let gz: Double?
+    public init(ts: Int, x: Double, y: Double, z: Double, unit: String = "g",
+                gx: Double? = nil, gy: Double? = nil, gz: Double? = nil) {
         self.ts = ts; self.x = x; self.y = y; self.z = z; self.unit = unit
+        self.gx = gx; self.gy = gy; self.gz = gz
     }
 }
 
