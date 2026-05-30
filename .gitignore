@@ -79,6 +79,7 @@ fixtures/soak_*.bin
 re/capture/samples/*
 !re/capture/samples/.gitkeep
 !re/capture/samples/README.md
+re/capture/*.pklg
 
 # Decompiled WHOOP APK + JADX project output — DO NOT publish (DISCLAIMER §2; D-04).
 # Source APK via `adb pull` from your own device; record only enum names + numeric values in jadx.md.
