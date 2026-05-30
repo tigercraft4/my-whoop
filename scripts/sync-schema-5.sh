@@ -7,9 +7,16 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CANON="$ROOT/protocol/whoop_protocol_5.json"
 PKG="$ROOT/Packages/WhoopProtocol/Sources/WhoopProtocol/Resources/whoop_protocol_5.json"
 
-# Validate the canonical schema is well-formed JSON BEFORE copying it into the Swift
-# bundle (T-04-06: never sync invalid JSON). Fail loudly with a non-zero exit.
-if ! python3 -c "import json, sys; json.load(open('$CANON'))"; then
+# Validate the canonical schema exists and is well-formed JSON BEFORE copying it
+# into the Swift bundle (T-04-06: never sync invalid JSON). Fail loudly with a
+# non-zero exit and a precise error message in each failure case.
+if [[ ! -f "$CANON" ]]; then
+  echo "ERROR: $CANON not found — cannot sync." >&2
+  exit 1
+fi
+# Pass $CANON as an argument (sys.argv[1]) rather than embedding it in the -c
+# string so paths with spaces are handled correctly and without quoting hazards.
+if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$CANON"; then
   echo "ERROR: $CANON is not valid JSON — refusing to sync." >&2
   exit 1
 fi
