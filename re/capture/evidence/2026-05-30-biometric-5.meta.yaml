@@ -6,23 +6,51 @@ captured: "2026-05-30"
 device_identity: "[REDACTED]"   # real BD_ADDR / CoreBluetooth UUID / serial / iPhone UDID / strap name live only in the gitignored .pklg under re/capture/samples/ and in device_local_5.py
 
 # PROTO-16 — firmware/hardware revision recorded for every capture (schema-drift detection).
-# Drafted value mirrors the schema baseline (protocol/whoop_protocol_5.json: WG50_r52).
-# Task 2 confirms / overrides this with the actual revision the human reads from
-# Device Information 0x2A26 (Firmware Revision) / 0x2A27 (Hardware Revision) during the session.
+# Value mirrors the schema baseline (protocol/whoop_protocol.json enum maps: WG50_r52).
+# Task 2 NOTE: capture_all-V3.pklg contains NO Device Information GATT read (0x2A26/0x2A27
+# were not re-read — the strap was already bonded for this session), so the firmware string
+# could not be freshly confirmed from this capture. The decoded body PacketType/CommandNumber/
+# EventNumber/MetadataType enums all resolved cleanly against the r52 maps (no unknown ptypes),
+# which is consistent with WG50_r52 and shows no schema drift. Value retained as the baseline.
 firmware_revision: "WG50_r52"
-firmware_revision_source: "Device Information 0x2A26 (Firmware Revision String) / 0x2A27 (Hardware Revision String)"
+firmware_revision_source: "Schema baseline (protocol/whoop_protocol.json r52 enum maps); Device Information 0x2A26/0x2A27 NOT read in capture_all-V3.pklg — corroborated by clean r52 enum resolution across all decoded frames (zero unknown PacketTypes)"
 
-# Filled by Task 2 (post-checkpoint) from validate_frames_5.build_report([<new pklg>])
+# Filled by Task 2 (post-checkpoint) from validate_frames_5.build_report([capture_all-V3.pklg])
 # + decode_5.parse_body_5 over the human-supplied capture. These are the Wave 3 (Plan 04) inputs.
-results: {}
-#   frames_by_characteristic: { handle -> { uuid, role, frames } }   # per-characteristic counts
-#   realtime_hr_present:  null   # REALTIME_DATA (PacketType 40) observed?  (raw realtime HR/RR stream)
-#   raw_imu_present:      null   # REALTIME_RAW_DATA (PacketType 43) observed?  (raw IMU — PROTO-14 risk gate)
-#   sleep_review_present: null   # historical-backfill (non-console) packets from the sleep-review nav?
-#   distinct_packet_types: []    # all PacketTypes seen across the capture body decode
+# Source capture: re/capture/samples/capture_all-V3.pklg (gitignored, local-only).
+results:
+  capture_file: "capture_all-V3.pklg"
+  total_aa_frames: 1049            # wrapper-ok custom-service frames across the four handles
+  # Per custom-service characteristic (handle -> uuid -> frame count). Pitfall 4 handle map.
+  frames_by_characteristic:
+    "0x099b": { uuid: "FD4B0002", role: "cmd-in (write)",  frames: 94 }
+    "0x099d": { uuid: "FD4B0003", role: "cmd-resp (notify)", frames: 98 }
+    "0x09a0": { uuid: "FD4B0004", role: "events (notify)",  frames: 4 }
+    "0x09a3": { uuid: "FD4B0005", role: "data (notify)",    frames: 853 }
+  # Distinct PacketTypes observed across the decoded bodies (parse_body_5 stream_type).
+  distinct_packet_types:
+    COMMAND: 94
+    COMMAND_RESPONSE: 98
+    EVENT: 69
+    METADATA: 38
+    CONSOLE_LOGS: 291
+    HISTORICAL_DATA: 300
+    REALTIME_DATA: 159          # PacketType 40 — the realtime HR/RR stream (Wave 3 PROTO-07 input)
+  # --- Wave 3 input flags ---
+  realtime_hr_present: true      # REALTIME_DATA (PacketType 40) PRESENT — 159 frames on data char
+  raw_imu_present: false         # REALTIME_RAW_DATA (PacketType 43) ABSENT — no raw IMU stream in this session (PROTO-14 RISK)
+  sleep_review_present: true     # historical backfill PRESENT — 300 HISTORICAL_DATA + 38 METADATA (HISTORY_START/END/COMPLETE)
+  # Corroborating evidence that realtime HR streaming was deliberately triggered (D-05):
+  toggle_realtime_hr_commands: 60   # TOGGLE_REALTIME_HR (CommandNumber 3) COMMAND+COMMAND_RESPONSE pairs
+  realtime_hr_events: { BLE_REALTIME_HR_ON: 21, BLE_REALTIME_HR_OFF: 11 }  # EVENT confirmations
+  metadata_subtypes: { HISTORY_START: 15, HISTORY_END: 19, HISTORY_COMPLETE: 4 }  # sleep-review backfill cycles
+  # --- PROTO-14 risk note for Wave 3 ---
+  # No REALTIME_RAW_DATA (type 43) and no TOGGLE_IMU_MODE (cmd 106) appeared in this capture.
+  # Standard realtime HR/RR (REALTIME_DATA type 40) is present and satisfies PROTO-07; raw IMU
+  # (PROTO-14) is NOT obtainable from this capture and needs a dedicated IMU-mode capture later.
 
 raw_artifacts_local_only:
-  - "re/capture/samples/<DATE>-biometric-5.pklg"   # the new D-05 capture — gitignored (re/capture/samples/*), NEVER committed; exact filename supplied by the human at the checkpoint and finalised in Task 2
+  - "re/capture/samples/capture_all-V3.pklg"   # the D-05 capture — gitignored (re/capture/samples/*), NEVER committed; verified via git check-ignore (exit 0)
 
 notes: >-
   DISCLAIMER section 2 / RESEARCH Pitfall 5: no BD_ADDR, SMP pairing-key bytes, serial,
