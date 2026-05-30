@@ -96,7 +96,16 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
   3. `protocol/whoop_protocol_5.json` v0 envelope committed with framing section, confidence level explicitly tagged (`VERIFIED` for confirmed parts, `HYPOTHESIS` for unconfirmed), and rationale captured in `FINDINGS_5.md`
   4. Go/no-go decision for Phase 4 recorded in `FINDINGS_5.md` — either "framing locked, decode work cleared" or "wrapper characterised, decode work cleared with wrapper-strip step"
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+  - [ ] 03-01-PLAN.md — validate_frames_5.py: 4.0 CRC gate (documents 0% result) + parse_maverick/strip_maverick + tshark extraction + frames_5_golden.json corpus (PROTO-04/05, wave 1)
+  - [ ] 03-02-PLAN.md — whoop_protocol_5.json v0: Maverick wrapper envelope + GATT constants + WG50_r52 firmware, confidence-tagged (PROTO-05, wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+  - [ ] 03-03-PLAN.md — framing evidence sidecar + FINDINGS_5.md §7 + go/no-go verdict (Phase 4 entry condition) (PROTO-04/05, wave 2)
 
 ### Phase 4: Protocol Decode & Schema
 
@@ -137,7 +146,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 |-------|----------------|--------|-----------|
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
-| 3. Framing Confirmation (Critical Gate) | 0/0 | Not started | - |
+| 3. Framing Confirmation (Critical Gate) | 0/3 | Planned | - |
 | 4. Protocol Decode & Schema | 0/0 | Not started | - |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
 
@@ -197,7 +206,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 ---
 
-*Last updated: 2026-05-30 (initial roadmap)*
+*Last updated: 2026-05-30 (Phase 3 planned)*
 
 ---
 
