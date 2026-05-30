@@ -20,8 +20,9 @@ Read raw biometrics off your own WHOOP 5.0 **locally over BLE**, for interoperab
 | **Bonding** (confirmed-write trick) | macOS does NOT auto-bond — confirmed-write trick is iOS-only; D-03b SMP-capture fallback required (see section 3) |
 | Heart rate (standard `0x2A37`) | **Confirmed** — live BPM via Bleak, unbonded (HR=71/72 bpm, see section 4) |
 | Battery (standard `0x2A19`) | **Confirmed** — read via Bleak, unbonded (23%, see section 4) |
-| Command/response protocol | Phase 3 (framing/CRC confirmation) |
-| Decoded data streams (HR/RR, IMU, PPG, historical) | Phase 4 |
+| Command/response protocol (framing) | **Maverick wrapper characterised** — 4.0 inner CRC gate fails 0% on 5028 frames; outer wrapper `[AA][01][len][role]...[trailer]` confirmed, `strip_maverick()` working (see section 7) |
+| Trailer checksum algorithm | **OPEN** (HYPOTHESIS) — standard CRC16/CRC32 variants ruled out; non-blocking (see section 7) |
+| Decoded data streams (HR/RR, IMU, PPG, historical) | Phase 4 — **cleared to start** (go/no-go verdict in section 7) |
 
 ---
 
@@ -159,3 +160,51 @@ The four ROADMAP Phase 2 success criteria, each mapped to its evidence in this d
 4. **`data` (...0005) and `diagnostics` (...0007) payloads.** Both characteristics are present with CCCDs but were not captured in Phase 1 (only the three handles above). Phase 4 will characterise the realtime/historical/raw streams on `...0005` and the memfault/diagnostics stream on `...0007`.
 
 5. **Standard characteristic behaviour off-wrist.** On 4.0, HR reads 0 when off-wrist/charging while the subscription still succeeds. Confirm the same on 5.0 during the Wave 3 `hr_5.py` run.
+
+---
+
+## 7. Framing (Phase 3)
+
+**Source:** tshark extraction of the two local captures (Phase 1 iOS ATT session + Phase 2 SMP-bond session) validated by `re/survey_5/validate_frames_5.py`, run 2026-05-30. Empirical results recorded in the redacted evidence sidecar `re/capture/evidence/2026-05-30-framing-5.meta.yaml`. Numbers below are the actual validator output over **5028 captured `0xAA`-SOF frames** across the two sessions.
+
+### 4.0 inner-framing CRC gate — DOCUMENTED NEGATIVE (PROTO-04)
+
+The central Phase 3 hypothesis — that 5.0 reuses the 4.0 inner framing (`[0xAA][len u16 LE][crc8 poly 0x07][type][seq][cmd][payload][crc32 LE]`) — is **empirically false.** Running the exact 4.0 CRC8+CRC32 validator (ported, not imported, from `re/decode.py` + `Framing.swift`) against all 5028 frames yields a **0% CRC pass rate** (0 / 10056 CRC8+CRC32 checks). Read with the 4.0 layout, the "length field" `frame[1:3]` decodes to nonsense (`0x0801 = 2049` for a 16-byte frame) because byte[1] is a version byte, not part of the length. PROTO-04 is therefore a **documented negative**: the 4.0 inner framing is **NOT reused verbatim** on 5.0. This is the result the critical gate was built to produce, and it triggers the PROTO-05 wrapper-characterisation path (D-03).
+
+### Maverick outer wrapper — CHARACTERISED (PROTO-05)
+
+Every ATT value across both sessions follows a flat outer wrapper, verified 100% consistent on 5028/5028 frames:
+
+```
+offset 0     SOF      0xAA           (constant)
+offset 1     version  0x01           (constant)
+offset 2-3   length   u16 LE         (body length)
+offset 4     role     0x00 = cmd-in write, 0x01 = notify   (== body[0])
+offset 5..   body     flat payload   (length bytes, incl. role at body[0])
+last 4       trailer  per-frame checksum (algorithm OPEN)
+```
+
+The 8-byte overhead invariant `total_len == length + 8` (4-byte header + body + 4-byte trailer) holds for **5028/5028 frames** across both sessions, yielding `Maverick wrapper: CONFIRMED`. Per-characteristic frame counts: cmd-in `FD4B0002` 155, cmd-resp `FD4B0003` 158, events `FD4B0004` 1, data `FD4B0005` 4714.
+
+**The body is FLAT** — it is NOT a nested 4.0 `0xAA` frame (corrects the CONTEXT D-03 mental model; only incidental `0xAA` bytes appear mid-body, none at a frame boundary). `strip_maverick()` returns the flat body `frame[4:4+length]` directly; the stripped body is opaque decode input for Phase 4 and must **not** be re-run through the 4.0 CRC gate.
+
+### Trailer checksum — OPEN / HYPOTHESIS (non-blocking)
+
+The 4-byte trailer is a per-frame checksum whose algorithm is **OPEN**. An exhaustive negative was recorded: CRC32 variants (zlib, BZIP2, MPEG2, POSIX, JAMCRC, CRC32C — LE and BE, all leading offsets) and CRC16 variants (CCITT-FALSE, XMODEM, MODBUS, IBM/ARC — over every plausible region) all fail to match consistently. The trailer is non-standard or computed over a transformed/masked input (e.g. the session-token bytes). This is the one genuine open RE problem, recorded as `HYPOTHESIS`/`OPEN` in `protocol/whoop_protocol_5.json`. **It does NOT block phase closure:** the wrapper is characterised and `strip_maverick()` does not need the trailer algorithm — Phase 4 decodes the flat body without trailer validation.
+
+### Committed artifacts
+
+- `protocol/whoop_protocol_5.json` v0 — the canonical 5.0 schema: the Maverick outer-wrapper envelope (length@off2, role@off4, flat body, 4-byte trailer tagged HYPOTHESIS), the verified GATT constants, and `firmware_revision: WG50_r52`, every field confidence-tagged.
+- `re/survey_5/validate_frames_5.py` — the critical-gate validator providing the working `strip_maverick()` (pure `bytes -> bytes`) that Phase 4 imports or inlines.
+- `re/survey_5/frames_5_golden.json` — 46 wrapper-stripped entries spanning all four custom characteristics, the Phase 4 starting decode corpus.
+- `re/capture/evidence/2026-05-30-framing-5.meta.yaml` — the redacted pass-rate + wrapper-overhead evidence sidecar (no BD_ADDR / SMP keys / device identity committed; raw `.pklg` captures local-only and gitignored).
+
+### r52 enum-map reuse (Phase 4 input)
+
+The Hardware Revision reads `WG50_r52` (section 1), which matches the whoop-vault **r52** revision behind the 4.0 enum maps. The r52 command-ID and event-ID enum maps are therefore **directly usable in Phase 4 without re-derivation** — Phase 4 decodes the wrapper-stripped flat body against the existing r52 maps rather than re-deriving codes from scratch.
+
+### Go/no-go verdict (Phase 4 entry condition, D-03b)
+
+> **wrapper characterised, decode work cleared with wrapper-strip step**
+
+Phase 3 (the critical gate) is closed: the 4.0 inner framing is conclusively not reused (0% gate), the Maverick outer wrapper is characterised with HIGH confidence (5028/5028), and a working `strip_maverick()` exposes the flat body for decoding. The OPEN trailer-checksum algorithm is recorded but does not gate Phase 4. This verdict is the committed Phase 4 entry condition per D-03b — Phase 4 may begin.
