@@ -22,25 +22,25 @@
 - [ ] **PROTO-03**: GATT characteristics enumerated and mapped (7 characteristics: cmd-in, cmd-resp, events, data, diagnostics + standard HR + battery)
 - [x] **PROTO-04**: 4.0 inner framing (0xAA SOF / CRC8 poly 0x07 / CRC32-zlib) validated against 20+ captured 5.0 frames (≥98% pass rate gate)
 - [x] **PROTO-05**: Maverick outer wrapper (version, length, role bytes, CRC16) characterised if 4.0 CRC validation fails — structure documented in whoop_protocol_5.json
-- [ ] **PROTO-06**: Command surface probed (IDs 0–255 enumerated via probe harness; known commands from 4.0 cross-checked)
+- [x] **PROTO-06**: Command surface probed (IDs 0–255 enumerated via probe harness; known commands from 4.0 cross-checked)
 - [x] **PROTO-07**: Live HR + RR intervals decoded from realtime stream
-- [ ] **PROTO-08**: Battery level decoded
-- [ ] **PROTO-09**: Events decoded (IDs 3, 7, 8, 9, 10, 17, 24, 33, 46, 63 — same as 4.0)
-- [ ] **PROTO-10**: Historical data offload implemented with store-then-ack discipline (data not lost on crash)
+- [x] **PROTO-08**: Battery level decoded
+- [x] **PROTO-09**: Events decoded (IDs 3, 7, 8, 9, 10, 17, 24, 33, 46, 63 — same as 4.0)
+- [x] **PROTO-10**: Historical data offload implemented with store-then-ack discipline (data not lost on crash)
 - [x] **PROTO-11**: SpO₂ decoded (type 53, byte 10 per Sivasai2207 — validate against oximeter)
 - [x] **PROTO-12**: Skin temperature decoded from event 17 (LE-int / 100000 → °C — validate against thermometer)
 - [x] **PROTO-13**: Respiration rate decoded
 - [x] **PROTO-14**: IMU / gravity (6-axis accelerometer) decoded; sample rate confirmed (52 Hz or 26 Hz)
-- [ ] **PROTO-15**: Dual-epoch timestamp model implemented (device epoch vs Unix epoch tagged in schema)
+- [x] **PROTO-15**: Dual-epoch timestamp model implemented (device epoch vs Unix epoch tagged in schema)
 - [x] **PROTO-16**: Firmware version recorded in every capture session metadata
 
 ### Schema & Documentation
 
-- [ ] **SCHEMA-01**: `protocol/whoop_protocol_5.json` — canonical decode schema for WHOOP 5.0, schema-driven (same pattern as 4.0's whoop_protocol.json)
-- [ ] **SCHEMA-02**: All schema fields include `"epoch"` tag, provenance note, and confidence level (`VERIFIED` / `HYPOTHESIS`)
-- [ ] **SCHEMA-03**: `FINDINGS_5.md` — protocol reference document covering framing, commands, events, data layout, timestamps, historical offload
-- [ ] **SCHEMA-04**: Golden fixture files generated for each decoded packet type (cross-source validated: iOS + Android captures)
-- [ ] **SCHEMA-05**: `scripts/sync-schema-5.sh` — syncs canonical 5.0 schema to Swift bundle resource
+- [x] **SCHEMA-01**: `protocol/whoop_protocol_5.json` — canonical decode schema for WHOOP 5.0, schema-driven (same pattern as 4.0's whoop_protocol.json)
+- [x] **SCHEMA-02**: All schema fields include `"epoch"` tag, provenance note, and confidence level (`VERIFIED` / `HYPOTHESIS`)
+- [x] **SCHEMA-03**: `FINDINGS_5.md` — protocol reference document covering framing, commands, events, data layout, timestamps, historical offload
+- [x] **SCHEMA-04**: Golden fixture files generated for each decoded packet type (cross-source validated: iOS + Android captures)
+- [x] **SCHEMA-05**: `scripts/sync-schema-5.sh` — syncs canonical 5.0 schema to Swift bundle resource
 
 ### Swift Decoder (WhoopProtocol 5.0)
 

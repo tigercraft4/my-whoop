@@ -164,7 +164,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
 | 3. Framing Confirmation (Critical Gate) | 3/3 | Complete    | 2026-05-30 |
-| 4. Protocol Decode & Schema | 5/5 | Complete   | 2026-05-30 |
+| 4. Protocol Decode & Schema | 5/5 | Complete    | 2026-05-30 |
 | 5. iOS App & Server Port | 0/0 | Not started | - |
 
 ---
