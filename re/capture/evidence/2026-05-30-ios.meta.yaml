@@ -1,0 +1,15 @@
+source: ios
+tool: PacketLogger
+tool_version: "Additional Tools for Xcode (PacketLogger)"
+tshark_version: "4.6.6"
+firmware: "iOS 26.3.1"
+captured: "2026-05-30"
+raw_sha256: "60d2d1f8c79e2ffc879a467cc9d727a2889947fd94b645ef1e79dd93c19da6ef"
+custom_service_uuid_seen: "handles 0x099b (cmd-in write) / 0x099d / 0x09a3 (notifications) — fd4b0001-... service (UUID not captured in GATT discovery phase; characteristic handles confirm custom WHOOP service)"
+inner_frame_sof: "0xAA — 4.0 inner framing SOF confirmed in all ATT payloads"
+att_packet_count: 1011
+characteristic_handles:
+  cmd_in: "0x099b"
+  notifications_1: "0x099d"
+  notifications_2: "0x09a3"
+notes: "iOS-only capture (no Android available). All ATT values begin with 0xAA confirming 4.0 inner framing reuse on 5.0. Write Requests on 0x099b + Notifications on 0x099d and 0x09a3. BD_ADDR scrubbed (not visible in decrypted ATT layer). Service UUID discovery not captured in this session — Phase 2 will enumerate GATT services."
