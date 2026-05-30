@@ -1,5 +1,6 @@
 import Foundation
 import CoreBluetooth
+import OSLog
 import WhoopProtocol
 import WhoopStore
 
@@ -476,9 +477,12 @@ public final class BLEManager: NSObject, ObservableObject {
     private static let logTimeFormatter: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; return f
     }()
+    private static let logger = Logger(subsystem: "com.francisco.openwhoop", category: "BLE")
 
     private func log(_ s: String) {
-        state.append(log: "[\(timestamp())] \(s)")
+        let line = "[\(timestamp())] \(s)"
+        state.append(log: line)
+        BLEManager.logger.info("\(line, privacy: .public)")
     }
     private func timestamp() -> String {
         BLEManager.logTimeFormatter.string(from: Date())
