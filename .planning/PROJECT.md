@@ -23,10 +23,10 @@ Own your WHOOP 5.0 biometric data: read it from your own device over BLE, store 
 - [ ] WHOOP 5.0 BLE services and characteristics enumerated
 - [ ] Raw BLE traffic captured from 5.0 → app session (PacketLogger on Mac)
 - [ ] Android HCI snoop log captured as second reference source
-- [ ] Frame framing format confirmed (same or different from 4.0)
+- [x] Frame framing format confirmed (same or different from 4.0) — Validated in Phase 3: Maverick outer wrapper characterised, 4.0 CRC gate 0.0%, decode cleared with strip_maverick()
 - [ ] Packet types / command IDs identified and mapped
 - [ ] Biometric decode layout reverse-engineered (HR, RR, SpO₂, skin temp, resp, gravity)
-- [ ] `protocol/whoop_protocol_5.json` schema written and validated
+- [x] `protocol/whoop_protocol_5.json` schema written and validated — v0 committed in Phase 3 (Maverick wrapper envelope + GATT constants + WG50_r52, confidence-tagged)
 - [ ] `FINDINGS_5.md` — protocol reference document
 - [ ] Swift decoder updated / forked for 5.0 schema
 - [ ] iOS app functional end-to-end with WHOOP 5.0
@@ -86,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-30 after initialization*
+*Last updated: 2026-05-30 — Phase 3 complete (framing confirmation critical gate passed)*
