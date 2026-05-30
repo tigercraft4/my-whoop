@@ -39,7 +39,10 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
   2. Developer captures an Android `btsnoop_hci.log` via Developer Options + `adb bugreport` extraction, with reproducible written steps in the repo
   3. Developer opens a captured `.pklg` and a captured `.btsnoop` in Wireshark 4.4.x, filters to the ATT/GATT layer, and sees the WHOOP custom service traffic
   4. Developer loads the official WHOOP Android APK in JADX-GUI 1.5.1 and can navigate to the Maverick/packet-type enum definitions (referencing whoop-vault's r52 map)
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 01-01-PLAN.md — Toolchain: Brewfile + check-tools.sh version-asserter + gitignore/dir scaffolding (wave 1)
+  - [ ] 01-02-PLAN.md — Host analysis runbooks: wireshark.md (TOOL-04) + jadx.md (TOOL-03) (wave 2)
+  - [ ] 01-03-PLAN.md — Capture runbooks + live capture + evidence + README index (TOOL-01/02, wave 3, has checkpoint)
 
 ### Phase 2: GATT Survey & Bonding
 **Goal**: WHOOP 5.0 GATT surface fully enumerated on the user's specific device; bonding replicated without the official app; standard HR and battery characteristics readable
@@ -94,7 +97,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Capture Foundation | 0/0 | Not started | - |
+| 1. Capture Foundation | 0/3 | Planned | - |
 | 2. GATT Survey & Bonding | 0/0 | Not started | - |
 | 3. Framing Confirmation (Critical Gate) | 0/0 | Not started | - |
 | 4. Protocol Decode & Schema | 0/0 | Not started | - |
