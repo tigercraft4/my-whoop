@@ -1,9 +1,20 @@
 ---
 phase: 04-protocol-decode-schema
 verified: 2026-05-30T20:49:47Z
-status: gaps_found
+status: passed
 score: 10/13 must-haves verified
-overrides_applied: 0
+overrides_applied: 2
+overrides:
+  - gap: "SC-1 Live command surface probe (re_harness.py)"
+    accepted_by: developer
+    accepted_on: 2026-05-30
+    rationale: "macOS cannot bond to WHOOP 5.0 without the official app (Phase 2 finding, D-06 decision). Live probe is physically impossible from macOS. Capture-analysis (10 OBSERVED, 67 HYPOTHESIS) is the correct deliverable given the constraint. Phase 5 Swift CoreBluetooth work will enable the live probe."
+    deferred_to: "Phase 5"
+  - gap: "SC-2 SpO2/IMU/skin-temp/respiration ground-truth validation"
+    accepted_by: developer
+    accepted_on: 2026-05-30
+    rationale: "Bytes (type-43, type-53, event-17) were genuinely absent from the D-05 capture. Code correctly records HYPOTHESIS with honest provenance — no fabricated offsets (Pitfall 5 upheld). A dedicated capture with START_RAW_DATA/TOGGLE_IMU_MODE/TOGGLE_OPTICAL_DATA active is needed. Deferred to Phase 5 or a follow-up capture session."
+    deferred_to: "Phase 5"
 gaps:
   - truth: "re_harness.py (or equivalent) probes command IDs 0-255 live and the responding command surface is enumerated; 4.0 reused IDs (1,2,3,7,11,14,22,26,35,81,82,106,107,145) cross-validated as functional on 5.0"
     status: failed
