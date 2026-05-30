@@ -277,7 +277,7 @@ public struct GravitySample: Equatable, Codable {
     public let x: Double
     public let y: Double
     public let z: Double
-    public let gx: Double?   // NOVO — gyroscópio; nil até tipo 43 confirmado
+    public let gx: Double?   // NOVO — giroscópio; nil até tipo 43 confirmado
     public let gy: Double?
     public let gz: Double?
     public let unit: String
@@ -508,22 +508,29 @@ ALTER TABLE gravity_samples   ADD COLUMN IF NOT EXISTS device_generation TEXT DE
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Todas as questões em aberto têm uma disposição de resolução explícita abaixo. OQ#1 é
+> diferida para um teste runtime no dispositivo físico (não pode ser resolvida estaticamente,
+> apenas no hardware real); OQ#2 e OQ#3 seguem a recomendação documentada.
 
 1. **Formato dos writes de cmd-in: 4.0-format ou Maverick-wrapped?**
    - O que sabemos: os 155 cmd-in writes capturados do app oficial são todos Maverick-wrapped (FINDINGS_5.md §7). O `Commands.swift` existente gera frames 4.0-format.
    - O que não é claro: se o WHOOP 5.0 rejeita 4.0-format writes, ou se os aceita. Não há evidência directa de que o strap valida o wrapper no sentido entrada (só nas notificações de saída).
    - Recomendação: testar com 4.0-format primeiro (menos disruptivo). Se o handshake funcionar (SEND_HISTORICAL_DATA recebe resposta), 4.0-format funciona. Se não, adicionar Maverick wrapping aos writes com token `[0x00,0x00,0x00]`.
+   - **RESOLVED:** Deferred to runtime test in 05-06 Task 1 (confidence LOW — só verificável em hardware físico). O plano 05-06 Task 1 executa o handshake com 4.0-format primeiro e, se rejeitado, faz upgrade de `WhoopCommand.frame()` para Maverick-wrapped com token `[0x00,0x00,0x00]`. A decisão final é registada no 05-06-SUMMARY com evidência (strap respondeu / não respondeu). Risco A1 mitigado pela validação física precoce.
 
 2. **Os testes existentes (ParityTests, SchemaSyncTests) devem ser mantidos para 4.0 ou convertidos para 5.0?**
    - O que sabemos: após D-01, o `loadSchema()` carrega o schema 5.0. Os testes existentes usam frames 4.0 e golden 4.0. O schema 5.0 tem offsets body-absolute diferentes dos frame-absolute 4.0.
    - O que não é claro: se os testes 4.0 continuam a ser valiosos (como regression para o encoder/decoder base) ou se são confusos (o decoder agora usa schema 5.0).
    - Recomendação: manter os testes 4.0 como estão (eles continuam a exercitar Framing.swift, CRCs, Reassembler) mas marcar claramente que usam schema 4.0. Adicionar testes 5.0 separados com `frames_5.json`.
+   - **RESOLVED:** Seguir a recomendação. Manter os testes 4.0 (exercitam Framing.swift/CRCs/Reassembler como regression) marcados como schema 4.0; adicionar testes 5.0 separados com `frames_5.json`. SchemaSyncTests é actualizado para comparar contra `whoop_protocol_5.json` (Pitfall 2 / A3). Coberto pelos planos Swift decoder + XCTest (Wave 1).
 
 3. **Battery SOC offset no 5.0 (PROTO-08 HYPOTHESIS)**
    - O que sabemos: `BATTERY_LEVEL` event e `EXTENDED_BATTERY_INFORMATION` estão presentes mas o offset SOC não foi validado contra ground truth (23% do 0x2A19). O schema 5.0 marca como HYPOTHESIS.
    - O que não é claro: se `state.setBattery()` vai receber valores correctos da implementação 5.0.
    - Recomendação: capturar um `GET_BATTERY_LEVEL`(cmd 26) no iPhone e comparar com a leitura 0x2A19 como primeira validação na Fase 5.
+   - **RESOLVED:** Seguir a recomendação. A validação do battery level acontece na verificação física da Live view (05-06 Task 2, IOS-02: "nível de bateria visível e plausível") — comparação com 0x2A19 como sanity check. PROTO-08 permanece HYPOTHESIS no schema até confirmação; o plano não bloqueia nele (offline-first, battery é display-only).
 
 ---
 
@@ -597,7 +604,7 @@ ALTER TABLE gravity_samples   ADD COLUMN IF NOT EXISTS device_generation TEXT DE
 - Commands enum (D-05): HIGH — 10 VERIFIED listados explicitamente em FINDINGS_5.md §8
 - WhoopStore v8 migration (D-06): HIGH — padrão v5/v6/v7 lido directamente; nullable columns idênticas
 - Server changes (D-09/D-10): HIGH — padrão idempotente já estabelecido em init.sql; Pydantic model simples
-- Command format (4.0 vs Maverick para writes): LOW — open question crítica, não verificada
+- Command format (4.0 vs Maverick para writes): LOW — open question crítica, não verificada (RESOLVED: deferred to runtime test em 05-06 Task 1)
 - gen_golden.py adaptação para 5.0: MEDIUM — arquitectura clara mas implementação não escrita ainda
 
 **Research date:** 2026-05-30
