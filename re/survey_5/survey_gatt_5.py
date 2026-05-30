@@ -3,11 +3,15 @@
 Port of re/gatt_dump.py adapted for 5.0 (Phase 2, Wave 2 — D-04). Run AFTER the nRF Connect
 visual survey (Wave 1) has confirmed the UUIDs in FINDINGS_5.md. This script closes the Phase 1
 handle->UUID loop (D-02) from the Bleak side: it prints every service/characteristic with its
-integer handle and flags the three Phase 1 handles (0x099b cmd-in, 0x099d cmd-resp, 0x09a3 events).
+integer handle and flags the three Phase 1 handles (0x099b cmd-in, 0x099d cmd-resp, 0x09a3 data).
 
 macOS note: device_local_5.DEVICE_UUID must be a CoreBluetooth peripheral UUID string, NOT a MAC
 address — CoreBluetooth does not expose MAC addresses. bleak 3.x uses the `client.services`
 property (the old async service-fetch coroutine was removed in bleak 1.0+ — iterate directly).
+
+Bleak handle note: on macOS/CoreBluetooth, char.handle is the *declaration* handle; the *value*
+handle is declaration + 1. Phase 1 PacketLogger captures used value handles, so we match on
+char.handle + 1 against the PHASE1_HANDLES set.
 
 Run from inside re/survey_5/ so `device_local_5` is importable:
     cd re/survey_5 && .venv/bin/python survey_gatt_5.py
@@ -19,9 +23,10 @@ from bleak import BleakClient, BleakScanner
 
 from device_local_5 import DEVICE_UUID as ADDR
 
-# Phase 1 ATT handles (re/capture/evidence/2026-05-30-ios.meta.yaml).
-# Confirmed by Wave 1 nRF Connect survey (FINDINGS_5.md §5):
-#   0x099b -> FD4B0002 (cmd-in),  0x099d -> FD4B0003 (cmd-resp),  0x09a3 -> FD4B0004 (events)
+# Phase 1 ATT value handles (re/capture/evidence/2026-05-30-ios.meta.yaml).
+# Bleak returns declaration handles; value handle = declaration + 1 (macOS/CoreBluetooth).
+# Corrected by Wave 2 programmatic survey:
+#   0x099b -> FD4B0002 (cmd-in),  0x099d -> FD4B0003 (cmd-resp),  0x09a3 -> FD4B0005 (data)
 PHASE1_HANDLES = {0x099b, 0x099d, 0x09a3}
 
 OUT_PATH = "gatt_dump_5.json"
@@ -51,7 +56,7 @@ async def main():
             }
             for char in service.characteristics:
                 props = ",".join(char.properties)
-                flag = " <<< PHASE1 MATCH" if char.handle in PHASE1_HANDLES else ""
+                flag = " <<< PHASE1 MATCH" if (char.handle + 1) in PHASE1_HANDLES else ""
                 print(
                     f"  [Char 0x{char.handle:04x}] {char.uuid}  props=({props})"
                     f"  ({char.description}){flag}"
@@ -69,10 +74,10 @@ async def main():
             result["services"].append(svc)
 
     matched = [
-        f"0x{c['handle']:04x}->{c['uuid']}"
+        f"0x{c['handle']+1:04x}->{c['uuid']}"
         for s in result["services"]
         for c in s["characteristics"]
-        if c["handle"] in PHASE1_HANDLES
+        if (c["handle"] + 1) in PHASE1_HANDLES
     ]
     print(f"\nPhase 1 handle matches: {matched if matched else 'NONE (check bonding / handle range)'}")
 
