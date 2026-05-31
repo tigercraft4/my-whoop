@@ -911,7 +911,9 @@ extension BLEManager: CBPeripheralDelegate {
                            didUpdateNotificationStateFor characteristic: CBCharacteristic,
                            error: Error?) {
         if let error = error {
-            log("Notify enable failed for \(characteristic.uuid): \(error.localizedDescription)")
+            log("Notify state FAILED \(characteristic.uuid.uuidString.prefix(8)): \(error.localizedDescription)")
+        } else {
+            log("Notify state OK \(characteristic.uuid.uuidString.prefix(8)): isNotifying=\(characteristic.isNotifying)")
         }
     }
 }
