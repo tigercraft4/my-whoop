@@ -85,7 +85,8 @@ final class Backfiller {
         let parsed = parseFrame(frame)
         let meta = classifyHistoricalMeta(parsed)
         let preview = frame.prefix(12).map { String(format: "%02x", $0) }.joined()
-        Self.logger.info("BF ingest type=\(parsed.typeName, privacy: .public) meta=\(String(describing: meta), privacy: .public) ok=\(parsed.ok) hex=\(preview, privacy: .public)")
+        let fields = parsed.parsed.map { "\($0.key)=\($0.value)" }.joined(separator: ",")
+        Self.logger.info("BF ingest type=\(parsed.typeName, privacy: .public) meta=\(String(describing: meta), privacy: .public) ok=\(parsed.ok) hex=\(preview, privacy: .public) fields=\(fields, privacy: .public)")
         switch meta {
         case .start:
             isBackfilling = true
