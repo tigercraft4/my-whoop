@@ -241,6 +241,19 @@ def query_daily(conn, device_id, start_date, end_date):
     return [dict(zip(_DAILY_COLS, r)) for r in rows]
 
 
+def query_today(conn, device_id):
+    """Most-recent daily_metrics row for a device (ORDER BY day DESC LIMIT 1).
+    Returns a single dict (same format as one row from query_daily) or None if no rows exist."""
+    row = conn.execute(
+        f"SELECT {', '.join(_DAILY_COLS)} FROM daily_metrics "
+        "WHERE device_id = %s ORDER BY day DESC LIMIT 1",
+        (device_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    return dict(zip(_DAILY_COLS, row))
+
+
 def query_sleep(conn, device_id, day):
     """Sleep sessions for a device whose END falls on ``day`` (the night ending
     that morning). ``day`` is a datetime.date (or YYYY-MM-DD string). Stages are
