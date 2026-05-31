@@ -1,6 +1,9 @@
 import Foundation
+import os
 import WhoopProtocol
 import WhoopStore
+
+private let backfillerLogger = Logger(subsystem: "com.francisco.openwhoop", category: "BLE")
 
 // MARK: - BackfillStoreWriting protocol
 
@@ -56,6 +59,10 @@ final class Backfiller {
     private var chunk: [[UInt8]] = []
     /// Whether a START has been received and we're accumulating a chunk.
     private var chunkOpen = false
+    /// Unix timestamp of the first chunk received in this session (for range logging).
+    private var firstChunkUnix: UInt32?
+    /// Unix timestamp of the most recent chunk received in this session.
+    private var lastChunkUnix: UInt32 = 0
 
     init(store: BackfillStoreWriting,
          deviceId: String,
@@ -76,6 +83,8 @@ final class Backfiller {
         isBackfilling = true
         chunk.removeAll(keepingCapacity: true)
         chunkOpen = true
+        firstChunkUnix = nil
+        lastChunkUnix = 0
     }
 
     /// Feed one raw BLE frame into the state machine. May trigger async store operations.
@@ -91,6 +100,14 @@ final class Backfiller {
             await finishChunk(unix: unix, trim: trim, endFrame: frame)
         case .complete:
             isBackfilling = false
+            if let first = firstChunkUnix, lastChunkUnix > 0 {
+                let dayCount = max(1, Int((lastChunkUnix - first) / 86400))
+                backfillerLogger.notice(
+                    "BF: session ended — range=\(first, privacy: .public)...\(self.lastChunkUnix, privacy: .public) (~\(dayCount, privacy: .public) days)"
+                )
+            }
+            firstChunkUnix = nil
+            lastChunkUnix = 0
             chunk.removeAll(keepingCapacity: true)
             chunkOpen = false
         case .other:
@@ -119,6 +136,9 @@ final class Backfiller {
     /// `endFrame` carries the 8-byte `end_data` the ack requires.
     private func finishChunk(unix: UInt32, trim: UInt32, endFrame: [UInt8]) async {
         guard let endData = Backfiller.endData(from: endFrame) else { return }
+
+        if firstChunkUnix == nil { firstChunkUnix = unix }
+        lastChunkUnix = unix
 
         let frames = chunk
         chunk.removeAll(keepingCapacity: true)   // next records accumulate into the next chunk
@@ -161,5 +181,7 @@ final class Backfiller {
         isBackfilling = false
         chunk.removeAll(keepingCapacity: true)
         chunkOpen = false
+        firstChunkUnix = nil
+        lastChunkUnix = 0
     }
 }
