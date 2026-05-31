@@ -1,4 +1,5 @@
 import SwiftUI
+import WhoopStore
 
 // MARK: - Profile model
 
@@ -335,6 +336,29 @@ struct SettingsView: View {
                 UserDefaults.standard.removeObject(forKey: "hk.hrvHighwater")
             }
             .foregroundColor(.secondary)
+            Button("Insert Today's Test Data") {
+                Task {
+                    let today = DailyMetric(
+                        day: "2026-05-31",
+                        totalSleepMin: 428.0,
+                        efficiency: 87.0,
+                        deepMin: 95.0,
+                        remMin: 112.0,
+                        lightMin: 221.0,
+                        disturbances: 4,
+                        restingHr: 58,
+                        avgHrv: 52.3,
+                        recovery: 78.0,
+                        strain: 12.4,
+                        exerciseCount: 1,
+                        spo2Pct: nil,
+                        skinTempDevC: nil,
+                        respRateBpm: nil
+                    )
+                    try? await metrics.whoopStore?.upsertDailyMetrics([today], deviceId: AppConfig.deviceId)
+                    await metrics.refresh()
+                }
+            }
         }
     }
     #endif
