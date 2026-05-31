@@ -26,16 +26,16 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** v2.0 — Phase 6: Backfill Fix (ready to plan)
+**Current focus:** v2.0 — Phase 7: iOS Validation + Biometrics Capture
 
 ---
 
 ## Current Position
 
-Phase: 6 of 11 (Backfill Fix)
-Plan: — (not yet planned)
-Status: Ready to execute
-Last activity: 2026-05-31 -- Phase 06 planning complete
+Phase: 7 of 11 (iOS Validation + Biometrics Capture)
+Plan: — (phase 6 complete)
+Status: Phase 6 complete — ready for phase 7
+Last activity: 2026-05-31 -- Phase 06 execution complete
 
 Progress: [░░░░░░░░░░] 0%
 

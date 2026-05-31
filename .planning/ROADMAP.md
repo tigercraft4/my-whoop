@@ -30,7 +30,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Milestone Goal:** Transformar a app num cliente completo do WHOOP 5.0 — backfill funcional, UI WHOOP-style, todos os streams biométricos VERIFIED, algoritmos de Recovery/Strain/Sleep integrados e HealthKit export.
 
-- [ ] **Phase 6: Backfill Fix** — Corrigir a race condition no FF key exchange para que os dados históricos fluam do WHOOP 5.0
+- [x] **Phase 6: Backfill Fix** — Corrigir a race condition no FF key exchange para que os dados históricos fluam do WHOOP 5.0 — completed 2026-05-31
 - [ ] **Phase 7: iOS Validation + Biometrics Capture** — Validar todas as iOS views com dados reais e verificar streams biométricos HYPOTHESIS
 - [ ] **Phase 8: JADX APK Analysis + UI Design Document** — Analisar o APK Android via JADX e documentar a arquitectura de informação da app WHOOP
 - [ ] **Phase 9: SwiftUI Redesign WHOOP-Style** — Redesenhar a UI em WHOOP-style com tab bar, Recovery card, Sleep card e Strain card
@@ -121,7 +121,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 3. Framing Confirmation | v1.0 | 3/3 | Complete | 2026-05-30 |
 | 4. Protocol Decode & Schema | v1.0 | 5/5 | Complete | 2026-05-30 |
 | 5. iOS App & Server Port | v1.0 | 6/6 | Complete | 2026-05-31 |
-| 6. Backfill Fix | v2.0 | 0/? | Not started | - |
+| 6. Backfill Fix | v2.0 | 2/2 | Complete | 2026-05-31 |
 | 7. iOS Validation + Biometrics Capture | v2.0 | 0/? | Not started | - |
 | 8. JADX APK Analysis + UI Design Document | v2.0 | 0/? | Not started | - |
 | 9. SwiftUI Redesign WHOOP-Style | v2.0 | 0/? | Not started | - |
