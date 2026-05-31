@@ -21,6 +21,12 @@ public final class BLEManager: NSObject, ObservableObject {
     static let batteryService   = CBUUID(string: "180F")
     static let batteryChar      = CBUUID(string: "2A19")
 
+    // Gen4 / legacy service (61080xxx) — same WHOOP device, different GATT service.
+    // Historical DATA frames (type-47) from SEND_HISTORICAL_DATA arrive on 61080005,
+    // NOT on FD4B0005, as confirmed by re/sync_openwhoop.py which subscribes 61080005.
+    static let gen4Service       = CBUUID(string: "61080001-8D6D-82B8-614A-1C8CB0F8DCC6")
+    static let gen4DataNotifChar = CBUUID(string: "61080005-8D6D-82B8-614A-1C8CB0F8DCC6")
+
     static let restoreID = "com.openwhoop.ble.central"
 
     // MARK: Published state
@@ -587,7 +593,7 @@ extension BLEManager: CBCentralManagerDelegate {
                 central.connect(p, options: nil)
             } else {
                 p.discoverServices([
-                    BLEManager.customService, BLEManager.heartRateService, BLEManager.batteryService,
+                    BLEManager.customService, BLEManager.gen4Service, BLEManager.heartRateService, BLEManager.batteryService,
                 ])
             }
         } else {
@@ -612,7 +618,7 @@ extension BLEManager: CBCentralManagerDelegate {
         state.connected = true
         log("Connected — discovering services")
         peripheral.discoverServices([
-            BLEManager.customService, BLEManager.heartRateService, BLEManager.batteryService,
+            BLEManager.customService, BLEManager.gen4Service, BLEManager.heartRateService, BLEManager.batteryService,
         ])
     }
 
@@ -700,6 +706,8 @@ extension BLEManager: CBPeripheralDelegate {
                 peripheral.discoverCharacteristics(
                     [BLEManager.cmdWriteChar, BLEManager.cmdNotifyChar,
                      BLEManager.eventNotifyChar, BLEManager.dataNotifyChar], for: s)
+            case BLEManager.gen4Service:
+                peripheral.discoverCharacteristics([BLEManager.gen4DataNotifChar], for: s)
             case BLEManager.heartRateService:
                 peripheral.discoverCharacteristics([BLEManager.heartRateChar], for: s)
             case BLEManager.batteryService:
@@ -726,6 +734,7 @@ extension BLEManager: CBPeripheralDelegate {
             case BLEManager.cmdNotifyChar,
                  BLEManager.eventNotifyChar,
                  BLEManager.dataNotifyChar,
+                 BLEManager.gen4DataNotifChar,
                  BLEManager.heartRateChar,
                  BLEManager.batteryChar:
                 peripheral.setNotifyValue(true, for: c)
@@ -849,6 +858,13 @@ extension BLEManager: CBPeripheralDelegate {
             parseStandardHR(bytes)
         case BLEManager.batteryChar:
             if let pct = bytes.first { state.setBattery(Double(pct)) } // 0x2A19 = percent
+        case BLEManager.gen4DataNotifChar:
+            // Gen4/legacy data channel — historical frames arrive here during backfill.
+            BLEManager.logger.notice("BF: gen4 notification \(bytes.count, privacy: .public)B type=\(bytes.first ?? 0, privacy: .public)")
+            if backfilling {
+                armBackfillTimeout()
+                routeBackfillFrame(bytes)
+            }
         case BLEManager.dataNotifyChar,
              BLEManager.cmdNotifyChar,
              BLEManager.eventNotifyChar:
