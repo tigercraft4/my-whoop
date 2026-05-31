@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: next
-status: milestone_complete
-last_updated: "2026-05-31T16:33:00.000Z"
+milestone_name: Complete iOS + UI + Algorithms
+status: planning
+last_updated: "2026-05-31T17:10:01.952Z"
+last_activity: 2026-05-31
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 21
-  completed_plans: 21
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # State — WHOOP 5.0
@@ -47,12 +48,10 @@ Items acknowledged and deferred at milestone close on 2026-05-31:
 
 ## Current Position
 
-Phase: v1.0 SHIPPED — planning v2.0
-
-- **Milestone**: v1.0 — WHOOP 5.0 protocol decoded and iOS app functional
-- **Status**: Milestone complete. Run `/gsd-new-milestone` to start v2.0.
-
----
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-31 — Milestone v2.0 started
 
 ## Key Decisions (v1.0)
 

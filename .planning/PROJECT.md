@@ -2,11 +2,23 @@
 
 ## What This Is
 
-A clean fork of the existing WHOOP 4.0 reverse-engineering project, targeting the WHOOP 5.0 hardware. v1.0 shipped a fully characterised 5.0 BLE protocol (Maverick outer wrapper documented), a canonical decode schema (`whoop_protocol_5.json`), a Python decoder, and a functional iOS app connecting to the WHOOP 5.0 end-to-end — backed by an optional self-hosted FastAPI + TimescaleDB server.
+A clean fork of the existing WHOOP 4.0 reverse-engineering project, targeting the WHOOP 5.0 hardware. v1.0 shipped a fully characterised 5.0 BLE protocol (Maverick outer wrapper documented), a canonical decode schema, a Swift + Python decoder stack, and a functional iOS app connecting to the WHOOP 5.0. v2.0 completes the product: fix the backfill pipeline, validate all biometric streams, redesign the UI to match the WHOOP app experience (via JADX APK analysis), integrate Recovery/Strain/Sleep algorithms, and add HealthKit export.
 
 ## Core Value
 
 Own your WHOOP 5.0 biometric data: read it from your own device over BLE, store it locally, and analyse it without any dependency on WHOOP's cloud.
+
+## Current Milestone: v2.0 — Complete iOS + WHOOP-Style UI + Algorithms
+
+**Goal:** Transformar a app num cliente completo do WHOOP 5.0 — backfill funcional, UI WHOOP-style, todos os streams biométricos VERIFIED, algoritmos de Recovery/Strain/Sleep integrados e HealthKit export.
+
+**Target features:**
+- Fix backfill pipeline (Backfiller não puxa dados históricos do WHOOP 5.0)
+- JADX APK analysis + UI redesign: WHOOP-style tab bar, recovery/sleep/strain cards em SwiftUI
+- Validar IOS-03/04/05/06/08 com dados reais do WHOOP
+- Captura TOGGLE_IMU_MODE → IMU/SpO₂/skin temp/respiration VERIFIED (PROTO-11/12/13/14)
+- Recovery score, Sleep staging, Strain via openwhoop-algos integrados na app
+- HealthKit: exportar HR, HRV, SpO₂, sono para a app Saúde do iPhone
 
 ## Requirements
 
@@ -25,51 +37,79 @@ Own your WHOOP 5.0 biometric data: read it from your own device over BLE, store 
 
 ### Active (v2.0 targets)
 
-- [ ] PROTO-02 D-03b: SMP PacketLogger capture during official-app bonding (physical action required)
-- [ ] IOS-03/04/05: Today/Sleep/Trends views validated with real WHOOP 5.0 data (requires WHOOP with unsynced data)
-- [ ] IOS-06: 14+ day historical backfill end-to-end with safe-trim invariant validated
-- [ ] IOS-08: Background reconnect after force-quit validated (physical test)
-- [ ] IMU/SpO2/skin temp/respiration decode VERIFIED (requires TOGGLE_IMU_MODE capture — PROTO-11/12/13/14)
-- [ ] TOOL-02/03: Android btsnoop capture + JADX APK navigation (requires Android device)
+**Pipeline fix:**
+- [ ] BF-01: Backfiller funciona end-to-end — puxa dados históricos do WHOOP 5.0 sem ficar preso
+- [ ] BF-02: Backfill 14+ dias com safe-trim invariant e sem perda de dados (IOS-06)
+
+**iOS validation:**
+- [ ] IOS-03: Today view com dados reais — recovery score, HRV, sono summary
+- [ ] IOS-04: Sleep view com sessões de sono históricas reais
+- [ ] IOS-05: Trends view com gráficos HR/HRV/SpO₂/skin temp reais
+- [ ] IOS-08: Background reconnect após force-quit validado
+
+**Biométricos:**
+- [ ] PROTO-11: SpO₂ VERIFIED (captura dedicada + ground truth oxímetro)
+- [ ] PROTO-12: Skin temperature VERIFIED (captura dedicada + termómetro)
+- [ ] PROTO-13: Respiration rate VERIFIED
+- [ ] PROTO-14: IMU/gravity VERIFIED (TOGGLE_IMU_MODE capture)
+
+**UI:**
+- [ ] UI-01: JADX APK analysis → estrutura dos ecrãs documentada (o que mostra onde)
+- [ ] UI-02: Tab bar inferior WHOOP-style (Overview/Sleep/Strain/Coach + Device tab)
+- [ ] UI-03: Recovery card — score, HRV, RHR, sleep performance
+- [ ] UI-04: Sleep card — duração, eficiência, fases (REM/Deep/Light)
+- [ ] UI-05: Strain card — daily strain score, HR zones
+
+**Algoritmos:**
+- [ ] ALG-01: Recovery score calculado no servidor (openwhoop-algos) e mostrado na app
+- [ ] ALG-02: Sleep staging (REM/Deep/Light) via openwhoop-algos
+- [ ] ALG-03: Strain score (TRIMP/HR zones) via openwhoop-algos
+
+**HealthKit:**
+- [ ] HK-01: Exportar HR amostras para HealthKit
+- [ ] HK-02: Exportar HRV (SDNN/RMSSD) para HealthKit
+- [ ] HK-03: Exportar SpO₂ para HealthKit (quando VERIFIED)
+- [ ] HK-04: Exportar sessões de sono para HealthKit
 
 ### Out of Scope
 
 - WHOOP 4.0 support in this fork — separate repo handles it
-- Dual 4.0/5.0 in single fork — over-complex before protocol fully understood (revisit in v2.0+)
 - WHOOP MG ECG pathway — virgin RE territory, separate milestone
 - macOS app / watchOS complications / Android app
 - WHOOP cloud API integration — local-first by design
 - Clinical validation of biometric computations — personal/educational use only
 - Firmware modification — RE only, no writes to the strap
+- Copiar assets, artwork ou código proprietário do WHOOP — apenas referência para estrutura de dados/UI
 
 ## Context
 
-- **Hardware available:** WHOOP 5.0, iPhone 16 Pro Max (validated end-to-end in v1.0), Mac
-- **Android:** Not available during v1.0 — Android runbooks complete but untested live
+- **Hardware available:** WHOOP 5.0, iPhone 16 Pro Max, Mac
 - **v1.0 codebase state:** ~17,500 LOC Swift, ~30,400 LOC Python
-- **Tech stack:** Swift + CoreBluetooth + GRDB (iOS), Python + bleak (RE), FastAPI + TimescaleDB (server), JSON schema (protocol canonical source)
-- **Key insight from v1.0:** WHOOP 5.0 is asymmetric — accepts 4.0 format writes (commands from phone), sends Maverick format reads (responses from device). This was undocumented and required full RE to discover.
+- **Tech stack:** Swift + CoreBluetooth + GRDB + HealthKit (iOS), Python + bleak (RE), FastAPI + TimescaleDB + openwhoop-algos (server)
+- **Key v1.0 insight:** WHOOP 5.0 asymmetric — 4.0 writes, Maverick reads (D-11)
 - **Server:** Running on gonzaga via Dockge, image GHCR, docker compose stack
+- **Known blocker:** Backfiller fica preso / não puxa dados históricos — must fix before iOS views can be validated
 
 ## Constraints
 
-- **Hardware:** WHOOP 5.0 only — no simulator, physical device required for all BLE work
+- **Hardware:** WHOOP 5.0 only — no simulator, physical device required for BLE work
 - **Capture platform:** Mac required for PacketLogger; iOS PacketLogger requires Xcode pairing
-- **Legal:** 17 U.S.C. §1201(f) interoperability, own device, own data, no proprietary material reproduced
-- **No root/jailbreak:** iPhone and Android are stock — techniques limited to HCI logging and passive capture
-- **iOS deployment:** iOS 16+ on iPhone; SwiftUI + CoreBluetooth + GRDB architecture
+- **Legal:** §1201(f) interoperability — JADX APK for protocol/structure reference only; no copyrighted material reproduced
+- **No root/jailbreak:** Stock devices only
+- **iOS deployment:** iOS 16+ on iPhone; SwiftUI + CoreBluetooth + GRDB + HealthKit
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Clean fork (not dual-support) | Protocol may be substantially different; don't pollute 4.0 codebase | ✓ Correct — Maverick wrapper required new strip_maverick path |
-| Mac PacketLogger as primary capture | No jailbreak needed, captures full HCI including app traffic, Apple-native | ✓ Correct — all corpus captured this way |
-| Android HCI log as secondary source | Second independent capture to cross-reference | — Deferred (no Android device) |
-| Same architecture as 4.0 | Proven design; reuse Swift packages, server pipeline, schema-driven decode | ✓ Correct |
-| Phase 3 as explicit CRC gate | All decode work wasted if framing wrong | ✓ Critical — 0% CRC triggered Maverick RE |
-| Python discovery before Swift | Byte-level RE is 10–100× faster in Python | ✓ Correct — saved days |
-| D-11: 4.0 writes / Maverick reads asymmetry | WHOOP 5.0 reads 4.0 commands, sends Maverick responses | ✓ Resolved — key v1.0 protocol discovery |
+| Clean fork (not dual-support) | Protocol substantially different from 4.0 | ✓ Correct — Maverick wrapper required new path |
+| Mac PacketLogger as primary capture | No jailbreak, full HCI decrypted | ✓ Correct |
+| Phase 3 CRC gate | All decode wasted if framing wrong | ✓ Critical — 0% CRC triggered Maverick RE |
+| Python before Swift for RE | 10–100× faster for byte-level work | ✓ Correct |
+| D-11: 4.0 writes / Maverick reads | WHOOP 5.0 accepts 4.0 commands, sends Maverick responses | ✓ Resolved |
+| JADX for UI structure reference | Understand data hierarchy; implement from scratch in SwiftUI — not copy | — Pending (v2.0) |
+| openwhoop-algos for Recovery/Strain/Sleep | Existing open-source approximation, avoid trade-secret territory | — Pending (v2.0) |
+| HealthKit export | Standard Apple framework; keeps data local while integrating with ecosystem | — Pending (v2.0) |
 
 ---
 
@@ -79,7 +119,15 @@ Own your WHOOP 5.0 biometric data: read it from your own device over BLE, store 
 - Framing characterised: Maverick wrapper asymmetric read/write
 - iOS app validated on iPhone 16 Pro Max (IOS-01/02 VERIFIED)
 - Server ported and running on gonzaga
-- Open: 5 hardware-dependent items (IOS-03/04/05/06/08), 4 HYPOTHESIS biometric offsets, 1 partial PROTO-02
+- Open: backfill bug, 5 hardware-dependent items, 4 HYPOTHESIS biometric offsets
+
+**v2.0 goals (2026-05-31):**
+- Fix backfill pipeline
+- Complete iOS validation with real data
+- WHOOP-style UI via JADX reference
+- All biometric streams VERIFIED
+- Recovery/Strain/Sleep algorithms integrated
+- HealthKit export
 
 ---
-*Last updated: 2026-05-31 after v1.0 milestone*
+*Last updated: 2026-05-31 — starting v2.0 milestone*
