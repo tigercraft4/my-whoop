@@ -371,6 +371,38 @@ final class ServerSync {
         }
     }
 
+    /// Fetch the single most-recent `daily_metrics` row from the server via `/v1/today`.
+    /// Uses `ORDER BY day DESC LIMIT 1` semantics on the server — returns the latest row
+    /// even if it falls outside the `derivedWindowDays` window.
+    /// Returns `nil` on any network error, parse failure, or when the server has no rows for this device.
+    private func getTodayMetric() async -> DailyMetric? {
+        let path = "/v1/today?device=\(deviceId)"
+        guard let body = await get(path: path) else { return nil }
+        // Server returns JSON `null` when no rows exist — handle both null and object.
+        guard let json = try? JSONSerialization.jsonObject(with: body) else { return nil }
+        if json is NSNull { return nil }
+        guard let r = json as? [String: Any], let day = r["day"] as? String else { return nil }
+        let int = ServerSync.int
+        let dbl = ServerSync.dbl
+        return DailyMetric(day: day,
+                           totalSleepMin: dbl(r, "total_sleep_min") ?? dbl(r, "totalSleepMin"),
+                           efficiency: dbl(r, "efficiency"),
+                           deepMin: dbl(r, "deep_min") ?? dbl(r, "deepMin"),
+                           remMin: dbl(r, "rem_min") ?? dbl(r, "remMin"),
+                           lightMin: dbl(r, "light_min") ?? dbl(r, "lightMin"),
+                           disturbances: int(r, "disturbances"),
+                           restingHr: int(r, "resting_hr") ?? int(r, "restingHr"),
+                           avgHrv: dbl(r, "avg_hrv") ?? dbl(r, "avgHrv"),
+                           // Server emits recovery as a 0–100 score; normalize to 0–1 fraction
+                           // consistent with getDaily and all display sites.
+                           recovery: dbl(r, "recovery").map { $0 / 100.0 },
+                           strain: dbl(r, "strain"),
+                           exerciseCount: int(r, "exercise_count") ?? int(r, "exerciseCount"),
+                           spo2Pct: dbl(r, "spo2_pct") ?? dbl(r, "spo2Pct"),
+                           skinTempDevC: dbl(r, "skin_temp_dev_c") ?? dbl(r, "skinTempDevC"),
+                           respRateBpm: dbl(r, "resp_rate_bpm") ?? dbl(r, "respRateBpm"))
+    }
+
     private func getSleep(date: String) async -> [CachedSleepSession]? {
         let path = "/v1/sleep?device=\(deviceId)&date=\(date)"
         guard let body = await get(path: path),
