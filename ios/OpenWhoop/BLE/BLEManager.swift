@@ -917,6 +917,11 @@ extension BLEManager: CBPeripheralDelegate {
                 router.handle(frame: frame)                       // UI (always)
                 let isMav = frame.count > 1 && frame[1] == 0x01
                 let cmdOff = isMav ? 10 : 6
+                // Log every COMMAND_RESPONSE arriving on cmdNotifyChar for diagnostic purposes.
+                let ptype = frame.count > (isMav ? 8 : 4) ? frame[isMav ? 8 : 4] : 0
+                if ptype == 36 {  // COMMAND_RESPONSE
+                    BLEManager.logger.notice("CMD_RESP: cmd=\(frame.count > cmdOff ? frame[cmdOff] : 0, privacy: .public) len=\(frame.count, privacy: .public)")
+                }
                 if frame.count > cmdOff, frame[cmdOff] == WhoopCommand.getDataRange.rawValue,
                    let newest = BLEManager.dataRangeNewestUnix(from: frame) {
                     strapNewestTs = newest                        // feeds the liveness watchdog
