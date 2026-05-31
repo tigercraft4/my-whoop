@@ -3,7 +3,7 @@ status: partial
 phase: 05-ios-app-server-port
 source: [05-VERIFICATION.md]
 started: 2026-05-31T13:15:00Z
-updated: 2026-05-31T13:15:00Z
+updated: 2026-05-31T21:00:00Z
 ---
 
 ## Current Test
@@ -26,14 +26,14 @@ result: [pending] — código correto (bug willRestoreState corrigido); teste f�
 
 ### 4. docker compose up --build (SRV-05)
 expected: Stack servidor arranca limpo com dados 5.0; pipeline ingest→compute_day→read funcional
-result: [pending] — Docker não disponível no sandbox; código validado estaticamente
+result: [pass] — docker compose up --build OK; /healthz → {"status":"ok"}; POST /v1/ingest-decoded → 200; device_generation='5.0' confirmado nas 8 hypertables (hr_samples, rr_intervals, events, battery, spo2_samples, skin_temp_samples, resp_samples, gravity_samples); 2026-05-31
 
 ## Summary
 
 total: 4
-passed: 0
+passed: 1
 issues: 0
-pending: 4
+pending: 3
 skipped: 0
 blocked: 0
 

@@ -2,7 +2,7 @@
 phase: 05-ios-app-server-port
 verified: 2026-05-31T12:13:30Z
 status: human_needed
-score: 14/17 must-haves verified
+score: 15/17 must-haves verified
 overrides_applied: 0
 gaps: []
 human_verification:
@@ -17,7 +17,7 @@ human_verification:
     why_human: "O mecanismo está implementado (CBCentralManagerOptionRestoreIdentifierKey + willRestoreState + restoredPeripheral, bugs corrigidos em dc3e5cf) mas o teste físico foi explicitamente diferido no 05-06 por limitações de tempo de sessão. Requer iPhone físico com WHOOP ativo."
   - test: "docker compose up -d --build arranca o servidor com o init.sql actualizado (SRV-05)"
     expected: "'docker compose up --build' termina sem erros; curl POST /v1/ingest-decoded → 200; device_generation presente nas 8 hypertables via psql"
-    why_human: "O código está estaticamente correto (8 ALTER TABLE IF NOT EXISTS verificados, AST parse OK, DecodedBatch.device_generation presente), mas Docker não está disponível neste sandbox. O executor também não pôde correr o docker em 05-04. Requer host com Docker daemon."
+    result: "PASSOU — 2026-05-31: docker compose build OK; /healthz → {\"status\":\"ok\"}; POST /v1/ingest-decoded → 200 {\"upserted\":{\"hr\":1,\"rr\":1,\"events\":1,\"battery\":1,\"spo2\":1,\"skin_temp\":1,\"resp\":1,\"gravity\":1}}; device_generation='5.0' confirmado nas 8 hypertables via psql"
 ---
 
 # Phase 5: iOS App & Server Port — Verification Report
