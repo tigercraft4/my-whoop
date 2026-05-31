@@ -18,10 +18,11 @@ struct SleepCard: View {
         if let m = daily?.totalSleepMin, m > 0 {
             return String(format: "%.1f hr", m / 60)
         }
-        // Fallback: derive from session timestamps (total time in bed)
+        // Fallback: derive from session timestamps (total time in bed — approximate,
+        // includes time awake in bed; prefix "~" to signal imprecision to user)
         if let s = session {
             let totalMin = Double(s.endTs - s.startTs) / 60
-            if totalMin > 0 { return String(format: "%.1f hr", totalMin / 60) }
+            if totalMin > 0 { return String(format: "~%.1f hr", totalMin / 60) }
         }
         return "—"
     }
@@ -77,8 +78,8 @@ struct SleepCard: View {
             }
         }
         .padding(WH.Spacing.lg)
-        .background(Color.black)
-        .cornerRadius(WH.Radius.card)
+        .background(Color.black,
+                    in: RoundedRectangle(cornerRadius: WH.Radius.card, style: .continuous))
     }
 
     // MARK: - Sub-component

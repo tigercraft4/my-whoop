@@ -68,8 +68,8 @@ struct StrainCard: View {
             }
         }
         .padding(WH.Spacing.lg)
-        .background(Color.black)
-        .cornerRadius(WH.Radius.card)
+        .background(Color.black,
+                    in: RoundedRectangle(cornerRadius: WH.Radius.card, style: .continuous))
     }
 }
 
