@@ -89,47 +89,14 @@ struct TodayView: View {
         .background(WH.Color.background)
     }
 
-    // MARK: - Hero section (recovery ring → recovery history)
+    // MARK: - Hero section (recovery card → recovery history)
 
     private var heroSection: some View {
-        HStack {
-            Spacer()
-            NavigationLink(destination: MetricDetailView(kind: .recovery)) {
-                if let recovery = metrics.today?.recovery {
-                    RecoveryRing(percent: recovery * 100, size: 200, strokeWidth: 16)
-                } else {
-                    pendingRecoveryRing
-                }
-            }
-            .buttonStyle(.plain)
-            Spacer()
+        NavigationLink(destination: MetricDetailView(kind: .recovery)) {
+            RecoveryCard(daily: metrics.today)
         }
+        .buttonStyle(.plain)
         .padding(.top, WH.Spacing.sm)
-    }
-
-    private var pendingRecoveryRing: some View {
-        ZStack {
-            Circle()
-                .stroke(WH.Color.ringTrack, lineWidth: 16)
-            Circle()
-                .stroke(WH.Color.ringTrack.opacity(0.5), lineWidth: 24)
-                .blur(radius: 6)
-
-            VStack(spacing: WH.Spacing.xs) {
-                Text("—")
-                    .font(WH.Font.metricHero(size: 64))
-                    .foregroundStyle(WH.Color.textSecondary)
-                    .monospacedDigit()
-                Text("RECOVERY")
-                    .font(WH.Font.cardTitle)
-                    .foregroundStyle(WH.Color.textSecondary)
-                    .tracking(1.5)
-                Text("Pending")
-                    .font(WH.Font.caption)
-                    .foregroundStyle(WH.Color.textSecondary.opacity(0.7))
-            }
-        }
-        .frame(width: 200, height: 200)
     }
 
     // MARK: - Strain card
