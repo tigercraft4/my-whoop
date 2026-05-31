@@ -18,8 +18,7 @@ struct RootTabView: View {
                 }
                 .tag("sleep")
 
-            // StrainView is created in Plan 09-05; WorkoutsView used as placeholder
-            WorkoutsView()
+            StrainView()
                 .tabItem {
                     Label("Strain", systemImage: "bolt.heart")
                 }
