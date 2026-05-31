@@ -1,5 +1,4 @@
 import SwiftUI
-import HealthKit
 
 // MARK: - TodayView
 // The command-centre "Today" tab. Renders server-cached recovery/strain/sleep/HRV/RHR
