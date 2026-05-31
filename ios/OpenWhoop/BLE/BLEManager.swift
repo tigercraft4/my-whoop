@@ -834,11 +834,17 @@ extension BLEManager: CBPeripheralDelegate {
                            error: Error?) {
         guard let data = characteristic.value else { return }
         let bytes = [UInt8](data)
-        // DEBUG: log first few raw notifications per char
-        if rawNotifDebugCount < 20 {
+        let charShort = characteristic.uuid.uuidString.prefix(8)
+        let preview = bytes.prefix(8).map { String(format: "%02x", $0) }.joined()
+        // Always log FD4B custom char notifications; limit 2A37/battery to first 5.
+        let isCustom = characteristic.uuid == BLEManager.dataNotifyChar
+            || characteristic.uuid == BLEManager.cmdNotifyChar
+            || characteristic.uuid == BLEManager.eventNotifyChar
+        if isCustom {
+            log("FD4B notify char=\(charShort) len=\(bytes.count) bytes=\(preview)")
+        } else if rawNotifDebugCount < 5 {
             rawNotifDebugCount += 1
-            let preview = bytes.prefix(8).map { String(format: "%02x", $0) }.joined()
-            log("RAW notify char=\(characteristic.uuid.uuidString.prefix(8)) len=\(bytes.count) bytes=\(preview)")
+            log("RAW notify char=\(charShort) len=\(bytes.count) bytes=\(preview)")
         }
 
         switch characteristic.uuid {
