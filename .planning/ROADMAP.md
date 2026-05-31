@@ -8,6 +8,7 @@
 
 - ✅ **v1.0 — WHOOP 5.0 Protocol + iOS App** — Phases 1–5 (shipped 2026-05-31)
 - 🚧 **v2.0 — Complete iOS + WHOOP-Style UI + Algorithms** — Phases 6–11 (in progress)
+- 📋 **v3.0 — WHOOP Parity** — Phases 12–13 (planned)
 
 ---
 
@@ -110,9 +111,16 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
   6. Authorization requested lazily in Today view; app continues normally if denied
 **Plans**: TBD
 
+### 📋 v3.0 — WHOOP Parity (Planned)
+
+**Milestone Goal:** Atingir paridade total com a app WHOOP — UI labels correctos, métricas em falta, algoritmos de backend equivalentes aos do WHOOP, e haptics funcionais.
+
+- [ ] **Phase 12: UI Parity** — Corrigir labels e adicionar métricas em falta identificadas via IPA analysis
+- [ ] **Phase 13: Backend Parity** — Algoritmos equivalentes ao WHOOP: Sleep Performance, Training State, Sleep Needed, Calorias
+
 ---
 
-## Progress
+## Phase Details
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -127,10 +135,51 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 9. SwiftUI Redesign WHOOP-Style | v2.0 | 6/6 | Complete    | 2026-05-31 |
 | 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 11. HealthKit Export | v2.0 | 4/4 | Complete    | 2026-05-31 |
+| 12. UI Parity | v3.0 | 0/? | Not started | - |
+| 13. Backend Parity | v3.0 | 0/? | Not started | - |
+
+### Phase 12: UI Parity
+**Goal**: Corrigir todos os labels e métricas identificados via IPA analysis (WHOOP 5.37.0) para atingir paridade visual com a app oficial
+**Depends on**: Phase 9 (SwiftUI Redesign done)
+**Source**: IPA analysis de `/APPS IOS APK/com.whoop.iphone_5.37.0_und3fined.ipa` + `docs/whoop-ui-reference.md`
+**Requirements**: UI-10, UI-11, UI-12, UI-13, UI-14
+**Success Criteria** (what must be TRUE):
+  1. SleepCard mostra "SLEEP PERFORMANCE" (não "SLEEP EFFICIENCY") e "HOURS OF SLEEP" (não "TIME ASLEEP")
+  2. Staging breakdown inclui tempo AWAKE como 4ª fase
+  3. StrainCard mostra Training State (OPTIMAL / RESTORATIVE / OVERREACHING / IMPOSSIBLE) baseado em Recovery + Strain
+  4. Haptics funcionam no WHOOP 5.0 — PacketLogger capture da app oficial confirma o comando correcto (Gen5: RunAppDrivenHapticsCommandPacket com DRV2605 waveform effects)
+  5. TrendsView inclui SLEEP PERFORMANCE (não duração) como métrica principal de sono
+
+**Gaps identificados (IPA 5.37.0):**
+- `SleepView`: "SLEEP EFFICIENCY" → "SLEEP PERFORMANCE"; "TIME ASLEEP" → "HOURS OF SLEEP"
+- `SleepCard`: adicionar AWAKE como 4ª fase no HypnogramView; adicionar SLEEP LATENCY e DISTURBANCES se disponíveis
+- `StrainView`: adicionar TRAINING STATE badge (OPTIMAL/RESTORATIVE/OVERREACHING/IMPOSSIBLE)
+- Haptics: Gen5 usa `RunAppDrivenHapticsCommandPacket` com até 8 DRV2605 waveform effects — requer PacketLogger capture da app oficial a fazer buzz
+- `MetricKind`: SLEEP PERFORMANCE como métrica de tendência (não sleepDuration)
+- Skin temp: separar valor absoluto de "FROM BASELINE" (desvio)
+
+### Phase 13: Backend Parity
+**Goal**: Implementar algoritmos equivalentes ao WHOOP no servidor: Sleep Performance score ponderado, Training State, Sleep Needed, Calorias — substituindo ou complementando o openwhoop-algos actual
+**Depends on**: Phase 10 (server endpoint done), Phase 12 (UI ready to display)
+**Source**: IPA analysis revela nomes de classes: `SleepPerformanceCalculator`, `RecoveryScoreCalculator`, `TrainingStateCalculator`, `SleepNeededCalculator`
+**Requirements**: ALG-10, ALG-11, ALG-12, ALG-13
+**Success Criteria** (what must be TRUE):
+  1. `sleep.py`: Sleep Performance = score ponderado (não raw efficiency) — fórmula: duração + eficiência + staging adequado + consistência; range 0–100
+  2. `daily.py`: Training State calculado a partir de Recovery + Day Strain: OPTIMAL (Recovery 67–100, Strain moderado), RESTORATIVE (Recovery baixo, Strain baixo), OVERREACHING (Strain alto vs Recovery), IMPOSSIBLE (Recovery < 33 + Strain alto)
+  3. `daily.py`: Sleep Needed = Baseline (média 7d) + Strain Debt (função do strain do dia anterior) + Sleep Debt (défice acumulado) − Recent Naps
+  4. `strain.py`: Calorias estimadas (RMR via Mifflin–St Jeor + TEE via strain) e expostas no endpoint `/v1/today`
+  5. iOS Today view mostra CALORIES e Training State a partir dos valores computados pelo servidor
+
+**Como o WHOOP analiza (baseado em IPA class names + openwhoop-algos):**
+- **Sleep Performance**: não é `efficiency = time_asleep / time_in_bed`. É um score composto que penaliza fragmentação, premia staging adequado (REM + Deep > 20%), e normaliza por duração. Classes: `SleepPerformanceCalculator`, `SleepStagingQualityMetric`
+- **Training State**: função bidimensional de (Recovery Score, Day Strain). 4 zonas no plano Recovery-Strain. Classes: `TrainingStateCalculator`, `TrainingZoneClassifier`
+- **Sleep Needed**: `baseline_sleep + strain_sleep_debt - nap_credit`. Baseline = média rolling 7d. Strain debt aumenta com Day Strain > 14. Classes: `SleepNeededCalculator`, `SleepDebtTracker`
+- **Calorias**: RMR (Mifflin–St Jeor com perfil corporal) + TEE proporcional ao strain acumulado. Classes: `CalorieCalculator`, `BasalMetabolicRateModel`
+- **Haptics Gen5**: `RunAppDrivenHapticsCommandPacket` → DRV2605 waveform effects (até 8 por chamada). Sem patternId simples — envia sequências de efeitos pré-definidos. Requer PacketLogger capture para reverse-engineer os bytes exactos.
 
 ---
 
-## Backlog
+## Progress
 
 ### Phase 999.1: Follow-up — Phase 1 Android device items (BACKLOG)
 
