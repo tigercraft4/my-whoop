@@ -85,13 +85,29 @@ Um requisito está **Done** quando:
 
 ## Traceability
 
-*Preenchido pelo roadmapper.*
-
-| Requirement | Phase |
-|-------------|-------|
-| BF-01, BF-02 | Phase 6 |
-| IOS-03, IOS-04, IOS-05, IOS-08, PROTO-11, PROTO-12, PROTO-13, PROTO-14 | Phase 7 |
-| UI-01 | Phase 8 |
-| UI-02, UI-03, UI-04, UI-05 | Phase 9 |
-| ALG-01, ALG-02, ALG-03, ALG-04 | Phase 10 |
-| HK-01, HK-02, HK-03, HK-04, HK-05 | Phase 11 |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| BF-01 | Phase 6 | Pending |
+| BF-02 | Phase 6 | Pending |
+| IOS-03 | Phase 7 | Pending |
+| IOS-04 | Phase 7 | Pending |
+| IOS-05 | Phase 7 | Pending |
+| IOS-08 | Phase 7 | Pending |
+| PROTO-11 | Phase 7 | Pending |
+| PROTO-12 | Phase 7 | Pending |
+| PROTO-13 | Phase 7 | Pending |
+| PROTO-14 | Phase 7 | Pending |
+| UI-01 | Phase 8 | Pending |
+| UI-02 | Phase 9 | Pending |
+| UI-03 | Phase 9 | Pending |
+| UI-04 | Phase 9 | Pending |
+| UI-05 | Phase 9 | Pending |
+| ALG-01 | Phase 10 | Pending |
+| ALG-02 | Phase 10 | Pending |
+| ALG-03 | Phase 10 | Pending |
+| ALG-04 | Phase 10 | Pending |
+| HK-01 | Phase 11 | Pending |
+| HK-02 | Phase 11 | Pending |
+| HK-03 | Phase 11 | Pending |
+| HK-04 | Phase 11 | Pending |
+| HK-05 | Phase 11 | Pending |

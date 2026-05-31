@@ -1,12 +1,12 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: Complete iOS + UI + Algorithms
+milestone_name: Complete iOS + WHOOP-Style UI + Algorithms
 status: planning
-last_updated: "2026-05-31T17:10:01.952Z"
+last_updated: "2026-05-31"
 last_activity: 2026-05-31
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -16,7 +16,7 @@ progress:
 # State — WHOOP 5.0
 
 **Project:** my-whoop (clean fork for WHOOP 5.0)
-**Last updated:** 2026-05-31 (v1.0 milestone closed)
+**Last updated:** 2026-05-31 (v2.0 roadmap created)
 
 ---
 
@@ -26,13 +26,49 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** v1.0 shipped. Planning next milestone (v2.0).
+**Current focus:** v2.0 — Phase 6: Backfill Fix (ready to plan)
+
+---
+
+## Current Position
+
+Phase: 6 of 11 (Backfill Fix)
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-05-31 — v2.0 roadmap created, Phases 6–11 defined
+
+Progress: [░░░░░░░░░░] 0%
+
+---
+
+## Accumulated Context
+
+### Key Decisions (v2.0)
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 1 | Phase 6 (backfill fix) is a hard gate | Every other v2.0 feature needs real data in the store |
+| 2 | Phase 8 (JADX) runs in parallel with Phase 6 | Independent — no data dependency |
+| 3 | HealthKit goes last (Phase 11) | Needs real store data AND stable view architecture |
+| 4 | SpO₂ HealthKit export gated on PROTO-11 VERIFIED | Cannot export unvalidated biometric offsets |
+| 5 | Algorithm pipeline is server-side only | Recovery/strain/sleep require multi-night baselines |
+
+### Blockers / Concerns
+
+- **BF-P1:** `connectHandshakeDone` invariant — any new `.withResponse` command must not bypass guard at BLEManager.swift line 804
+- **HK-P1:** HealthKit entitlement + plist keys must be added BEFORE importing HealthKit framework
+- **HK-P2:** Unit conversions are not optional — SpO₂ must be 0.0–1.0 (not 0–100) for HealthKit
+- **PROTO-11/12/14:** Biometric stream correctness cannot be confirmed without working backfill + calibrated reference device
+
+### Pending Todos
+
+None yet.
 
 ---
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close on 2026-05-31:
+Items acknowledged and deferred at v1.0 milestone close on 2026-05-31:
 
 | Category | Item | Status |
 |----------|------|--------|
@@ -42,28 +78,12 @@ Items acknowledged and deferred at milestone close on 2026-05-31:
 | verification_gap | Phase 02 / 02-VERIFICATION.md | human_needed |
 | verification_gap | Phase 05 / 05-VERIFICATION.md | human_needed |
 
-**Root cause:** All gaps require physical hardware (iPhone with unsynced WHOOP data, Docker on CI, Android device) not available in the sandbox environment.
+Root cause: All gaps require physical hardware not available in sandbox.
 
 ---
 
-## Current Position
+## Session Continuity
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-05-31 — Milestone v2.0 started
-
-## Key Decisions (v1.0)
-
-| # | Decision | Rationale | Outcome |
-|---|----------|-----------|---------|
-| 1 | Clean fork (not dual 4.0/5.0 support) | Protocol may differ enough to pollute 4.0 | ✓ Correct — Maverick wrapper required new strip_maverick path |
-| 2 | Phase 3 as explicit CRC gate | All decoder work wasted if framing wrong | ✓ Critical — 0% pass rate triggered Maverick RE |
-| 3 | Python discovery before Swift | Swift 10–100× slower for byte-level RE | ✓ Correct |
-| 4 | Mac PacketLogger as primary capture | No jailbreak; captures full HCI | ✓ Correct |
-| 5 | Skip RF sniffer (nRF52840) | HCI logs give decrypted GATT | ✓ Correct |
-| 6 | D-11: 4.0 writes / Maverick reads asymmetry | Discovered in Phase 5 — WHOOP 5.0 writes accepted in 4.0 format | ✓ Resolved — key protocol insight |
-
----
-
-*State refreshes after every plan completion and phase transition.*
+Last session: 2026-05-31
+Stopped at: v2.0 roadmap created — Phases 6–11 defined, ready to plan Phase 6
+Resume file: None
