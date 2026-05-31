@@ -5,9 +5,10 @@ import WhoopStore
 // MARK: - MetricsRepository
 //
 // View-facing read facade over the local MetricsCache (WhoopStore tables dailyMetric +
-// sleepSession). The phone does NO metric computation: all values are server-computed and
-// cached locally by ServerSync.pullDerived(). MetricsRepository only reads the cache and
-// delegates network refreshes to ServerSync.
+// sleepSession). Primary data path is OFFLINE-FIRST: LocalMetricsComputer derives sleep
+// sessions and resting HR / HRV directly from raw BLE streams already in the local store.
+// When the server is configured (Secrets.xcconfig has real values → serverSync != nil),
+// server-computed metrics are pulled on top and take priority via ON CONFLICT DO UPDATE.
 //
 // LAZY-OPEN DESIGN: The synchronous init() does NOT open the on-disk store (WhoopStore.init
 // is async). Instead, ensureOpen() is called at the top of every async method and opens the
@@ -129,14 +130,24 @@ final class MetricsRepository: ObservableObject {
 
     // MARK: - Refresh from server then reload
 
-    /// Pull derived metrics from the server (if configured) then reload from cache.
-    /// Uses pullDerived() — NOT the heavy full-stream pull() — to keep the UI refresh fast.
-    /// Safe when serverSync == nil (just reloads). Never throws.
+    /// Refresh metrics: compute locally from raw BLE streams (always), then pull from the server
+    /// if configured (server values take priority via ON CONFLICT DO UPDATE), then reload cache.
+    ///
+    /// Order of operations:
+    ///   1. computeLocalMetrics() — derive sleep/daily from hrSample + rrInterval (offline-first)
+    ///   2. serverSync?.pullDerived() — overwrite with server values when configured (optional)
+    ///   3. load() — reload published properties from the updated cache
+    ///
+    /// Safe when serverSync == nil (steps 1 + 3 always run). Never throws.
     func refresh() async {
         await ensureOpen()
         isRefreshing = true
         lastError = nil
+        // Step 1: offline-first local derivation from raw BLE streams.
+        await runLocalCompute()
+        // Step 2: server pull overwrites local estimates when the server is configured.
         await serverSync?.pullDerived()
+        // Step 3: reload published properties from the updated cache.
         await load()
         isRefreshing = false
         lastRefreshedAt = Date()
@@ -145,6 +156,27 @@ final class MetricsRepository: ObservableObject {
         if let metric = today, let recovery = metric.recovery {
             RecoveryNotifier.notify(recovery: recovery, forDay: metric.day)
         }
+    }
+
+    // MARK: - Local metric computation (offline-first)
+
+    /// Derive sleep sessions and daily metrics (resting HR, HRV) from raw BLE streams already
+    /// in the local WhoopStore. Called automatically by refresh(). Also exposed publicly so
+    /// BLEManager can trigger a compute pass immediately after a backfill completes, making
+    /// metrics visible without waiting for the next manual pull-to-refresh.
+    ///
+    /// Best-effort: no-op when the store is unavailable or has no HR samples. Never throws.
+    func computeLocalMetrics() async {
+        await ensureOpen()
+        await runLocalCompute()
+        await load()
+    }
+
+    /// Internal: runs LocalMetricsComputer without touching isRefreshing or published properties.
+    private func runLocalCompute() async {
+        guard let store else { return }
+        let computer = LocalMetricsComputer(store: store, deviceId: deviceId)
+        await computer.compute()
     }
 
     // MARK: - Range reads for Trends/Sleep tabs

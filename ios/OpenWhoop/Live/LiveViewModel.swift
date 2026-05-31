@@ -30,6 +30,12 @@ public final class LiveViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
+    /// Wire a closure to be called whenever the BLE historical offload ends.
+    /// Called by AppRoot to connect backfill completion to MetricsRepository.computeLocalMetrics().
+    public func onBackfillComplete(_ handler: @escaping () -> Void) {
+        ble.onBackfillComplete = handler
+    }
+
     public func connect()  { ble.connect() }
     public func disconnect() { ble.disconnect() }
     /// Force a historical offload immediately, bypassing the rate limiter.

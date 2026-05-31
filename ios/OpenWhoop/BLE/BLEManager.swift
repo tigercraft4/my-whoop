@@ -84,6 +84,10 @@ public final class BLEManager: NSObject, ObservableObject {
     private var backfillFrameQueue: [[UInt8]] = []
     /// True while the drain task is running (prevents a second drain task from launching).
     private var backfillDraining = false
+    /// Called once after every historical offload session ends (regardless of reason).
+    /// Wired by AppRoot to MetricsRepository.computeLocalMetrics() so offline-derived metrics
+    /// (resting HR, HRV, sleep detection) update immediately after new BLE data arrives.
+    var onBackfillComplete: (() -> Void)?
 
     // MARK: CoreBluetooth
     private var central: CBCentralManager!
@@ -372,6 +376,7 @@ public final class BLEManager: NSObject, ObservableObject {
             UserDefaults.standard.set(state.lastSyncedAt, forKey: "lastSyncedAt")
         }
         checkStrapLiveness()         // safety-net: strap ahead of us AND our frontier frozen ⇒ stuck?
+        onBackfillComplete?()        // trigger offline metric derivation (LocalMetricsComputer)
     }
 
     /// After an offload, judge liveness: stuck = strap reports records newer than our frontier AND our
