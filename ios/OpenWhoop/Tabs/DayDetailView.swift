@@ -170,7 +170,7 @@ struct DayDetailView: View {
                     accentColor: metric.avgHrv != nil ? WH.Color.recoveryGreen : WH.Color.textSecondary
                 )
                 MetricCard(
-                    title: "Resting HR",
+                    title: "RHR",
                     value: metric.restingHr.map { "\($0)" } ?? "—",
                     unit: metric.restingHr != nil ? "bpm" : nil,
                     accentColor: metric.restingHr != nil ? WH.Color.textPrimary : WH.Color.textSecondary
@@ -188,12 +188,12 @@ struct DayDetailView: View {
                     accentColor: metric.respRateBpm != nil ? WH.Color.strainBlue : WH.Color.textSecondary
                 )
                 MetricCard(
-                    title: "Skin Temp Dev",
+                    title: "SKIN TEMP",
                     value: {
                         guard let t = metric.skinTempDevC else { return "—" }
                         return String(format: "%+.1f", t)
                     }(),
-                    unit: metric.skinTempDevC != nil ? "°C" : nil,
+                    unit: metric.skinTempDevC != nil ? "°C from baseline" : nil,
                     accentColor: metric.skinTempDevC != nil ? WH.Color.recoveryYellow : WH.Color.textSecondary
                 )
                 if let ex = metric.exerciseCount {

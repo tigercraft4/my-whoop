@@ -90,8 +90,8 @@ struct TodayView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Sleep card → sleep duration history
-                NavigationLink(destination: MetricDetailView(kind: .sleepDuration)) {
+                // Sleep card → sleep performance history (D-09/D-11)
+                NavigationLink(destination: MetricDetailView(kind: .sleepPerformance)) {
                     sleepCard
                 }
                 .buttonStyle(.plain)
@@ -235,7 +235,7 @@ struct TodayView: View {
         let rhr = metrics.today?.restingHr ?? metrics.lastNight?.restingHr
         let value = rhr.map { "\($0)" } ?? "—"
         let accent: Color = rhr != nil ? WH.Color.textPrimary : WH.Color.textSecondary
-        return MetricCard(title: "Resting HR",
+        return MetricCard(title: "RHR",
                           value: value,
                           unit: rhr != nil ? "bpm" : nil,
                           accentColor: accent)
