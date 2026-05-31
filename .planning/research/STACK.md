@@ -1,316 +1,296 @@
-# Technology Stack — BLE Capture & Analysis for WHOOP 5.0
+# Technology Stack — v2.0 Milestone
 
-**Project:** my-whoop (WHOOP 5.0 reverse engineering)
-**Researched:** 2026-05-30
-**Scope:** Tools and workflow for capturing and analysing BLE traffic between WHOOP 5.0 and the official app on stock iPhone + stock Android + Mac with Xcode.
-**Overall confidence:** HIGH — Apple/Google/Nordic tooling is mature; an existing public WHOOP 5.0 RE project (`Sophonbot0/whoop-vault`) confirms the workflow end-to-end.
-
----
-
-## TL;DR — The Prescriptive Stack
-
-**Do this, in this order:**
-
-1. **JADX-GUI on the official WHOOP Android APK** — this is your *primary* protocol source. The 5.0 protocol has already been mostly mapped this way; do not start from scratch with passive sniffing.
-2. **Apple PacketLogger** (Additional Tools for Xcode) + **iOS Bluetooth Logging profile** — live HCI capture from your iPhone tethered to Mac. Primary *runtime* capture tool.
-3. **Android HCI snoop log** on the stock Android phone running the official WHOOP app — secondary capture for cross-validation and to fill gaps where iOS strips data.
-4. **Wireshark 4.4.x** (current LTS) — single analysis surface for both `.pklg` (iOS) and `.btsnoop` (Android) files.
-5. **nRF Connect for Mobile** (iOS + Android) — fast GATT enumeration and ad-hoc characteristic writes/reads. No hardware purchase needed.
-6. **Skip the nRF52840 sniffer for now.** Mac PacketLogger already gives you decrypted HCI traffic from the iPhone. A passive RF sniffer adds cost, setup time, and packet drops without unlocking new data — defer unless WHOOP 5.0 introduces a non-bonded encrypted channel that hides from HCI.
-
-The headline finding: **a public project (Sophonbot0/whoop-vault) already documents the WHOOP 5.0 "Maverick" frame format, service UUIDs, command bytes, and historical sync handshake** based on JADX decompilation of firmware r52. The 4.0 frame format from this project (`0xAA` SOF, len-LE-u16, CRC8, type, seq, cmd, payload, CRC32-LE) is **structurally the same as 5.0's Maverick header**, but the header has additional version/role/CRC16 fields and the inner buffer is now 4-byte aligned. Treat APK decompilation as the source of truth and BLE capture as the verification mechanism.
+**Project:** OpenWhoop WHOOP 5.0 — v2.0 new capabilities
+**Researched:** 2026-05-31
+**Scope:** Stack additions/changes for HealthKit export, openwhoop-algos iOS integration, JADX UI analysis, IMU/SpO₂ capture
 
 ---
 
-## Recommended Stack
+## Summary
 
-### Primary: Protocol Discovery from APK
+v2.0 adds four new capability surfaces onto a stable v1.0 core. The headline finding is that **the server algorithm stack is already fully implemented and deployed** — Recovery score, Sleep staging, and Strain are all computed by `compute_day()` and already flowing into the iOS local cache via `ServerSync.pullDerived()`. The iOS side needs to read and display this data, not re-compute it.
 
-| Tool | Version | Purpose | Why |
-|------|---------|---------|-----|
-| **JADX-GUI** | 1.5.1 (Mar 2025, current) | Decompile official WHOOP Android APK to readable Java | Sophonbot0/whoop-vault already mapped 5.0 enums (`eo0/c.java` packet types, `eo0/e.java` commands, `xg0/a.java` packet builder, `ch0/b.java` ACK protocol) — same approach will validate and extend |
-| **apktool** | 2.10.0 | Unpack APK resources (XML manifests, smali) | Complement to JADX for resource-level analysis (string tables, service UUIDs declared in manifests) |
-| **Ghidra** | 11.2 | Decompile native `.so` libraries if firmware logic is in C/Rust | The WHOOP app may push protocol details into a native library; Ghidra needed if Java layer is just a thin wrapper |
-| **frida-tools** | 16.x | Runtime hook on Android *if* you root a secondary device later | Optional. Only if static decompilation runs out of road — out of scope for stock device, deferred |
+The other headline: **no new Swift packages are needed**. HealthKit is a system framework (iOS 8+), all algorithm data is already in the local GRDB store, and the JADX toolchain is already installed.
 
-**APK acquisition:** Pull from a stock Android phone with `adb shell pm path com.whoop.android` then `adb pull` the APK paths. Use whichever version is currently installed and pinned to your firmware. Do **not** redistribute the APK — analyse locally only.
+What v2.0 actually requires:
 
-**Confidence:** HIGH. JADX is the standard Android RE tool; the existing whoop-vault project proves it works on the WHOOP APK.
-
-### Primary: Live BLE Capture on iOS (Mac-tethered)
-
-| Tool | Version | Purpose | Why |
-|------|---------|---------|-----|
-| **PacketLogger** | Ships with Additional Tools for Xcode 16.x (Dec 2024+) | Live HCI capture from iPhone tethered to Mac via USB | Apple-native, no jailbreak, captures full HCI including ATT/GATT writes/notifications between WHOOP app and strap — Apple decrypts the LE Secure Connections traffic on-device so HCI logs are plaintext |
-| **iOS Bluetooth Logging profile** (`iOSBluetoothLogging.mobileconfig`) | Current (Apple-signed) | Enables enhanced BLE logging on the iPhone | Required — without this profile, PacketLogger live trace will be empty / minimal |
-| **Console.app** | Ships with macOS 14+ | Stream `bluetoothd` log messages from iPhone (alongside PacketLogger HCI) | Complements PacketLogger with bluetoothd-level messages (pairing state, LTK events, errors) |
-| **Xcode** | 16.x (current) | Required to install Additional Tools; also provides device pairing/trust dialogs | Already installed by user |
-
-**Confidence:** HIGH. Documented Apple workflow; Bluetooth SIG and multiple BLE practitioner blogs (Novel Bits, BeaconZone, billsnyder.me, Twocanoes) confirm the procedure.
-
-### Primary: Live BLE Capture on Android (stock, no root)
-
-| Tool | Version | Purpose | Why |
-|------|---------|---------|-----|
-| **Android Developer Options → Enable Bluetooth HCI snoop log** | Android 14 / 15 (stock) | Capture HCI to `btsnoop_hci.log` | Built-in, no root, captures everything the Android Bluetooth stack sees — same level as PacketLogger on iOS |
-| **adb (Android Platform Tools)** | 35.x (current) | Extract `btsnoop_hci.log` via bug report mechanism on stock (non-root) devices | Without root you cannot `adb pull /data/misc/bluetooth/logs/` directly; the supported path is `adb bugreport` → unzip → `FS/data/log/bt/btsnoop_hci.log` |
-| **bugreport extraction**: `adb bugreport bug.zip` then unzip | n/a | Recover the snoop log on stock device | Confirmed working on Android 14/15 without root |
-
-**Workflow caveat:** On Android 15+, some OEMs rotate filenames (e.g., `btsnoop_hci_2026_01_09.log`). Always verify with:
-```
-adb shell cat /etc/bluetooth/bt_stack.conf | grep BtSnoopFileName
-```
-
-**Confidence:** HIGH for the mechanism; MEDIUM that bug-report extraction works on every OEM build (Samsung One UI is known to sometimes restrict access — Pixel stock is the safe choice).
-
-### Analysis Surface
-
-| Tool | Version | Purpose | Why |
-|------|---------|---------|-----|
-| **Wireshark** | 4.4.x (4.4.3 stable, Jan 2026) | Open `.pklg` (PacketLogger native) and `.btsnoop` files; dissect HCI / L2CAP / ATT / GATT layers | Single canonical analysis surface across both capture sources. Dissects every Bluetooth SIG protocol layer down to the bit, knows standard characteristics (e.g., `0x2A19` = Battery, `0x2A37` = HR Measurement) |
-| **Wireshark filters** | n/a | `btatt`, `btl2cap.cid == 0x0004`, `btatt.handle`, `btatt.opcode` | Standard filters for isolating GATT traffic |
-| **Custom Lua dissector** for WHOOP Maverick frame | DIY | Parse the `0xAA` framed payload inside ATT Write/Notify | Wireshark won't decode WHOOP-proprietary frames out of the box; a Lua dissector turns scrolls of hex into named fields. Build *after* you have the schema from JADX |
-
-**Confidence:** HIGH. PacketLogger explicitly exports to BTSnoop; Wireshark explicitly supports both formats.
-
-### GATT Exploration / Live Probing
-
-| Tool | Version | Purpose | Why |
-|------|---------|---------|-----|
-| **nRF Connect for Mobile** | iOS 2.7.x / Android 4.27.x (current) | Connect directly to WHOOP 5.0 strap, enumerate services/characteristics, send arbitrary writes, subscribe to notifications | Faster than writing Swift/Python code for every probe; great for "what does writing 0x01 to fd4b0002 do?" experiments. Nordic-made, free |
-| **Bleak** (Python) | 0.22.x | Cross-platform BLE client for scripted experiments on Mac/Linux | When you outgrow nRF Connect and need scripted, reproducible probes. Already used by the 4.0 codebase (`re/re_harness.py`) — same pattern carries to 5.0 |
-
-**Confidence:** HIGH. Already proven in the 4.0 workflow; whoop-vault uses Bleak.
-
-### Supporting Tools
-
-| Tool | Version | Purpose | When to Use |
-|------|---------|---------|-------------|
-| **btmon** (BlueZ) | 5.x (Linux) | Alternative HCI monitor if you bring a Linux box online | Backup. Not needed unless you want a third independent capture |
-| **hcitool / gatttool** | BlueZ 5.x | Low-level scripting on Linux | Same as btmon — backup. Bleak covers it cross-platform |
-| **plistutil / `pklg2btsnoop`** | n/a (PacketLogger File → Export) | Convert `.pklg` → `.btsnoop` for Wireshark | PacketLogger itself does this via File → Export. No external converter needed |
+1. **HealthKit export** — one new Swift class (`HealthKitExporter`), two Info.plist keys, one entitlement. Pure Apple framework; no SPM dependency.
+2. **Algorithm display in iOS** — wire `DailyMetric.recovery`, `DailyMetric.strain`, and `CachedSleepSession.stagesJSON` into the view layer. Data is already cached locally.
+3. **JADX UI scope expansion** — the toolchain is already installed; the new target is `res/layout/` XML (view hierarchy) rather than protocol enum Java classes.
+4. **IMU/SpO₂ capture** — `TOGGLE_IMU_MODE` and `captureRawAccel()` are already in the codebase; this is a BLE command + capture session, not a stack change.
 
 ---
 
-## Step-by-Step Setup
+## HealthKit Stack
 
-### 1. Install JADX-GUI (one-time, Mac)
+### Framework choice
 
-```bash
-brew install jadx
-# OR download the GitHub release: https://github.com/skylot/jadx/releases
+Use **pure HealthKit** (Apple system framework). No third-party SPM wrapper. The API surface needed is small — 4 write types, 1 authorization call, 1 save batch — and adding a wrapper package introduces a maintenance dependency for zero benefit.
+
+**Confidence: HIGH** — pure `HKHealthStore` is the universal pattern in every production HealthKit integration. Third-party wrappers exist (HealthKitReporter, CareKit) but add read-side complexity this project does not need.
+
+### Required HKObjectType subtypes
+
+| Metric | HealthKit identifier | HKSampleType class | Apple Health display |
+|--------|---------------------|--------------------|----------------------|
+| Heart Rate | `.heartRate` | `HKQuantitySample` | "Heart Rate" in Vitals |
+| HRV | `.heartRateVariabilitySDNN` | `HKQuantitySample` | "Heart Rate Variability" in Vitals |
+| SpO₂ | `.oxygenSaturation` | `HKQuantitySample` | "Blood Oxygen" in Respiratory |
+| Sleep | `.sleepAnalysis` | `HKCategorySample` | "Sleep" in Sleep tab |
+
+**Heart Rate:** `HKQuantityType(.heartRate)`, unit `HKUnit.count().unitDivided(by: .minute())`. Export one sample per row from `WhoopStore.hrSamples()`. Use a `UserDefaults` highwater cursor (same pattern as `Uploader.drain()`) so re-exports are not duplicated — HealthKit deduplicates by `(startDate, endDate, value, source)` but the cursor avoids the round-trip.
+
+**HRV:** `HKQuantityType(.heartRateVariabilitySDNN)`, unit `HKUnit.secondUnit(with: .milli)`. Apple Health has no `.heartRateVariabilityRMSSD` type. Export `DailyMetric.avgHrv` (which is the server's nightly RMSSD) using this type. This is the established pattern for third-party HRV apps. Label clearly as RMSSD in the app UI; the HealthKit type name is a mismatch Apple has not resolved. One sample per day, timestamped at `sleep_end`.
+
+**SpO₂:** `HKQuantityType(.oxygenSaturation)`, unit `HKUnit.percent()`. Critical: the value passed to HealthKit must be in the range **0.0–1.0**, not 0–100. Divide `DailyMetric.spo2Pct` by 100 before creating the sample. Gate this behind `PROTO-11: SpO₂ VERIFIED` — do not export SpO₂ until the biometric offset is validated against a calibrated oximeter.
+
+**Sleep:** `HKCategoryType(.sleepAnalysis)`. Use `HKCategorySample` with `HKCategoryValueSleepAnalysis`. The stage enum values available on iOS 16+ (the project's deployment target):
+
+| Server stage string | HKCategoryValueSleepAnalysis | Int value |
+|--------------------|------------------------------|-----------|
+| `"wake"` | `.awake` | 2 |
+| `"light"` | `.asleepCore` | 3 (N1/N2) |
+| `"deep"` | `.asleepDeep` | 4 (N3) |
+| `"rem"` | `.asleepREM` | 5 |
+| (no stage data) | `.asleepUnspecified` | 1 |
+
+Export one `HKCategorySample` per `StageSegment` from `CachedSleepSession.stagesJSON`. When `stagesJSON` is nil or empty, export a single `.asleepUnspecified` sample spanning the full session. `startDate` and `endDate` are `Date(timeIntervalSince1970:)` from `segment.start` and `segment.end`.
+
+### HKHealthStore authorization flow
+
+```swift
+// HealthKitExporter.swift — app target only (NOT in WhoopProtocol or WhoopStore packages)
+import HealthKit
+
+@MainActor
+final class HealthKitExporter {
+    private let hkStore = HKHealthStore()
+
+    static let shareTypes: Set<HKSampleType> = [
+        HKQuantityType(.heartRate),
+        HKQuantityType(.heartRateVariabilitySDNN),
+        HKQuantityType(.oxygenSaturation),
+        HKCategoryType(.sleepAnalysis),
+    ]
+
+    func requestAuthorizationIfNeeded() async throws {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        try await hkStore.requestAuthorization(toShare: Self.shareTypes, read: [])
+    }
+
+    func exportHR(_ samples: [HRSample]) async throws { ... }
+    func exportHRV(_ metrics: [DailyMetric]) async throws { ... }
+    func exportSleep(_ sessions: [CachedSleepSession]) async throws { ... }
+}
 ```
 
-Pull the WHOOP APK from a stock Android device that has the app installed:
+**Authorization rules that matter:**
 
-```bash
-adb shell pm path com.whoop.android
-# Output looks like: package:/data/app/.../base.apk
-adb pull /data/app/.../base.apk whoop.apk
-jadx-gui whoop.apk
+- Call `requestAuthorization` lazily on the first export attempt, not at app launch. Apple guidelines and App Review both require this — do not request HealthKit access until the user initiates an export action.
+- `isHealthDataAvailable()` returns `false` on iPad and in the Simulator. Gate every HealthKit path behind this check; never call `HKHealthStore` APIs when it returns false.
+- `requestAuthorization(toShare:read:)` with Swift concurrency (`async throws`) is available iOS 15.4+. The project deploys iOS 16, so this is safe.
+- Request only share (write) types; `read: []`. This app writes to Health, does not read from it.
+- The system authorization sheet appears once per type. Subsequent calls return immediately without UI.
+- Do not use the completion-handler form — use the `async throws` form throughout.
+
+### Info.plist additions (project.yml)
+
+In `project.yml` under the `OpenWhoop` target's `info.properties`, add:
+
+```yaml
+NSHealthShareUsageDescription: "OpenWhoop exports heart rate, HRV, SpO₂, and sleep data from your WHOOP strap to Apple Health."
+NSHealthUpdateUsageDescription: "OpenWhoop writes heart rate, HRV, SpO₂, and sleep data to Apple Health."
 ```
 
-Once open, search for `fd4b0001` (the known 5.0 service UUID), navigate up from there to find the command/event enums (`eo0/c.java`, `eo0/e.java` pattern from whoop-vault).
+Both keys are required — App Review rejects apps with only one.
 
-### 2. Install Apple PacketLogger (one-time, Mac)
+### Entitlement addition (project.yml)
 
-1. Sign into developer.apple.com → **More Downloads** → search "Additional Tools for Xcode".
-2. Download the DMG matching your Xcode version (Xcode 16.x → Additional Tools for Xcode 16).
-3. Open the DMG → `Hardware/` folder → drag **PacketLogger.app** to `/Applications`.
+Add to the `OpenWhoop` target:
 
-Verify:
-```bash
-ls /Applications/PacketLogger.app
+```yaml
+entitlements:
+  path: OpenWhoop/OpenWhoop.entitlements
+  properties:
+    com.apple.developer.healthkit: true
+    com.apple.developer.healthkit.background-delivery: false
 ```
 
-### 3. Install iOS Bluetooth Logging Profile (one-time, iPhone)
+Background delivery is not needed. This app pushes data after backfill; it does not observe HealthKit changes.
 
-1. On the iPhone, open Safari and navigate to:
-   `https://developer.apple.com/services-account/download?path=/iOS/iOS_Logs/iOSBluetoothLogging.mobileconfig`
-   (You must be signed into your Apple developer account; a free account works.)
-2. iOS will offer to download the profile → tap **Allow**.
-3. Settings → **General → VPN & Device Management → Bluetooth for iOS** → **Install** (passcode required).
-4. Reboot the iPhone (recommended — ensures `bluetoothd` picks up the new logging level).
+### Export trigger
 
-### 4. First iOS Capture
+Trigger HealthKit export from two places:
+1. Inside `onBackfillComplete` in `BLEManager` — after each historical offload, enqueue an export of any new data since the last-exported highwater.
+2. From a "Export to Apple Health" toggle/button in `SettingsView`.
 
-1. Connect iPhone to Mac via USB. Trust the computer if prompted.
-2. Launch **PacketLogger.app**.
-3. **File → New iOS Trace** → select your iPhone.
-4. You should see a pulsing dot in the iPhone's status bar — that's the live trace indicator.
-5. On the iPhone, open the official WHOOP app → connect to your strap → trigger sync.
-6. Back in PacketLogger, watch ATT/GATT packets appear in real time.
-7. **File → Save** → choose **BTSnoop** format → `whoop5-session-001.btsnoop`.
-8. After the session: Settings → General → VPN & Device Management → **remove the Bluetooth profile** when you're done capturing for the day (it's verbose and drains battery).
+Use a `UserDefaults` key per stream type (e.g. `hkExportHighwaterHR`, `hkExportHighwaterSleep`) to track the last exported timestamp. This matches the existing `Uploader.drain()` highwater pattern and avoids re-exporting on every backfill.
 
-### 5. First Android Capture
+### Export batching
 
-1. On stock Android (Pixel recommended), Settings → About Phone → tap **Build Number** seven times.
-2. Settings → System → **Developer Options** → toggle **Enable Bluetooth HCI snoop log** → **Filtered** or **Enabled** (use **Enabled** for max data).
-3. Toggle Bluetooth off and back on (forces the new logging level to take effect).
-4. Open the WHOOP Android app → connect to strap → trigger sync.
-5. Pull the snoop log:
-   ```bash
-   adb bugreport whoop-bug.zip
-   unzip whoop-bug.zip "FS/data/log/bt/*"
-   # The btsnoop_hci.log (or btsnoop_hci_YYYY_MM_DD.log on newer Android) is in FS/data/log/bt/
-   ```
-6. Disable the snoop log after capture (security hygiene — it logs *all* Bluetooth, including keyboards/AirPods).
+`HKHealthStore.save([HKSample], withCompletion:)` accepts arrays. Batch HR samples by day (up to ~1440 samples/day at 1 Hz). For sleep and HRV, batch size is small (one per night). Never save more than ~5000 samples in a single call to avoid memory pressure.
 
-### 6. Open Captures in Wireshark
+---
 
-```bash
-brew install --cask wireshark
+## Algorithm Server Stack
+
+### What is already fully implemented (do not re-build)
+
+The server's `analysis/` package is complete, deployed on gonzaga, and running. `compute_day(conn, device_id, day)` already produces:
+
+| Output field | Implementation | Table |
+|-------------|---------------|-------|
+| `recovery` (0–100) | `recovery.py` — z-score+logistic composite (HRV 60%, RHR 20%, sleep efficiency 15%, resp 5%), Winsorized-EWMA personal baseline, cold-start gate | `daily_metrics.recovery` |
+| `total_sleep_min`, `efficiency`, `deep_min`, `rem_min`, `light_min`, `disturbances` | `sleep.py` — Cole-Kripke accelerometer spine + neurokit2 cardiorespiratory classifier (wake/light/deep/rem per 30s epoch) | `daily_metrics.*` |
+| `stages` (JSON array of `{start,end,stage}` segments) | `sleep.py` — same pipeline; segments stored as JSONB | `sleep_sessions.stages` |
+| `strain` (0–21) | `strain.py` — Edwards TRIMP (5-zone HRR), logarithmic compression | `daily_metrics.strain` |
+| `avg_hrv` (RMSSD, ms) | `hrv.py` — last-SWS tiered RMSSD, Kubios-style filters | `daily_metrics.avg_hrv` |
+| `resting_hr` (bpm) | `recovery.py` — min of 5-min windowed means during sleep | `daily_metrics.resting_hr` |
+| `spo2_pct` (%) | `units.spo2_percent_window()` — windowed ratio-of-ratios | `daily_metrics.spo2_pct` |
+| `skin_temp_dev_c` (°C) | `units.skin_temp_deviation()` — slope × (tonight − baseline) | `daily_metrics.skin_temp_dev_c` |
+| `resp_rate_bpm` | `units.resp_rate_from_signal()` — Welch peak | `daily_metrics.resp_rate_bpm` |
+| exercise sessions | `exercise.py` — HR zone segmentation, calories (Keytel formula), per-bout intensity | `exercise_sessions` table |
+
+`compute_day()` runs automatically after every `POST /v1/ingest-decoded` call (single-flight, debounced at 120s per device+day to avoid recomputing on every 30s upload heartbeat).
+
+### What the iOS app already pulls
+
+`ServerSync.pullDerived()` (called from `exitBackfilling()` after every backfill) already fetches:
+- `GET /v1/daily?device=&from=&to=` → upserts into local `DailyMetric` cache (all fields including `recovery`, `strain`, `avg_hrv`, all sleep fields, `spo2_pct`, `skin_temp_dev_c`)
+- `GET /v1/sleep?device=&date=` → upserts into local `CachedSleepSession` cache (including `stagesJSON`)
+
+This data is already in the local GRDB store after every sync. The iOS view layer just needs to read it.
+
+### What actually needs building for v2.0 algorithms — iOS side only
+
+| Requirement | Data already cached locally | Build needed |
+|-------------|----------------------------|--------------|
+| ALG-01: Recovery score on Today view | `DailyMetric.recovery` (Double?) | Wire `TodayView` to show recovery value from `MetricsRepository.today?.recovery` |
+| ALG-02: Sleep staging hypnogram | `CachedSleepSession.stagesJSON` (String?) | Parse the JSON array in `HypnogramView.swift` (file already exists) and render per-stage bars |
+| ALG-03: Strain score display | `DailyMetric.strain` (Double?) | Add Strain card to `TodayView` or new `StrainView` tab |
+
+`HypnogramView.swift` is already in the codebase at `ios/OpenWhoop/Tabs/HypnogramView.swift`. It needs to decode `stagesJSON` into the `{start, end, stage}` struct and draw the sleep architecture chart.
+
+### One new server endpoint recommended: `/v1/today`
+
+The current `pullDerived()` fetches `GET /v1/daily` with a date range. This works fine but requires the client to know today's date in UTC and construct the range. A dedicated endpoint:
+
+```
+GET /v1/today?device=<id>
 ```
 
-Wireshark opens both `.pklg` and `.btsnoop` natively:
+Returns the single most-recent `daily_metrics` row for the device. This eliminates the UTC date calculation edge case (midnight boundary, timezone mismatch) and removes a latency round-trip when the app only needs today's recovery score. Implementation: 3 lines of SQL in `read.py` and one route in `main.py`.
 
-```bash
-wireshark whoop5-session-001.btsnoop
+```python
+# read.py addition
+def query_today(conn, device_id: str) -> dict | None:
+    row = conn.execute(
+        f"SELECT {', '.join(_DAILY_COLS)} FROM daily_metrics "
+        "WHERE device_id = %s ORDER BY day DESC LIMIT 1",
+        (device_id,),
+    ).fetchone()
+    return dict(zip(_DAILY_COLS, row)) if row else None
 ```
 
-Useful filters:
-| Filter | Shows |
-|--------|-------|
-| `btatt` | All ATT (GATT) packets |
-| `btl2cap.cid == 0x0004` | GATT channel only |
-| `btatt.handle == 0x000X` | Traffic to a specific characteristic handle |
-| `btatt.opcode == 0x12` | Write Requests |
-| `btatt.opcode == 0x1b` | Handle Value Notifications |
-| `bthci_cmd.opcode == 0x2019` | LE Start Encryption (LTK location, if needed) |
+This is additive and does not change any existing endpoint contract.
 
-### 7. (Later) Build a Wireshark Lua Dissector for Maverick Frames
+### Backfill pipeline fix is a hard prerequisite
 
-Once you've confirmed the frame layout from JADX + raw captures, write a Lua dissector so every ATT Write/Notify auto-parses:
-- SOF `0xAA`
-- version u8, length u16 LE, role_a u8, role_b u8, crc16
-- inner buffer: type u8, seq u8, cmd u8, payload, crc32
-
-This pays for itself the first time you read a 100-packet sync session.
+ALG-01, ALG-02, and ALG-03 all depend on `compute_day()` having input data. `compute_day()` reads from `hr_samples`, `rr_intervals`, `gravity_samples`, etc. If the backfill pipeline (BF-01) is not pulling historical data from the WHOOP 5.0, these tables are empty and every `compute_day()` call returns `{"status": "no_data"}`. Fix BF-01 first.
 
 ---
 
-## Alternatives Considered
+## JADX Workflow — v2.0 UI Analysis Scope
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Live BLE capture (iOS) | **PacketLogger over USB** | sysdiagnose (`.pklg` inside `.tar.gz`) | sysdiagnose is offline-only and rate-limited; you can't iterate quickly. Useful as a backup for capturing *retrospectively* if you forgot to start PacketLogger, but not the primary tool |
-| Live BLE capture (Android) | **HCI snoop log (built-in)** | nRF Sniffer with nRF52840 dongle (~€10–20) | Snoop log gives you decrypted GATT-level packets; nRF Sniffer is RF-level passive capture that loses bonded encrypted traffic, drops packets on one channel at a time, and adds setup friction. **Skip unless** you need over-the-air analysis of advertising/scan-response on the WHOOP charger or non-paired devices |
-| Live BLE capture (Linux) | (Mac/Android primary) | `btmon` + BlueZ + a USB BT dongle | Adds another OS to maintain. Use only if you want a third independent reference |
-| APK decompilation | **JADX-GUI** | apktool (smali) + manual reading | JADX produces Java; smali is assembly. Use JADX for protocol logic, apktool for resources/manifests |
-| Native lib RE | **Ghidra (if needed)** | IDA Pro / radare2 | Ghidra is free, NSA-backed, has good ARM support. IDA is best-in-class but expensive. Defer until you confirm WHOOP uses native code for protocol |
-| Encryption defeat | **LTK extraction from PacketLogger** if needed | Frida hook on Android | The HCI log from PacketLogger and Android snoop is already post-decryption. You only need LTK if you capture from an *external* RF sniffer (nRF). Since we're not using one, skip |
-| GATT exploration | **nRF Connect for Mobile** | LightBlue (iOS), Bluetility (Mac) | nRF Connect is more powerful, cross-platform, free, well-maintained by Nordic |
-| BLE scripting | **Bleak (Python)** | CoreBluetooth Swift snippets | Bleak is faster to iterate during RE. Reserve Swift for the production app code |
-| Analysis surface | **Wireshark 4.4.x** | hcidump text dumps, custom Python | Wireshark dissects the SIG-defined layers for free; you only need to add a Lua dissector for the WHOOP-proprietary inner frame |
+The existing `re/capture/jadx.md` runbook covers pulling the APK, navigating Java enums, and the legal recording rule (D-04). The toolchain (`jadx >= 1.5.1`, `adb >= 35.0.0`, `openjdk`) is already installed via `brew bundle`. Run `bash scripts/check-tools.sh` to confirm before starting.
 
----
+For v2.0, the new goal is **UI structure analysis**: understanding how the WHOOP Android app organises its data presentation so the SwiftUI redesign can match the UX pattern without copying proprietary code.
 
-## Hardware Sniffer Decision: Skip nRF52840 (For Now)
+### What to extract for UI-01 (tab structure and screen layout)
 
-**Why the nRF Sniffer is *not* recommended at this stage:**
+Navigate in JADX-GUI to the **Resources tree** (not the Java tree):
 
-| Concern | Detail |
-|---------|--------|
-| Redundant data source | PacketLogger HCI on iPhone + Android HCI snoop log already give you both endpoints' view of the GATT traffic, **post-decryption**. The nRF Sniffer gives you raw RF, **encrypted** unless you also extract the LTK. |
-| Lossy on one channel | nRF52840 listens to one advertising channel at a time and "occasionally drops packets" (Nordic's own documentation). HCI logs are lossless. |
-| Setup overhead | Requires Nordic firmware flash, Wireshark plugin install, channel hopping config. None of this is hard, but it's friction without payoff while HCI logs work. |
-| Lags behind BLE spec | Nordic notes the sniffer "usually lags behind in terms of support for the latest Bluetooth Low Energy features." WHOOP 5.0 advertises BT 5.x — possible incompatibility |
+1. **`res/layout/` — Layout XML files** (unobfuscated resource files, not decompiled code). These describe the view hierarchy. Look for files named `activity_overview`, `fragment_recovery`, `fragment_sleep`, `fragment_strain`, `item_daily_summary`, etc. The naming pattern reveals how screens are structured.
 
-**When to revisit:** if you discover that WHOOP 5.0 uses a non-GATT proprietary connection layer (unlikely), or if you need to study charger ↔ strap communication where no phone is involved. €15 is cheap insurance — buy one for the shelf, but don't make it your daily driver.
+   What to record:
+   - Top-level container type per screen (`ScrollView`, `RecyclerView`, `ViewPager2`, `CoordinatorLayout`)
+   - Card structure: how many nested `CardView` or `MaterialCardView` per screen, approximate hierarchy depth
+   - Whether tab content is in Fragments (separate files) or Activities (single file with fragments)
+   - `BottomNavigationView` or `TabLayout` item count and position (tells you tab bar structure)
 
----
+2. **`res/values/strings.xml` — String resources** (also unobfuscated). Search for: `recovery`, `strain`, `sleep`, `hrv`, `resting`, `performance`. Record the exact label text used for each metric and any units shown (e.g., `"HRV"` vs `"Heart Rate Variability"`, `"ms"` vs no unit visible).
 
-## iOS PacketLogger vs Android HCI: Which Is Richer?
+3. **`res/menu/` — Navigation menus**. Bottom navigation menus list tab labels and icon references in order. This gives the exact tab bar sequence.
 
-**Verdict: capture both, primary = iOS PacketLogger.**
+4. **Java/Kotlin class names** (record names only, not bodies): search for `OverviewFragment`, `RecoveryFragment`, `SleepFragment`, `StrainFragment`. The presence and naming of these classes confirms the screen-per-tab structure.
 
-| Aspect | iOS PacketLogger | Android HCI snoop |
-|--------|------------------|-------------------|
-| Format | `.pklg` (native) or `.btsnoop` export | `.btsnoop` native |
-| Live capture | **Yes** (USB tether, real time) | No (post-hoc extraction via bug report) |
-| Decryption | **Decrypted** (post-LL) | Decrypted (post-LL) |
-| GATT layer visibility | Full ATT/GATT including handles & UUIDs | Full ATT/GATT |
-| `bluetoothd` correlation | **Yes** via Console.app side-by-side | adb logcat (separate stream) |
-| Setup friction | Profile install + Xcode | Toggle in Dev Options |
-| Iteration speed | **Fast** (live, filter as you go) | Slow (capture → bug report → unzip → open) |
-| Risk of missing data | Low if profile is installed and trace is running | Higher — buffer can wrap on long sessions; no live confirmation |
-| WHOOP app version differences | iOS app version may behave differently from Android | Android app gave whoop-vault its JADX source; some commands may be Android-only |
+### Legal boundary for UI analysis (D-04 extension)
 
-**Recommendation:** Use iOS PacketLogger for **iteration** (you'll capture dozens of sessions during RE). Use Android HCI snoop log for **cross-validation** (confirm packet structure is identical across both clients) and to ensure you're not missing Android-specific commands.
+Same locked rule as for enum RE. You MAY record:
+- Layout XML element tag names (standard Android View class names — not proprietary)
+- Resource file names
+- String values from `strings.xml` (metric labels, units — factual UI text)
+- Fragment/Activity class names
+
+You MUST NOT record:
+- Method bodies or business logic from decompiled Java/Kotlin
+- Any `@BindingAdapter` or data binding expressions that expose API/data structure
+- Drawable assets, icon files, or any copyrightable artwork
+- String values that appear to be server API field names, endpoint paths, or internal identifiers
+
+Record findings in `re/capture/samples/apk/notes-ui-draft.md` (gitignored). Transfer only structure notes to a committed doc under `docs/` or `FINDINGS_5.md`.
+
+### No new tools required
+
+Everything needed (`jadx-gui`, `adb`, Java) is already in the Brewfile. The only difference from the existing runbook is navigating to `Resources > res/layout/` instead of `Source code > eo0/`.
 
 ---
 
-## Installation Cheat Sheet
+## Swift Package Additions
 
-```bash
-# Mac (Homebrew)
-brew install jadx
-brew install --cask wireshark
-brew install --cask android-platform-tools  # provides adb
-# PacketLogger: manual download via developer.apple.com (Additional Tools for Xcode)
+**None required for v2.0.**
 
-# Python tooling (already in 4.0 project; reuse the venv)
-pip install bleak                 # cross-platform BLE client
-pip install pyshark               # programmatic .btsnoop analysis if needed
+| Capability | Why no package needed |
+|-----------|----------------------|
+| HealthKit export | Apple system framework; `import HealthKit` — no SPM dependency |
+| Recovery/Strain/Sleep display | Data is already in `WhoopStore` GRDB tables via existing `ServerSync.pullDerived()` |
+| Sleep hypnogram rendering | `HypnogramView.swift` already exists; needs JSON parsing (standard `Codable`) only |
+| JADX UI analysis | Toolchain already installed via Brewfile |
+| IMU/SpO₂ capture (`TOGGLE_IMU_MODE`) | `captureRawAccel()` already in `BLEManager.swift`; send `toggleIMUMode` command — no new code needed for the BLE layer |
 
-# iOS profile (install via Safari on iPhone):
-# https://developer.apple.com/services-account/download?path=/iOS/iOS_Logs/iOSBluetoothLogging.mobileconfig
+**Minor additions to existing packages** (not new packages):
 
-# Android: Settings → About → tap Build Number 7x → Developer Options → "Enable Bluetooth HCI snoop log" = Enabled
-
-# Mobile apps:
-#   iOS: App Store → "nRF Connect for Mobile" (Nordic Semiconductor)
-#   Android: Play Store → "nRF Connect for Mobile" (Nordic Semiconductor)
-```
+- `WhoopStore` may need one new GRDB migration to add a `hkExportHighwater` table (three columns: `streamKind TEXT, deviceId TEXT, highwaterTs INTEGER`) so export cursors survive app reinstall. This is a schema migration inside the existing `WhoopStore` package, not a new package.
+- `project.yml` needs `NSHealthShareUsageDescription`, `NSHealthUpdateUsageDescription` in Info.plist and the `com.apple.developer.healthkit` entitlement.
 
 ---
 
-## Things to Avoid
+## What NOT to Add
 
-1. **Don't start with passive RF sniffing.** You'll burn days flashing firmware and configuring channel hopping when PacketLogger gives you better data in 5 minutes.
-2. **Don't ignore the existing whoop-vault project.** It already documents WHOOP 5.0 services, the Maverick frame, packet types, command bytes, and the historical sync handshake. Validate against it; don't redo it from zero.
-3. **Don't forget to install the iOS Bluetooth Logging profile.** Without it, PacketLogger's iOS trace will be empty or contain only summary events. This is the #1 newbie mistake (per Apple Developer Forums).
-4. **Don't leave the iOS profile installed long-term.** It increases logging verbosity and battery drain. Install for a capture session, remove after.
-5. **Don't try to pull `/data/misc/bluetooth/logs/btsnoop_hci.log` directly via adb on a stock Android device.** That path requires root. Use `adb bugreport` and extract from `FS/data/log/bt/` instead.
-6. **Don't redistribute the WHOOP APK.** Decompile locally for interoperability research (17 U.S.C. §1201(f), per the existing project's legal framing); don't publish decompiled code.
-7. **Don't trust a single capture.** Always cross-reference iOS + Android logs for the same operation. Differences reveal undocumented per-platform behaviour.
-8. **Don't capture without a session plan.** Each session should target one behaviour (boot, sync, real-time HR, sleep mode entry). Mixed captures are 10x harder to decode.
-9. **Don't skip the Wireshark Lua dissector once you've nailed the frame format.** Hand-parsing 0xAA-framed payloads in hex view burns hours per session.
-10. **Don't assume WHOOP 5.0 reuses the 4.0 custom service UUID** (`61080001-…`). It doesn't — 5.0 uses `fd4b0001-…` per the whoop-vault findings. **Confirm this is your first BLE scan result** before going deep.
-
----
-
-## Confidence Assessment per Tool
-
-| Tool | Confidence | Source |
-|------|------------|--------|
-| JADX-GUI for APK | HIGH | whoop-vault repo's documented findings; JADX is industry standard |
-| PacketLogger workflow | HIGH | Apple developer docs + Bluetooth SIG official tutorial + Novel Bits guide |
-| iOS Bluetooth Logging profile URL | HIGH | Apple Developer profiles & logs page |
-| Android HCI snoop log path | MEDIUM | Documented for AOSP; OEM variations exist (Samsung known to differ). Pixel is safe |
-| Bug-report extraction on stock Android | HIGH | Confirmed working in Android 14 & 15 per multiple recent sources |
-| Wireshark .pklg + .btsnoop support | HIGH | Wireshark official format support list |
-| nRF Connect for Mobile capabilities | HIGH | Nordic official |
-| Skip nRF Sniffer | MEDIUM | Reasoned position; correct given current scope but reconsider if encryption hides traffic |
-| WHOOP 5.0 `fd4b0001` service UUID | HIGH | Sophonbot0/whoop-vault firmware r52 documented; julienlhk/whoop independently confirms |
-| Maverick frame format | HIGH | Sophonbot0/whoop-vault documented from JADX of official APK |
+| Rejected addition | Why |
+|-------------------|-----|
+| Third-party HealthKit wrapper (HealthKitReporter, etc.) | No benefit over native API for write-only use case; adds maintenance burden |
+| HealthKit background delivery entitlement | App pushes at backfill-complete; no need to observe HealthKit changes |
+| Server-side HealthKit proxy or relay | Apple requires HealthKit writes originate from the device that collected the data |
+| openwhoop-algos Python package (pip install) | Server already has a complete, tested implementation of the same methodology in `analysis/`; the pip package would be a parallel, unvalidated copy |
+| ML framework on server (TensorFlow, PyTorch) | Sleep staging classifier already implemented as a transparent rule-based system (`sleep_features.classify_epochs`); adding a neural net requires PSG ground truth validation which is out of scope |
+| sleepecg SPM or pip package | Server already does staging; client-side staging is unnecessary double-compute |
+| Swift Charts extensions / third-party chart library | Swift Charts is a system framework (iOS 16+); `MetricChart.swift` and `TrendChartCard.swift` are already in the codebase |
+| React Native, Flutter, or cross-platform layer | Out of scope — SwiftUI only per PROJECT.md constraints |
+| WHOOP cloud API integration | Explicitly out of scope; local-first by design |
 
 ---
 
-## Sources
+## Confidence Assessment
 
-- [Apple Developer — Profiles & Logs (iOS Bluetooth profile)](https://developer.apple.com/bug-reporting/profiles-and-logs/)
-- [Bluetooth SIG — A new way to debug iOS Bluetooth applications](https://www.bluetooth.com/blog/a-new-way-to-debug-iosbluetooth-applications/)
-- [Novel Bits — Debugging Bluetooth LE on iOS: HCI Capture & LTK Extraction Guide](https://novelbits.io/debugging-sniffing-secure-ble-ios/)
-- [Twocanoes — Capture Bluetooth Packet Trace on iOS](https://twocanoes.com/knowledge-base/capture-bluetooth-packet-trace-on-ios/)
-- [Apple Developer Forums — PacketLogger discussions](https://developer.apple.com/forums/thread/759461)
-- [Sophonbot0/whoop-vault — WHOOP 5.0 RE project (Maverick frame, fd4b0001 service)](https://github.com/Sophonbot0/whoop-vault)
-- [julienlhk/whoop — independent WHOOP 5.0 BLE work (firmware 50.37.1.0)](https://github.com/julienlhk/whoop)
-- [bWanShiTong/openwhoop — WHOOP 4.0 reference RE project (Rust)](https://github.com/bWanShiTong/openwhoop)
-- [JADX decompiler — GitHub](https://github.com/skylot/jadx)
-- [Wireshark — official site (BTSnoop / .pklg support)](https://www.wireshark.org/)
-- [Nordic Semiconductor — nRF Sniffer for Bluetooth LE](https://www.nordicsemi.com/Products/Development-tools/nrf-sniffer-for-bluetooth-le)
-- [nRF Connect for Mobile](https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-mobile)
-- [Bleak — Python BLE client](https://github.com/hbldh/bleak)
-- [BeaconZone — Debugging Bluetooth on iOS](https://www.beaconzone.co.uk/blog/debugging-bluetooth-on-ios/)
+| Area | Confidence | Basis |
+|------|------------|-------|
+| HealthKit object type identifiers | HIGH | Apple system framework docs (stable since iOS 8/iOS 16 for sleep stages); established pattern across all major HRV apps |
+| SpO₂ unit is 0.0–1.0 | HIGH | `HKUnit.percent()` in HealthKit is always fractional — confirmed by Apple docs and consistent across all HealthKit samples |
+| `.asleepCore/.asleepDeep/.asleepREM` available iOS 16 | HIGH | These values were added iOS 16.0; project min-deployment is iOS 16 |
+| Server algorithm completeness | HIGH | Directly inspected `daily.py`, `recovery.py`, `sleep.py`, `sleep_features.py`, `strain.py`, `hrv.py` — all implemented and have test coverage in `server/ingest/tests/` |
+| `ServerSync.pullDerived()` already pulls algorithm data | HIGH | Directly inspected `ServerSync.swift` — pulls `/v1/daily` (includes recovery, strain, sleep fields) and `/v1/sleep` (includes stages JSON) |
+| No new Swift packages needed | HIGH | Verified against all v2.0 requirements; HealthKit is system framework, all other data is already local |
+| JADX layout XML access | HIGH | Android `res/layout/` is a standard unobfuscated resource; JADX always exposes it in the Resources tree |
+| HRV exported as `.heartRateVariabilitySDNN` despite being RMSSD | HIGH | This mismatch is well-known and universal — Apple has not added an RMSSD type; every production HRV app uses SDNN type for RMSSD values |
+| `/v1/today` endpoint not yet implemented | HIGH | Verified by reading `main.py` exhaustively — no such route exists; it needs to be added |
