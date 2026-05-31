@@ -94,6 +94,10 @@ public final class BLEManager: NSObject, ObservableObject {
     /// Wired by AppRoot to MetricsRepository.computeLocalMetrics() so offline-derived metrics
     /// (resting HR, HRV, sleep detection) update immediately after new BLE data arrives.
     var onBackfillComplete: (() -> Void)?
+    /// FF exchange state — tracks rounds of SEND_NEXT_FF and accumulates FF names for SET_FF_VALUE.
+    private var ffExchangePending = false
+    private var ffRoundsRemaining = 0
+    private var ffNames: [String] = []
 
     // MARK: CoreBluetooth
     private var central: CBCentralManager!
@@ -313,7 +317,8 @@ public final class BLEManager: NSObject, ObservableObject {
             let isMav = frame.count > 1 && frame[1] == 0x01
             let typeOff = isMav ? 8 : 4
             let pktType = frame.count > typeOff ? frame[typeOff] : 0
-            BLEManager.logger.notice("BF: frame #\(self.backfillFrameCount, privacy: .public) type=\(pktType, privacy: .public) len=\(frame.count, privacy: .public) mav=\(isMav, privacy: .public)")
+            let subId  = frame.count > typeOff + 2 ? frame[typeOff + 2] : 0  // event_num or resp_cmd
+            BLEManager.logger.notice("BF: frame #\(self.backfillFrameCount, privacy: .public) type=\(pktType, privacy: .public) sub=\(subId, privacy: .public) len=\(frame.count, privacy: .public)")
         }
         backfillFrameQueue.append(frame)
         guard !backfillDraining else { return }
@@ -634,6 +639,9 @@ extension BLEManager: CBCentralManagerDelegate {
         clockRequested = false
         connectHandshakeDone = false
         bondRetryCount = 0
+        ffExchangePending = false
+        ffRoundsRemaining = 0
+        ffNames = []
         // Reset backfill state so the next connect starts a fresh offload.
         backfillStarted = false
         backfilling = false
@@ -816,6 +824,9 @@ extension BLEManager: CBPeripheralDelegate {
         }
         send(.sendR10R11Realtime, payload: [0x00])   // stop type-43 raw flood
         send(.toggleRealtimeHR, payload: [0x01])     // activate FD4B0005 data channel
+        ffExchangePending = true
+        ffRoundsRemaining = 0
+        ffNames = []
         send(.startFFKeyExchange, payload: [0x01])   // REQUIRED: begin FF exchange before historical data
         send(.getDataRange)                          // refresh strap's stored range for the watchdog
         // Plain offload (no high-freq-sync), rate-limited (first connect always runs; reconnect-flaps are
@@ -838,6 +849,32 @@ extension BLEManager: CBPeripheralDelegate {
         [UInt8(now & 0xFF), UInt8((now >> 8) & 0xFF),
          UInt8((now >> 16) & 0xFF), UInt8((now >> 24) & 0xFF),
          0, 0, 0, 0]
+    }
+
+    /// Send one SEND_NEXT_FF request to pull the next Feature Flag entry from the strap.
+    private func sendNextFFRound() {
+        BLEManager.logger.notice("BF: SEND_NEXT_FF (remaining=\(self.ffRoundsRemaining, privacy: .public))")
+        send(.sendNextFF, payload: [0x01])
+    }
+
+    /// After all SEND_NEXT_FF rounds complete, enable each FF with SET_FF_VALUE.
+    /// Confirmed payload format: [0x01] + ASCII name (from capture_all-V3.pklg).
+    private func setFFValues() {
+        BLEManager.logger.notice("BF: SET_FF_VALUE for \(self.ffNames.count, privacy: .public) flags")
+        if ffNames.isEmpty {
+            // No names received — use the confirmed flags from the golden corpus.
+            for name in ["enable_r22_pack", "enable_r22_v2_p", "enable_r22_v3_p", "enable_r22_v4_p"] {
+                let payload: [UInt8] = [0x01] + Array(name.utf8)
+                send(.setFFValue, payload: payload)
+            }
+        } else {
+            for name in ffNames {
+                let payload: [UInt8] = [0x01] + Array(name.utf8)
+                send(.setFFValue, payload: payload)
+            }
+        }
+        ffExchangePending = false
+        BLEManager.logger.notice("BF: FF exchange complete — backfill will trigger on next cycle")
     }
 
     /// Newest plausible-unix marker in a GET_DATA_RANGE COMMAND_RESPONSE = the strap's newest stored
@@ -884,6 +921,37 @@ extension BLEManager: CBPeripheralDelegate {
                    let newest = BLEManager.dataRangeNewestUnix(from: frame) {
                     strapNewestTs = newest                        // feeds the liveness watchdog
                     BLEManager.logger.notice("BF: GET_DATA_RANGE newest=\(newest, privacy: .public) (\(Date(timeIntervalSince1970: TimeInterval(newest)), privacy: .public))")
+                }
+                // FF key exchange — handle START_FF_KEY_EXCHANGE and SEND_NEXT_FF responses.
+                // The WHOOP 5.0 ignores SEND_HISTORICAL_DATA until this exchange completes.
+                // Sequence: START_FF_KEY_EXCHANGE → (strap) → SEND_NEXT_FF×N → SET_FF_VALUE×N → ready.
+                if frame.count > cmdOff {
+                    let respCmd = frame[cmdOff]
+                    if respCmd == WhoopCommand.startFFKeyExchange.rawValue && ffExchangePending {
+                        // Strap responded: payload[2] holds the number of FF entries.
+                        let payloadOff = isMav ? 11 : 7
+                        let numFF = frame.count > payloadOff + 2 ? Int(frame[payloadOff + 2]) : 4
+                        ffRoundsRemaining = min(numFF, 8)   // cap defensively
+                        ffNames = []
+                        BLEManager.logger.notice("BF: FF exchange started, \(self.ffRoundsRemaining, privacy: .public) entries")
+                        sendNextFFRound()
+                    } else if respCmd == WhoopCommand.sendNextFF.rawValue && ffRoundsRemaining > 0 {
+                        // Extract FF name from response payload (ASCII string after first byte).
+                        let nameOff = isMav ? 12 : 8
+                        if frame.count > nameOff {
+                            let nameBytes = frame[nameOff ..< frame.count - 4]  // strip 4-byte trailer
+                            if let name = String(bytes: nameBytes, encoding: .utf8)?.trimmingCharacters(in: .controlCharacters) {
+                                ffNames.append(name)
+                            }
+                        }
+                        ffRoundsRemaining -= 1
+                        if ffRoundsRemaining > 0 {
+                            sendNextFFRound()
+                        } else {
+                            // All FF entries pulled — now SET_FF_VALUE to enable them.
+                            setFFValues()
+                        }
+                    }
                 }
                 // Clock correlation runs in both live and backfill modes. Once established it
                 // unblocks both the Collector (live path) and the Backfiller (chunk decoding).

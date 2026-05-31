@@ -39,6 +39,14 @@ public enum WhoopCommand: UInt8, CaseIterable {
     /// sends this (seq=5, payload=[0x01]) before GET_DATA_RANGE. Without it the strap ignores
     /// SEND_HISTORICAL_DATA on the WHOOP 5.0 (FD4B service). Confirmed in capture_all-V3.pklg.
     case startFFKeyExchange    = 117
+    /// SEND_NEXT_FF (cmd 118) — pulls the next Feature Flag entry from the strap.
+    /// Called 4× after START_FF_KEY_EXCHANGE; each response contains a FF name+value.
+    /// Confirmed in capture_all-V3.pklg second session (seq=150-153).
+    case sendNextFF            = 118
+    /// SET_FF_VALUE (cmd 120) — enables a Feature Flag by name. Payload: [0x01] + name_ascii.
+    /// Called 4× after SEND_NEXT_FF rounds with names from the strap responses.
+    /// Confirmed in capture_all-V3.pklg: "enable_r22_pack/v2_p/v3_p/v4_p".
+    case setFFValue            = 120
     // MARK: HYPOTHESIS (5.0 unverified) — inherited from 4.0, retained because referenced
     /// HYPOTHESIS (5.0 unverified) — used by BLEManager connect handshake.
     case getAdvertisingNameHarvard = 76
@@ -107,6 +115,8 @@ public enum WhoopCommand: UInt8, CaseIterable {
         case .getHelloHarvard:       return "Get Hello (Harvard)"
         case .getHello:              return "Get Hello"
         case .startFFKeyExchange:    return "Start FF Key Exchange"
+        case .sendNextFF:            return "Send Next FF"
+        case .setFFValue:            return "Set FF Value"
         case .getAdvertisingNameHarvard: return "Get Advertising Name (Harvard)"
         case .startRawData:          return "Start Raw Data"
         case .stopRawData:           return "Stop Raw Data"
