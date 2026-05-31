@@ -17,6 +17,11 @@ targets:
     configFiles:
       Debug: OpenWhoop/Config/Secrets.xcconfig
       Release: OpenWhoop/Config/Secrets.xcconfig
+    entitlements:
+      path: OpenWhoop/OpenWhoop.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     info:
       path: OpenWhoop/Info.plist
       properties:
@@ -27,6 +32,8 @@ targets:
         NSBluetoothAlwaysUsageDescription: >-
           OpenWhoop connects to your WHOOP 4.0 over Bluetooth to read heart rate,
           R-R intervals, battery, and sensor data locally on your device.
+        NSHealthShareUsageDescription: "OpenWhoop reads your WHOOP biometric data in Apple Health."
+        NSHealthUpdateUsageDescription: "OpenWhoop writes your WHOOP heart rate, HRV, and sleep data to Apple Health."
         UIBackgroundModes:
           - bluetooth-central
         WHOOP_BASE_URL: $(WHOOP_BASE_URL)
