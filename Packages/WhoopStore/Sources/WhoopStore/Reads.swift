@@ -97,6 +97,37 @@ extension WhoopStore {
         }
     }
 
+    /// HR samples newer than `since` (exclusive), oldest-first, capped at `limit`.
+    /// `since` is a Unix timestamp in seconds; pass 0 to return all rows.
+    /// Used by HealthKitExporter for highwater-cursor-based idempotent HR export.
+    public func hrSamples(deviceId: String, since: Int, limit: Int) async throws -> [HRSample] {
+        try syncRead { db in
+            try Row.fetchAll(db, sql: """
+                SELECT ts, bpm FROM hrSample
+                WHERE deviceId = ? AND ts > ?
+                ORDER BY ts ASC LIMIT ?
+                """, arguments: [deviceId, since, limit])
+                .map { HRSample(ts: $0["ts"], bpm: $0["bpm"]) }
+        }
+    }
+
+    /// All cached sleep sessions for a device, oldest-first.
+    /// Used by HealthKitExporter for idempotent HRV and sleep export (delete+reinsert strategy).
+    public func sleepSessions(deviceId: String) async throws -> [CachedSleepSession] {
+        try syncRead { db in
+            try Row.fetchAll(db, sql: """
+                SELECT startTs, endTs, efficiency, restingHr, avgHrv, stagesJSON FROM sleepSession
+                WHERE deviceId = ?
+                ORDER BY startTs ASC
+                """, arguments: [deviceId])
+                .map {
+                    CachedSleepSession(startTs: $0["startTs"], endTs: $0["endTs"],
+                                       efficiency: $0["efficiency"], restingHr: $0["restingHr"],
+                                       avgHrv: $0["avgHrv"], stagesJSON: $0["stagesJSON"])
+                }
+        }
+    }
+
     /// Max HR sample timestamp for a device, or nil if there are none. The biometric "data frontier"
     /// used by the stuck-strap watchdog (advances iff the strap is actually logging + offloading).
     public func latestHRSampleTs(deviceId: String) async throws -> Int? {
