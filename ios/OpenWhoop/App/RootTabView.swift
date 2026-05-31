@@ -1,27 +1,35 @@
 import SwiftUI
 
 struct RootTabView: View {
+
+    @SceneStorage("selectedTab") private var selectedTab = "today"
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             TodayView()
                 .tabItem {
                     Label("Today", systemImage: "house")
                 }
+                .tag("today")
 
             SleepView()
                 .tabItem {
                     Label("Sleep", systemImage: "bed.double")
                 }
+                .tag("sleep")
+
+            // StrainView is created in Plan 09-05; WorkoutsView used as placeholder
+            WorkoutsView()
+                .tabItem {
+                    Label("Strain", systemImage: "bolt.heart")
+                }
+                .tag("strain")
 
             TrendsView()
                 .tabItem {
                     Label("Trends", systemImage: "chart.xyaxis.line")
                 }
-
-            WorkoutsView()
-                .tabItem {
-                    Label("Workouts", systemImage: "figure.run")
-                }
+                .tag("trends")
 
             NavigationStack {
                 LiveView()
@@ -29,6 +37,8 @@ struct RootTabView: View {
             .tabItem {
                 Label("Device", systemImage: "wave.3.right")
             }
+            .tag("device")
         }
+        .preferredColorScheme(.dark)
     }
 }
