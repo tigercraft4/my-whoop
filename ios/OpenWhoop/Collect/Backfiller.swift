@@ -80,7 +80,12 @@ final class Backfiller {
 
     /// Feed one raw BLE frame into the state machine. May trigger async store operations.
     func ingest(_ frame: [UInt8]) async {
-        switch classifyHistoricalMeta(parseFrame(frame)) {
+        let parsed = parseFrame(frame)
+        let meta = classifyHistoricalMeta(parsed)
+        // DEBUG: log frame classification
+        let preview = frame.prefix(8).map { String(format: "%02x", $0) }.joined()
+        print("[Backfiller] ingest typeName=\(parsed.typeName) meta=\(meta) ok=\(parsed.ok) hex=\(preview)")
+        switch meta {
         case .start:
             isBackfilling = true
             chunk.removeAll(keepingCapacity: true)
