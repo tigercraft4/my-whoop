@@ -34,7 +34,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 7: iOS Validation + Biometrics Capture** — Validar todas as iOS views com dados reais e verificar streams biométricos HYPOTHESIS (completed 2026-05-31)
 - [x] **Phase 8: JADX APK Analysis + UI Design Document** — Analisar o APK Android via JADX e documentar a arquitectura de informação da app WHOOP — completed 2026-05-31
 - [x] **Phase 9: SwiftUI Redesign WHOOP-Style** — Redesenhar a UI em WHOOP-style com tab bar, Recovery card, Sleep card e Strain card (completed 2026-05-31)
-- [ ] **Phase 10: Algorithms Display + Server Endpoint** — Ligar os resultados dos algoritmos às iOS views e adicionar o endpoint GET /v1/today
+- [x] **Phase 10: Algorithms Display + Server Endpoint** — Ligar os resultados dos algoritmos às iOS views e adicionar o endpoint GET /v1/today (completed 2026-05-31)
 - [ ] **Phase 11: HealthKit Export** — Exportar dados biométricos do WHOOP para a Apple Health
 
 ---
@@ -125,7 +125,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 7. iOS Validation + Biometrics Capture | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 8. JADX APK Analysis + UI Design Document | v2.0 | 2/2 | Complete | 2026-05-31 |
 | 9. SwiftUI Redesign WHOOP-Style | v2.0 | 6/6 | Complete    | 2026-05-31 |
-| 10. Algorithms Display + Server Endpoint | v2.0 | 2/3 | In Progress|  |
+| 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 11. HealthKit Export | v2.0 | 0/? | Not started | - |
 
 ---
