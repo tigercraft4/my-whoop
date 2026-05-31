@@ -159,4 +159,19 @@ public enum WhoopCommand: UInt8, CaseIterable {
         ]
         return [0xAA] + lenBytes + [headerCRC] + inner + trailerBytes
     }
+
+    /// Maverick-wrapped write frame for WHOOP 5.0 (resolves Open Question #1, plan 05-06).
+    ///
+    /// Format: [0xAA][0x01][len u16 LE][role=0x00][token 3B][type][seq][cmd][payload...][trailer 4B]
+    /// Mirrors build_maverick_frame() in gen_synthetic_fixtures.py with role=0x00 for outbound writes.
+    /// The 4-byte trailer is all-zeros (checksum algorithm open per schema Finding 6).
+    public func maverickFrame(seq: UInt8, payload: [UInt8] = [0x00]) -> [UInt8] {
+        // body = [role=0x00][token0=0x00][token1=0x00][token2=0x00][type][seq][cmd][payload...]
+        let body: [UInt8] = [0x00, 0x00, 0x00, 0x00, Self.commandType, seq, rawValue] + payload
+        let length = UInt16(body.count)
+        return [0xAA, 0x01,
+                UInt8(length & 0xFF), UInt8(length >> 8)]
+               + body
+               + [0x00, 0x00, 0x00, 0x00]
+    }
 }

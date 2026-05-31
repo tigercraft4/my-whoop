@@ -244,7 +244,8 @@ public final class BLEManager: NSObject, ObservableObject {
             return
         }
         seq = seq &+ 1
-        let frame = command.frame(seq: seq, payload: payload)
+        // WHOOP 5.0 requires Maverick-wrapped writes (Open Question #1 resolved, plan 05-06).
+        let frame = command.maverickFrame(seq: seq, payload: payload)
         p.writeValue(Data(frame), for: ch, type: writeType)
         log("→ \(command.label) payload=\(hex(payload))")
     }
