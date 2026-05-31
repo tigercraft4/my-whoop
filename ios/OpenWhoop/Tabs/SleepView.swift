@@ -152,7 +152,7 @@ struct SleepView: View {
             HStack(alignment: .bottom, spacing: WH.Spacing.md) {
                 // Big efficiency percentage
                 VStack(alignment: .leading, spacing: WH.Spacing.xs) {
-                    Text("SLEEP EFFICIENCY")
+                    Text("SLEEP PERFORMANCE")
                         .font(WH.Font.cardTitle)
                         .foregroundStyle(WH.Color.textSecondary)
                         .tracking(1.2)
@@ -174,7 +174,7 @@ struct SleepView: View {
 
                 // Total time asleep (right-aligned)
                 VStack(alignment: .trailing, spacing: WH.Spacing.xs) {
-                    Text("TIME ASLEEP")
+                    Text("HOURS OF SLEEP")
                         .font(WH.Font.cardTitle)
                         .foregroundStyle(WH.Color.textSecondary)
                         .tracking(1.2)
@@ -248,7 +248,7 @@ struct SleepView: View {
             HStack(spacing: WH.Spacing.sm) {
                 smallStatTile(label: "TIME IN BED", value: timeInBed ?? "—")
                 smallStatTile(label: "DISTURBANCES", value: daily?.disturbances.map { "\($0)" } ?? "—")
-                smallStatTile(label: "LATENCY", value: latencyMin)
+                smallStatTile(label: "SLEEP LATENCY", value: latencyMin)
             }
         }
     }
@@ -337,12 +337,12 @@ struct SleepView: View {
                 )
 
                 MetricCard(
-                    title: "Skin Temp Dev",
+                    title: "SKIN TEMP",
                     value: {
                         guard let t = daily?.skinTempDevC else { return "—" }
                         return String(format: "%+.1f", t)
                     }(),
-                    unit: daily?.skinTempDevC != nil ? "°C" : nil,
+                    unit: daily?.skinTempDevC != nil ? "°C from baseline" : nil,
                     accentColor: daily?.skinTempDevC != nil ? WH.Color.recoveryYellow : WH.Color.textSecondary
                 )
             }
