@@ -92,11 +92,21 @@ struct TodayView: View {
     // MARK: - Hero section (recovery card → recovery history)
 
     private var heroSection: some View {
-        NavigationLink(destination: MetricDetailView(kind: .recovery)) {
-            RecoveryCard(daily: metrics.today)
+        VStack(spacing: WH.Spacing.xs) {
+            NavigationLink(destination: MetricDetailView(kind: .recovery)) {
+                RecoveryCard(daily: metrics.today)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, WH.Spacing.sm)
+
+            // Staleness label — only when lastRefreshedAt > 6h (D-06: hero section only, D-07: no other cards)
+            if let at = metrics.lastRefreshedAt,
+               Date().timeIntervalSince(at) > StalenessPolicy.staleAfterSeconds {
+                Text("Updated \(Int(Date().timeIntervalSince(at) / 3600))h ago")
+                    .font(WH.Font.caption)
+                    .foregroundStyle(WH.Color.textSecondary)
+            }
         }
-        .buttonStyle(.plain)
-        .padding(.top, WH.Spacing.sm)
     }
 
     // MARK: - Strain card
