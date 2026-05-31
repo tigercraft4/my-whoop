@@ -115,7 +115,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Milestone Goal:** Atingir paridade total com a app WHOOP — UI labels correctos, métricas em falta, algoritmos de backend equivalentes aos do WHOOP, e haptics funcionais.
 
-- [ ] **Phase 12: UI Parity** — Corrigir labels e adicionar métricas em falta identificadas via IPA analysis
+- [ ] **Phase 12: UI Parity** — Corrigir labels e adicionar métricas em falta identificadas via IPA analysis (3 plans)
 - [ ] **Phase 13: Backend Parity** — Algoritmos equivalentes ao WHOOP: Sleep Performance, Training State, Sleep Needed, Calorias
 
 ---
@@ -135,14 +135,14 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 9. SwiftUI Redesign WHOOP-Style | v2.0 | 6/6 | Complete    | 2026-05-31 |
 | 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 11. HealthKit Export | v2.0 | 4/4 | Complete    | 2026-05-31 |
-| 12. UI Parity | v3.0 | 0/? | Not started | - |
+| 12. UI Parity | v3.0 | 0/3 | Planned | - |
 | 13. Backend Parity | v3.0 | 0/? | Not started | - |
 
 ### Phase 12: UI Parity
 **Goal**: Corrigir todos os labels e métricas identificados via IPA analysis (WHOOP 5.37.0) para atingir paridade visual com a app oficial
 **Depends on**: Phase 9 (SwiftUI Redesign done)
 **Source**: IPA analysis de `/APPS IOS APK/com.whoop.iphone_5.37.0_und3fined.ipa` + `docs/whoop-ui-reference.md`
-**Requirements**: UI-10, UI-11, UI-12, UI-13, UI-14
+**Requirements**: UI-03, UI-04, UI-05, IOS-05
 **Success Criteria** (what must be TRUE):
   1. SleepCard mostra "SLEEP PERFORMANCE" (não "SLEEP EFFICIENCY") e "HOURS OF SLEEP" (não "TIME ASLEEP")
   2. Staging breakdown inclui tempo AWAKE como 4ª fase
@@ -157,6 +157,11 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 - Haptics: Gen5 usa `RunAppDrivenHapticsCommandPacket` com até 8 DRV2605 waveform effects — requer PacketLogger capture da app oficial a fazer buzz
 - `MetricKind`: SLEEP PERFORMANCE como métrica de tendência (não sleepDuration)
 - Skin temp: separar valor absoluto de "FROM BASELINE" (desvio)
+
+**Plans:** 3 plans (all Wave 1 — parallel, no file overlap)
+- [ ] 12-01-PLAN.md — SleepView labels (SLEEP PERFORMANCE / HOURS OF SLEEP / SLEEP LATENCY / SKIN TEMP) + AWAKE confirm
+- [ ] 12-02-PLAN.md — StrainCard Training State badge from recovery_to_strain.json
+- [ ] 12-03-PLAN.md — MetricKind.sleepPerformance + dailyCases, Today/DayDetail RHR & SKIN TEMP labels
 
 ### Phase 13: Backend Parity
 **Goal**: Implementar algoritmos equivalentes ao WHOOP no servidor: Sleep Performance score ponderado, Training State, Sleep Needed, Calorias — substituindo ou complementando o openwhoop-algos actual
