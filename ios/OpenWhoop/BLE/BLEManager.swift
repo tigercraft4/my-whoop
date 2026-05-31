@@ -766,10 +766,15 @@ extension BLEManager: CBPeripheralDelegate {
                  BLEManager.eventNotifyChar,
                  BLEManager.dataNotifyChar,
                  BLEManager.gen4DataNotifChar,
-                 BLEManager.heartRateChar,
-                 BLEManager.batteryChar:
+                 BLEManager.heartRateChar:
                 peripheral.setNotifyValue(true, for: c)
                 log("Subscribed \(c.uuid)")
+            case BLEManager.batteryChar:
+                peripheral.setNotifyValue(true, for: c)
+                // Read the current value immediately — 2A19 only notifies on change,
+                // so without an explicit read the level stays "—" until the next change.
+                peripheral.readValue(for: c)
+                log("Subscribed Battery Level")
             default: break
             }
         }
