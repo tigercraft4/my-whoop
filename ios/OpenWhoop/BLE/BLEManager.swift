@@ -857,12 +857,13 @@ extension BLEManager: CBPeripheralDelegate {
         ffExchangeTimeout?.cancel()
         let ffTimeoutItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            BLEManager.logger.notice("BF: FF exchange timeout (15s) — clearing pending, attempting backfill")
+            // WHOOP 5.0 never acknowledges FF exchange — 3s is enough to know it won't respond.
+            BLEManager.logger.notice("BF: FF exchange timeout — clearing pending, attempting backfill")
             self.ffExchangePending = false
             self.requestSync(.connect)
         }
         ffExchangeTimeout = ffTimeoutItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: ffTimeoutItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: ffTimeoutItem)
         uploadOpportunistically()
         // NOTE: the server pull + cloud-restore are deliberately NOT kicked here. They share the
         // WhoopStore actor with the historical offload, and a large first-run pull would starve the
