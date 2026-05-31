@@ -280,7 +280,7 @@ private struct LiveContentView: View {
             VStack(alignment: .leading, spacing: WH.Spacing.sm) {
                 sectionHeader("Controls")
 
-                // Connect / Disconnect
+                // Connect / Disconnect / Force Backfill
                 HStack(spacing: WH.Spacing.sm) {
                     consoleButton("Connect", icon: "antenna.radiowaves.left.and.right",
                                   accent: WH.Color.strainBlue, prominent: true) {
@@ -289,6 +289,10 @@ private struct LiveContentView: View {
                     consoleButton("Disconnect", icon: "xmark.circle",
                                   accent: WH.Color.textSecondary, prominent: false) {
                         model.disconnect()
+                    }
+                    consoleButton("Backfill", icon: "arrow.down.circle",
+                                  accent: WH.Color.teal, prominent: true) {
+                        model.forceBackfill()
                     }
                 }
 

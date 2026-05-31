@@ -32,6 +32,11 @@ public final class LiveViewModel: ObservableObject {
 
     public func connect()  { ble.connect() }
     public func disconnect() { ble.disconnect() }
+    /// Force a historical offload immediately, bypassing the rate limiter.
+    public func forceBackfill() {
+        UserDefaults.standard.removeObject(forKey: "backfillLastAt")
+        ble.requestSync(.manual)
+    }
     public func startRealtimeHR() { ble.send(.toggleRealtimeHR, payload: [0x01]) }
     public func stopRealtimeHR()  { ble.send(.toggleRealtimeHR, payload: [0x00]) }
     public func getBattery()      { ble.send(.getBatteryLevel,  payload: [0x00]) }
