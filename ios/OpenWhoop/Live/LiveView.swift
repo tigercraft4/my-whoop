@@ -95,6 +95,9 @@ private struct LiveContentView: View {
                     serverSection
                     researchSection
                     logSection
+                    #if DEBUG
+                    developerSection
+                    #endif
                 }
                 .padding(WH.Spacing.md)
             }
@@ -582,6 +585,28 @@ private struct LiveContentView: View {
 
     // MARK: - 7. Log
 
+    #if DEBUG
+    // MARK: - 8. Developer (debug builds only)
+
+    private var developerSection: some View {
+        NavigationLink(destination: DeveloperView(model: model, metrics: metrics)) {
+            HStack {
+                Image(systemName: "wrench.and.screwdriver")
+                    .foregroundStyle(WH.Color.textSecondary)
+                Text("Developer")
+                    .foregroundStyle(WH.Color.textPrimary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(WH.Color.textSecondary)
+                    .font(.caption)
+            }
+            .padding(WH.Spacing.sm)
+            .background(WH.Color.surface2,
+                        in: RoundedRectangle(cornerRadius: WH.Radius.card, style: .continuous))
+        }
+    }
+    #endif
+
     private var logSection: some View {
         VStack(alignment: .leading, spacing: WH.Spacing.xs) {
             sectionHeader("Log")
@@ -602,3 +627,98 @@ private struct LiveContentView: View {
         }
     }
 }
+
+// MARK: - Developer View (debug builds only)
+
+#if DEBUG
+import WhoopStore
+
+private struct DeveloperView: View {
+    @ObservedObject var model: LiveViewModel
+    var metrics: MetricsRepository
+
+    @State private var imuModeOn = false
+    @State private var dbStats = "Toca para ver"
+    @State private var hapticPattern = 2
+    @State private var hapticLoops = 3
+
+    var body: some View {
+        Form {
+            // BLE commands
+            Section(header: Text("BLE Commands")) {
+                HStack {
+                    Text("IMU Mode")
+                    Spacer()
+                    Toggle("", isOn: $imuModeOn)
+                        .onChange(of: imuModeOn) { on in model.toggleIMUMode(on: on) }
+                }
+                Button("Test Alarm Buzz") { model.testAlarmBuzz() }
+                HStack {
+                    Text("Haptic Pattern")
+                    Spacer()
+                    Picker("", selection: $hapticPattern) {
+                        ForEach(1...7, id: \.self) { Text("\($0)").tag($0) }
+                    }.pickerStyle(.menu)
+                }
+                Stepper("Loops: \(hapticLoops)", value: $hapticLoops, in: 1...5)
+                Button("Run Haptic") {
+                    model.runHaptic(pattern: UInt8(hapticPattern), loops: UInt8(hapticLoops))
+                }
+            }
+
+            // Database
+            Section(header: Text("Database")) {
+                HStack {
+                    Text("DB Stats")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(dbStats)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .onTapGesture {
+                    Task {
+                        if let s = try? await metrics.whoopStore?.storageStats() {
+                            dbStats = "decoded:\(s.decodedRows) raw:\(s.rawBatches)"
+                        }
+                    }
+                }
+                Button("Insert Today's Test Data") {
+                    Task {
+                        let today = DailyMetric(
+                            day: "2026-05-31",
+                            totalSleepMin: 428.0, efficiency: 87.0,
+                            deepMin: 95.0, remMin: 112.0, lightMin: 221.0,
+                            disturbances: 4, restingHr: 58, avgHrv: 52.3,
+                            recovery: 78.0, strain: 12.4, exerciseCount: 1
+                        )
+                        try? await metrics.whoopStore?.upsertDailyMetrics([today], deviceId: AppConfig.deviceId)
+                        await metrics.refresh()
+                        if let s = try? await metrics.whoopStore?.storageStats() {
+                            dbStats = "decoded:\(s.decodedRows) raw:\(s.rawBatches)"
+                        }
+                    }
+                }
+            }
+
+            // HealthKit
+            Section(header: Text("HealthKit")) {
+                Button("Reset HR Cursor") {
+                    UserDefaults.standard.removeObject(forKey: "hk.hrHighwater")
+                }
+                .foregroundStyle(.secondary)
+                Button("Reset HRV Cursor") {
+                    UserDefaults.standard.removeObject(forKey: "hk.hrvHighwater")
+                }
+                .foregroundStyle(.secondary)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(WH.Color.background)
+        .navigationTitle("Developer")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .preferredColorScheme(.dark)
+    }
+}
+#endif

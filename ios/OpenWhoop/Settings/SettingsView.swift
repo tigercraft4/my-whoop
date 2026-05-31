@@ -1,5 +1,4 @@
 import SwiftUI
-import WhoopStore
 
 // MARK: - Profile model
 
@@ -61,9 +60,6 @@ struct SettingsView: View {
     @State private var saveStatus: SaveStatus = .idle
     @State private var isBackfilling = false
 
-    // IMU mode (debug only)
-    @State private var imuModeOn: Bool = false
-
     private enum SaveStatus: Equatable {
         case idle
         case saving
@@ -101,9 +97,6 @@ struct SettingsView: View {
                 sexSection
                 saveSection
                 footerSection
-                #if DEBUG
-                debugSection
-                #endif
             }
             .scrollContentBackground(.hidden)
             .background(WH.Color.background)
@@ -229,74 +222,6 @@ struct SettingsView: View {
                 .foregroundStyle(WH.Color.textSecondary)
         }
     }
-
-    // MARK: - Debug section (hidden in Release builds)
-
-    #if DEBUG
-    @State private var dbStats: String = "Tap to check"
-
-    private var debugSection: some View {
-        Section(header: Text("Developer")) {
-            Button(action: {
-                imuModeOn.toggle()
-                model.toggleIMUMode(on: imuModeOn)
-            }) {
-                HStack {
-                    Text("IMU Mode")
-                    Spacer()
-                    Text(imuModeOn ? "ON" : "OFF")
-                        .foregroundColor(imuModeOn ? .green : .secondary)
-                }
-            }
-            HStack {
-                Text("DB Stats")
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text(dbStats)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .onTapGesture {
-                Task {
-                    if let s = try? await metrics.whoopStore?.storageStats() {
-                        dbStats = "decoded:\(s.decodedRows) raw:\(s.rawBatches)"
-                    }
-                }
-            }
-            Button("Reset HealthKit Cursors") {
-                UserDefaults.standard.removeObject(forKey: "hk.hrHighwater")
-                UserDefaults.standard.removeObject(forKey: "hk.hrvHighwater")
-            }
-            .foregroundColor(.secondary)
-            Button("Insert Today's Test Data") {
-                Task {
-                    let today = DailyMetric(
-                        day: "2026-05-31",
-                        totalSleepMin: 428.0,
-                        efficiency: 87.0,
-                        deepMin: 95.0,
-                        remMin: 112.0,
-                        lightMin: 221.0,
-                        disturbances: 4,
-                        restingHr: 58,
-                        avgHrv: 52.3,
-                        recovery: 78.0,
-                        strain: 12.4,
-                        exerciseCount: 1,
-                        spo2Pct: nil,
-                        skinTempDevC: nil,
-                        respRateBpm: nil
-                    )
-                    try? await metrics.whoopStore?.upsertDailyMetrics([today], deviceId: AppConfig.deviceId)
-                    await metrics.refresh()
-                    if let s = try? await metrics.whoopStore?.storageStats() {
-                        dbStats = "decoded:\(s.decodedRows) raw:\(s.rawBatches)"
-                    }
-                }
-            }
-        }
-    }
-    #endif
 
     // MARK: - Load
 
