@@ -39,6 +39,11 @@ targets:
         WHOOP_BASE_URL: $(WHOOP_BASE_URL)
         WHOOP_API_KEY: $(WHOOP_API_KEY)
         WHOOP_DEVICE_ID: $(WHOOP_DEVICE_ID)
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            dockge.tigercraft4.com:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: false
     dependencies:
       - package: WhoopProtocol
       - package: WhoopStore
