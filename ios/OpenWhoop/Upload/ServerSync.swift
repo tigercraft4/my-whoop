@@ -331,6 +331,14 @@ final class ServerSync {
             try? await store.upsertDailyMetrics(days, deviceId: deviceId)
         }
 
+        // Ensure the most-recent daily row is always present — /v1/today uses ORDER BY day DESC
+        // LIMIT 1 on the server, so it returns the latest row even if it falls outside the
+        // derivedWindowDays window (e.g. the user hasn't synced in over 60 days, or the server
+        // computed a row for a date that is newer than the window edge).
+        if let todayMetric = await getTodayMetric() {
+            try? await store.upsertDailyMetrics([todayMetric], deviceId: deviceId)
+        }
+
         // /v1/sleep is per-date; fetch ONLY the days that appear in /v1/daily (days with computed
         // metrics) rather than every calendar day in the window. Idempotent upserts.
         for metric in days {
