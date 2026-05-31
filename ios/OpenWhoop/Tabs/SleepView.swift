@@ -91,15 +91,8 @@ struct SleepView: View {
                 // Custom tight header (replaces the hidden system large-title nav bar)
                 ScreenHeader("Sleep")
 
-                // 1. Headline — efficiency hero + total duration
-                headlineSection
-
-                // 2. Hypnogram
-                if let session = detail?.session {
-                    HypnogramView(session: session)
-                } else {
-                    noDataCard(icon: "moon.zzz", message: "No stage data for last night")
-                }
+                // 1. Sleep card (WHOOP-style) — HOURS OF SLEEP, SLEEP PERFORMANCE, Hypnogram
+                SleepCard(session: detail?.session, daily: detail?.daily)
 
                 // 3. Stage breakdown + sleep stats
                 stageBreakdownSection
