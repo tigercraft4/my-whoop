@@ -352,10 +352,11 @@ def extract_streams(parsed_results, device_clock_ref, wall_clock_ref):
         tname = r["type_name"]
         if tname == "REALTIME_DATA":
             ts = _to_wall(p.get("timestamp"), device_clock_ref, wall_clock_ref)
-            if ts is not None and "heart_rate" in p:
-                out["hr"].append({"ts": ts, "bpm": p["heart_rate"]})
-            for rr in p.get("rr_intervals", []):
-                out["rr"].append({"ts": ts, "rr_ms": rr})
+            if ts is not None:
+                if "heart_rate" in p:
+                    out["hr"].append({"ts": ts, "bpm": p["heart_rate"]})
+                for rr in p.get("rr_intervals", []):
+                    out["rr"].append({"ts": ts, "rr_ms": rr})
         elif tname == "EVENT":
             # EVENT timestamps are real RTC unix seconds (the device's wall clock),
             # NOT the monotonic device epoch that REALTIME_DATA uses. They are already
@@ -426,10 +427,11 @@ def extract_historical_streams(parsed_results, device_clock_ref, wall_clock_ref)
                                        "y": p.get("gravity_y"), "z": p.get("gravity_z"), "unit": "g"})
         elif tname == "REALTIME_RAW_DATA":
             ts = _to_wall(p.get("timestamp"), device_clock_ref, wall_clock_ref)
-            if ts is not None and "heart_rate" in p:
-                out["hr"].append({"ts": ts, "bpm": p["heart_rate"]})
-            for rr in p.get("rr_intervals", []):
-                out["rr"].append({"ts": ts, "rr_ms": rr})
+            if ts is not None:
+                if "heart_rate" in p:
+                    out["hr"].append({"ts": ts, "bpm": p["heart_rate"]})
+                for rr in p.get("rr_intervals", []):
+                    out["rr"].append({"ts": ts, "rr_ms": rr})
         elif tname == "EVENT":
             # EVENT timestamps are real RTC unix seconds (device wall clock), already
             # wall-clock — must NOT be offset by device->wall correlation.
