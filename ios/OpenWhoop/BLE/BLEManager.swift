@@ -324,8 +324,13 @@ public final class BLEManager: NSObject, ObservableObject {
     /// this firmware, so the backfill idle-watchdog must NOT be re-armed by it — only by genuine
     /// offload progress — otherwise the session can neither complete nor time out.
     static func isOffloadFrame(_ frame: [UInt8]) -> Bool {
-        guard frame.count > 4 else { return false }
-        switch frame[4] {
+        // Maverick 5.0: [0xAA][0x01][len_lo][len_hi][role][token0][token1][token2][packet_type]...
+        // packet_type is at frame[8]; frame[4] is the role byte (always 0x01).
+        // 4.0: [0xAA][len_lo][len_hi][crc8][packet_type]... → packet_type at frame[4].
+        let isMaverick = frame.count > 1 && frame[1] == 0x01
+        let typeOffset = isMaverick ? 8 : 4
+        guard frame.count > typeOffset else { return false }
+        switch frame[typeOffset] {
         case 47, 48, 49, 50: return true   // HISTORICAL_DATA / EVENT / METADATA / CONSOLE_LOGS
         default: return false              // 40 REALTIME_DATA, 43 REALTIME_RAW_DATA (live flood)
         }
@@ -869,8 +874,10 @@ extension BLEManager: CBPeripheralDelegate {
                         }
                     }
                 }
+                let isMav = frame.count > 1 && frame[1] == 0x01
+                let typeOff = isMav ? 8 : 4
+                let ftype = frame.count > typeOff ? frame[typeOff] : 0xFF
                 if backfilling {
-                    let ftype = frame.count > 4 ? frame[4] : 0xFF
                     if BLEManager.isOffloadFrame(frame) {
                         log("Backfill: offload frame type=\(ftype) len=\(frame.count)")
                         armBackfillTimeout()
@@ -882,8 +889,6 @@ extension BLEManager: CBPeripheralDelegate {
                         }
                     }
                 } else {
-                    // Live path: log first few frames to verify data flows from WHOOP.
-                    let ftype = frame.count > 4 ? frame[4] : 0xFF
                     if liveFrameDebugCount < 10 {
                         liveFrameDebugCount += 1
                         log("Live: frame type=\(ftype) len=\(frame.count) char=\(characteristic.uuid.uuidString.prefix(8))")
