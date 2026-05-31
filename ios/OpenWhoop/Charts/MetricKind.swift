@@ -12,6 +12,12 @@ enum MetricKind: String, Identifiable {
     case rhr
     case strain
     case sleepDuration
+    /// Blood oxygen saturation (%). Daily aggregate from sleep session.
+    /// Nil when PROTO-11 stream is not yet verified for this device.
+    case spo2
+    /// Skin temperature deviation from baseline (°C). Daily aggregate from sleep session.
+    /// Nil when PROTO-11 stream is not yet verified for this device.
+    case skinTemp
     /// High-resolution 1 Hz HR stream. Stream-backed — NOT a daily aggregate.
     /// Excluded from the daily Trends card loop; has its own HeartRateDetailView.
     case rawHR
@@ -20,7 +26,8 @@ enum MetricKind: String, Identifiable {
 
     /// The ordered list of daily-aggregate metrics shown in the Trends cards loop.
     /// rawHR is intentionally excluded — it is stream-backed, not daily.
-    static let dailyCases: [MetricKind] = [.recovery, .hrv, .rhr, .strain, .sleepDuration]
+    /// spo2 and skinTemp are included; they return nil when PROTO-11 stream is unavailable.
+    static let dailyCases: [MetricKind] = [.recovery, .hrv, .rhr, .strain, .sleepDuration, .spo2, .skinTemp]
 
     // MARK: Display
 
@@ -31,6 +38,8 @@ enum MetricKind: String, Identifiable {
         case .rhr:           return "Resting HR"
         case .strain:        return "Day Strain"
         case .sleepDuration: return "Sleep"
+        case .spo2:          return "Blood Oxygen"
+        case .skinTemp:      return "Skin Temp"
         case .rawHR:         return "Heart Rate"
         }
     }
@@ -42,6 +51,8 @@ enum MetricKind: String, Identifiable {
         case .rhr:           return "bpm"
         case .strain:        return "/ 21"
         case .sleepDuration: return "hr"
+        case .spo2:          return "%"
+        case .skinTemp:      return "°C"
         case .rawHR:         return "bpm"
         }
     }
@@ -55,6 +66,8 @@ enum MetricKind: String, Identifiable {
         case .rhr:           return WH.Color.textPrimary
         case .strain:        return WH.Color.strainBlue
         case .sleepDuration: return WH.Color.sleepPurple
+        case .spo2:          return WH.Color.teal             // cyan — distinct from other metrics
+        case .skinTemp:      return SwiftUI.Color(hex: "#FF9F0A")  // warm orange — deviation signal
         case .rawHR:         return WH.Color.recoveryRed
         }
     }
@@ -65,7 +78,7 @@ enum MetricKind: String, Identifiable {
 
     var markType: MarkType {
         switch self {
-        case .recovery, .hrv, .rhr, .rawHR: return .line
+        case .recovery, .hrv, .rhr, .spo2, .skinTemp, .rawHR: return .line
         case .strain, .sleepDuration: return .bar
         }
     }
@@ -76,7 +89,9 @@ enum MetricKind: String, Identifiable {
         switch self {
         case .recovery: return 0...100
         case .strain:   return 0...21
-        case .rawHR:    return nil   // auto-scaled — HR range varies widely
+        case .spo2:     return 90...100  // physiologically relevant SpO2 range
+        case .skinTemp: return nil       // auto-scale — deviation range varies
+        case .rawHR:    return nil       // auto-scaled — HR range varies widely
         default:        return nil
         }
     }
@@ -99,6 +114,8 @@ enum MetricKind: String, Identifiable {
         case .rhr:           return String(format: "%.0f bpm", value)
         case .strain:        return String(format: "%.1f", value)
         case .sleepDuration: return String(format: "%.1f hr", value)
+        case .spo2:          return String(format: "%.0f%%", value)
+        case .skinTemp:      return String(format: "%+.1f °C", value)  // show sign for deviation
         case .rawHR:         return String(format: "%.0f bpm", value)
         }
     }
@@ -111,6 +128,8 @@ enum MetricKind: String, Identifiable {
         case .rhr:           return String(format: "%.0f", value)
         case .strain:        return String(format: "%.1f", value)
         case .sleepDuration: return String(format: "%.1f", value)
+        case .spo2:          return String(format: "%.0f", value)
+        case .skinTemp:      return String(format: "%+.1f", value)
         case .rawHR:         return String(format: "%.0f", value)
         }
     }
@@ -134,6 +153,10 @@ enum MetricKind: String, Identifiable {
         case .sleepDuration:
             guard let m = metric.totalSleepMin, m > 0 else { return nil }
             return m / 60.0   // minutes → hours
+        case .spo2:
+            return metric.spo2Pct      // nil when PROTO-11 stream not verified
+        case .skinTemp:
+            return metric.skinTempDevC // nil when PROTO-11 stream not verified; shown as "—"
         case .rawHR:
             return nil   // unreachable: guarded by isStreamBacked above
         }
