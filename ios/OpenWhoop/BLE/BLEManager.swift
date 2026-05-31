@@ -285,19 +285,27 @@ public final class BLEManager: NSObject, ObservableObject {
         }
         backfiller.begin()
         backfilling = true
-        // Payload MUST be [0x00], NOT empty: verified on-device that this strap serves type-47 only with
-        // [0x00] (empty → 0 frames on a clean stable link with ~2k records pending); the Mac ground-truth
-        // offload (re/sync_openwhoop.py, re/diagnose_biometrics.py) uses [0x00] too. Plain offload — the
-        // strap streams HISTORY_START → type-47 records → HISTORY_END (acked) … → HISTORY_COMPLETE.
+        backfillFrameCount = 0
+        // ENTER_HIGH_FREQ_SYNC (96, empty payload) is required for the strap to serve biometric
+        // type-47 records (HR/RR/SpO2/skin-temp). Without it the strap stays silent after
+        // SEND_HISTORICAL_DATA — confirmed in re/sync_openwhoop.py ("the missing piece").
+        send(.enterHighFreqSync, payload: [], writeType: .withoutResponse)
+        BLEManager.logger.notice("BF: → ENTER_HIGH_FREQ_SYNC sent")
         send(.sendHistoricalData, payload: [0x00], writeType: .withResponse)
         armBackfillTimeout()
         log("Backfill: session started — historical offload requested")
+        BLEManager.logger.notice("BF: session started")
     }
 
     /// Feed a frame to the Backfiller preserving exact arrival order. Frames are appended
     /// synchronously (delegate order) and drained sequentially by a single task, so START /
     /// data / END chunk assembly is never reordered (Backfiller.ingest is async).
+    private var backfillFrameCount = 0
     private func routeBackfillFrame(_ frame: [UInt8]) {
+        backfillFrameCount += 1
+        if backfillFrameCount == 1 || backfillFrameCount % 50 == 0 {
+            BLEManager.logger.notice("BF: frame #\(self.backfillFrameCount, privacy: .public) type=\(frame.first ?? 0, privacy: .public)")
+        }
         backfillFrameQueue.append(frame)
         guard !backfillDraining else { return }
         backfillDraining = true
@@ -365,6 +373,7 @@ public final class BLEManager: NSObject, ObservableObject {
         backfillTimeout = nil
         backfillFrameQueue.removeAll()
         log("Backfill: session ended — reason=\(reason)")
+        BLEManager.logger.notice("BF: session ended reason=\(reason, privacy: .public)")
         uploadOpportunistically()
         // Read-path sync runs AFTER the offload, never concurrently with it — the offload and the
         // pull share the WhoopStore actor, and a large first-run pull would starve the Backfiller's
@@ -806,13 +815,13 @@ extension BLEManager: CBPeripheralDelegate {
         startBackfillTimer()   // re-offload the type-47 store every backfillIntervalSeconds
     }
 
-    /// SET_CLOCK(10) payload = the strap's 8-byte form: [seconds u32 LE][subseconds
-    /// u32 LE], subseconds in 1/32768 s (0 is fine). NOT the old 9-byte [u32 + 5 pad] — a wrong-length
-    /// SET_CLOCK is ack-received but NOT latched, leaving the RTC lost so the strap won't serve type-47.
+    /// SET_CLOCK(10) payload: [seconds u32 LE][5 pad bytes] = 9 bytes total.
+    /// Matches re/sync_openwhoop.py (struct.pack("<I", now) + b"\x00\x00\x00\x00\x00"),
+    /// which is the verified ground-truth that makes the strap latch the RTC and serve type-47.
     static func setClockPayload(now: UInt32 = UInt32(Date().timeIntervalSince1970)) -> [UInt8] {
         [UInt8(now & 0xFF), UInt8((now >> 8) & 0xFF),
          UInt8((now >> 16) & 0xFF), UInt8((now >> 24) & 0xFF),
-         0, 0, 0, 0]
+         0, 0, 0, 0, 0]
     }
 
     /// Newest plausible-unix marker in a GET_DATA_RANGE COMMAND_RESPONSE = the strap's newest stored
