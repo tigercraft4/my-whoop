@@ -52,6 +52,16 @@ public final class LiveViewModel: ObservableObject {
     public func runHaptic(pattern: UInt8, loops: UInt8) {
         ble.send(.runHapticPatternMaverick, payload: [pattern, loops, 0, 0, 0], writeType: .withResponse)
     }
+    /// Debug: send haptic with arbitrary raw command byte — for testing cmd 19 vs 79 and patterns 0-7.
+    public func runHapticRaw(cmd: UInt8, pattern: UInt8, loops: UInt8) {
+        // Build a Maverick frame manually with the given command byte
+        if cmd == 19 {
+            ble.send(.runHapticPatternMaverick, payload: [pattern, loops, 0, 0, 0], writeType: .withResponse)
+        } else {
+            ble.send(.runHapticsPattern, payload: [pattern, loops, 0, 0, 0], writeType: .withResponse)
+        }
+    }
+    public func getAllHapticsPatterns() { ble.send(.getAllHapticsPattern, payload: [0x00]) }
     public func stopHaptics() { ble.send(.stopHaptics, payload: [0x00], writeType: .withResponse) }
 
     /// Fire an immediate alarm-pattern buzz on the strap for testing (M6).

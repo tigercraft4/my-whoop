@@ -639,8 +639,9 @@ private struct DeveloperView: View {
 
     @State private var imuModeOn = false
     @State private var dbStats = "Toca para ver"
-    @State private var hapticPattern = 2
+    @State private var hapticPattern = 0
     @State private var hapticLoops = 3
+    @State private var hapticCmd: UInt8 = 19  // 19=Maverick, 79=legacy 4.0
 
     var body: some View {
         Form {
@@ -652,18 +653,35 @@ private struct DeveloperView: View {
                     Toggle("", isOn: $imuModeOn)
                         .onChange(of: imuModeOn) { on in model.toggleIMUMode(on: on) }
                 }
-                Button("Test Alarm Buzz") { model.testAlarmBuzz() }
+            }
+
+            // Haptics debug
+            Section(header: Text("Haptics (debug)"), footer: Text("Cmd 19 = Maverick 5.0 / Cmd 79 = legacy 4.0. Ver logs para HAPTICS_FIRED (evento 60).")) {
                 HStack {
-                    Text("Haptic Pattern")
+                    Text("Cmd")
+                    Spacer()
+                    Picker("", selection: $hapticCmd) {
+                        Text("19 Maverick").tag(UInt8(19))
+                        Text("79 Legacy 4.0").tag(UInt8(79))
+                    }.pickerStyle(.segmented)
+                }
+                HStack {
+                    Text("Pattern")
                     Spacer()
                     Picker("", selection: $hapticPattern) {
-                        ForEach(1...7, id: \.self) { Text("\($0)").tag($0) }
+                        ForEach(0...7, id: \.self) { Text("\($0)").tag($0) }
                     }.pickerStyle(.menu)
                 }
                 Stepper("Loops: \(hapticLoops)", value: $hapticLoops, in: 1...5)
                 Button("Run Haptic") {
-                    model.runHaptic(pattern: UInt8(hapticPattern), loops: UInt8(hapticLoops))
+                    model.runHapticRaw(cmd: hapticCmd, pattern: UInt8(hapticPattern), loops: UInt8(hapticLoops))
                 }
+                Button("Get Pattern Count (cmd 80)") {
+                    model.getAllHapticsPatterns()
+                }
+                .foregroundStyle(.secondary)
+                Button("Stop Haptics") { model.stopHaptics() }
+                    .foregroundStyle(.red)
             }
 
             // Database

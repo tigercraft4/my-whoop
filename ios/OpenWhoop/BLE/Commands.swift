@@ -72,6 +72,8 @@ public enum WhoopCommand: UInt8, CaseIterable {
     /// Replaces runHapticsPattern (79) which is the 4.0 legacy command silently ignored by 5.0 firmware.
     /// HYPOTHESIS (5.0, payload format unconfirmed — command ID confirmed via r52 enum map).
     case runHapticPatternMaverick = 19
+    /// Query available haptic patterns. Payload `[0x00]`. Response contains pattern count.
+    case getAllHapticsPattern    = 80
     /// Fire a preset haptic pattern — WHOOP 4.0 legacy command. Kept for test compatibility.
     /// DO NOT use in production on WHOOP 5.0 — firmware ignores it silently (use runHapticPatternMaverick).
     case runHapticsPattern     = 79
@@ -129,6 +131,7 @@ public enum WhoopCommand: UInt8, CaseIterable {
         case .toggleIMUMode:         return "Toggle IMU Mode"
         case .enableOpticalData:     return "Enable Optical Data"
         case .runHapticPatternMaverick: return "Run Haptics Pattern (5.0)"
+        case .getAllHapticsPattern:   return "Get All Haptics Patterns"
         case .runHapticsPattern:     return "Run Haptics Pattern (4.0 legacy)"
         case .stopHaptics:           return "Stop Haptics"
         case .sendR10R11Realtime:    return "R10/R11 Realtime (raw stream)"
