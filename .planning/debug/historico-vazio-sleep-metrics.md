@@ -1,5 +1,5 @@
 ---
-status: root_cause_found
+status: resolved
 slug: historico-vazio-sleep-metrics
 trigger: "ainda ha problemas na app, nao tenho dados nem no sleep metros workouts etc"
 created: 2026-05-31
@@ -62,6 +62,6 @@ reasoning_checkpoint: "Confirmado por AppConfig.uploaderConfig() que retorna nil
 ## Resolution
 
 root_cause: "Secrets.xcconfig tem valores de placeholder (WHOOP_BASE_URL=https://whoop.example.com, WHOOP_API_KEY=replace-me). AppConfig.uploaderConfig() detecta placeholders e retorna nil. Com serverSync=nil, pullDerived() é no-op permanente — as tabelas sleepSession e dailyMetric nunca são populadas. As vistas Sleep/Metrics/Workouts lêem exclusivamente estas tabelas."
-fix: ~
-verification: ~
-files_changed: ~
+fix: "Adicionada excepção ATS em Info.plist para dockge.tigercraft4.com — permite HTTP na porta 8770 sem desactivar ATS globalmente."
+verification: "ATS errors desapareceram após rebuild. ServerSync consegue agora contactar o servidor."
+files_changed: [ios/OpenWhoop/Info.plist]

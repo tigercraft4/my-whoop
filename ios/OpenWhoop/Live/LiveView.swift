@@ -47,6 +47,31 @@ private struct LiveContentView: View {
     @State private var hapticPattern = 2
     @State private var hapticLoops = 0
 
+    /// Server config — overrides xcconfig at runtime; persisted across launches.
+    @AppStorage("customServerURL")    private var serverURL: String = ""
+    @AppStorage("customServerAPIKey") private var serverAPIKey: String = ""
+
+    /// Ping state.
+    @State private var pingResult: PingState = .idle
+    private enum PingState {
+        case idle, loading, ok(Int), error(String)
+        var label: String {
+            switch self {
+            case .idle:             return ""
+            case .loading:          return "A testar…"
+            case .ok(let code):     return "✓ HTTP \(code)"
+            case .error(let msg):   return "✗ \(msg)"
+            }
+        }
+        var color: Color {
+            switch self {
+            case .idle, .loading:   return WH.Color.textSecondary
+            case .ok:               return WH.Color.recoveryGreen
+            case .error:            return WH.Color.recoveryRed
+            }
+        }
+    }
+
     /// Battery-alert settings, persisted to the same UserDefaults keys BatteryAlertMonitor reads.
     /// Defaults: both alerts off, warn at 50%, low at 20%.
     @AppStorage(BatteryAlertKeys.warnEnabled)   private var warnEnabled = false
@@ -67,6 +92,7 @@ private struct LiveContentView: View {
                     controlsSection
                     hapticsSection
                     batteryAlertsSection
+                    serverSection
                     researchSection
                     logSection
                 }
@@ -78,6 +104,13 @@ private struct LiveContentView: View {
             // iOS 16: sheets don't reliably inherit environment objects — pass explicitly.
             SettingsView()
                 .environmentObject(metrics)
+        }
+        .onAppear {
+            if serverURL.isEmpty,
+               let cfg = AppConfig.uploaderConfig(deviceId: AppConfig.deviceId) {
+                serverURL    = cfg.baseURL.absoluteString
+                serverAPIKey = cfg.apiKey
+            }
         }
     }
 
@@ -410,6 +443,102 @@ private struct LiveContentView: View {
                 .fixedSize()
                 .foregroundStyle(WH.Color.textPrimary)
                 .disabled(!isOn.wrappedValue)
+        }
+    }
+
+    // MARK: - 5b. Server
+
+    private var serverSection: some View {
+        consoleCard {
+            VStack(alignment: .leading, spacing: WH.Spacing.sm) {
+                sectionHeader("Server")
+
+                VStack(alignment: .leading, spacing: WH.Spacing.xs) {
+                    Text("URL")
+                        .font(WH.Font.cardTitle)
+                        .foregroundStyle(WH.Color.textSecondary)
+                        .tracking(1.2)
+                    TextField("http://host:port", text: $serverURL)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(WH.Color.textPrimary)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.URL)
+                        .padding(WH.Spacing.sm)
+                        .background(WH.Color.surface2,
+                                    in: RoundedRectangle(cornerRadius: WH.Radius.small, style: .continuous))
+                }
+
+                VStack(alignment: .leading, spacing: WH.Spacing.xs) {
+                    Text("API KEY")
+                        .font(WH.Font.cardTitle)
+                        .foregroundStyle(WH.Color.textSecondary)
+                        .tracking(1.2)
+                    SecureField("token", text: $serverAPIKey)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(WH.Color.textPrimary)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .padding(WH.Spacing.sm)
+                        .background(WH.Color.surface2,
+                                    in: RoundedRectangle(cornerRadius: WH.Radius.small, style: .continuous))
+                }
+
+                HStack(spacing: WH.Spacing.sm) {
+                    consoleButton("Ping", icon: "network",
+                                  accent: WH.Color.teal, prominent: true) {
+                        Task { await pingServer() }
+                    }
+                    .frame(maxWidth: 100)
+
+                    if case .loading = pingResult {
+                        ProgressView()
+                            .tint(WH.Color.teal)
+                            .scaleEffect(0.8)
+                    } else if pingResult.label != "" {
+                        Text(pingResult.label)
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(pingResult.color)
+                    }
+
+                    Spacer()
+                }
+
+                Text("Altera a URL em runtime para testes. As alterações têm efeito no próximo lançamento da app.")
+                    .font(WH.Font.caption)
+                    .foregroundStyle(WH.Color.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @MainActor
+    private func pingServer() async {
+        pingResult = .loading
+        guard !serverURL.isEmpty,
+              var comps = URLComponents(string: serverURL) else {
+            pingResult = .error("URL inválido")
+            return
+        }
+        comps.path = (comps.path.hasSuffix("/") ? comps.path : comps.path + "/") + "v1/daily"
+        comps.queryItems = [
+            URLQueryItem(name: "device", value: AppConfig.deviceId),
+            URLQueryItem(name: "from",   value: "2026-01-01"),
+            URLQueryItem(name: "to",     value: "2026-01-02")
+        ]
+        guard let url = comps.url else {
+            pingResult = .error("URL inválido")
+            return
+        }
+        var req = URLRequest(url: url, timeoutInterval: 6)
+        req.setValue("Bearer \(serverAPIKey)", forHTTPHeaderField: "Authorization")
+        do {
+            let (_, resp) = try await URLSession.shared.data(for: req)
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            pingResult = code >= 200 && code < 300 ? .ok(code) : .error("HTTP \(code)")
+        } catch {
+            let msg = (error as? URLError).map { "\($0.code.rawValue)" } ?? error.localizedDescription
+            pingResult = .error(msg)
         }
     }
 
