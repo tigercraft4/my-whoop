@@ -30,10 +30,10 @@
 ### UI WHOOP-Style
 
 - [ ] **UI-01**: JADX APK analysis documentado — estrutura de ecrãs WHOOP registada (hierarquia de dados por tab, labels e unidades dos campos) dentro dos limites da regra D-04; nenhum asset/artwork copiado
-- [ ] **UI-02**: Tab bar inferior com 5 tabs — Today/Overview, Sleep, Strain/Workouts, Trends, Device — e persistência de seleção via `@SceneStorage`
-- [ ] **UI-03**: Recovery card na Today view — score 0–100 com color zones (green/yellow/red), HRV RMSSD, RHR, sleep performance; alimentado por `DailyMetric.recovery`
-- [ ] **UI-04**: Sleep card na Sleep view — duração, eficiência, stacked bar com fases (REM/Deep/Light/Awake); alimentado por `CachedSleepSession.stagesJSON` via `HypnogramView`
-- [ ] **UI-05**: Strain card na Strain view — day strain score 0–21 com gauge, HR zones breakdown; alimentado por `DailyMetric.strain`
+- [x] **UI-02**: Tab bar inferior com 5 tabs — Today/Overview, Sleep, Strain/Workouts, Trends, Device — e persistência de seleção via `@SceneStorage`
+- [x] **UI-03**: Recovery card na Today view — score 0–100 com color zones (green/yellow/red), HRV RMSSD, RHR, sleep performance; alimentado por `DailyMetric.recovery`
+- [x] **UI-04**: Sleep card na Sleep view — duração, eficiência, stacked bar com fases (REM/Deep/Light/Awake); alimentado por `CachedSleepSession.stagesJSON` via `HypnogramView`
+- [x] **UI-05**: Strain card na Strain view — day strain score 0–21 com gauge, HR zones breakdown; alimentado por `DailyMetric.strain`
 
 ### Algoritmos
 
@@ -98,10 +98,10 @@ Um requisito está **Done** quando:
 | PROTO-13 | Phase 7 | Pending |
 | PROTO-14 | Phase 7 | Pending |
 | UI-01 | Phase 8 | Pending |
-| UI-02 | Phase 9 | Pending |
-| UI-03 | Phase 9 | Pending |
-| UI-04 | Phase 9 | Pending |
-| UI-05 | Phase 9 | Pending |
+| UI-02 | Phase 9 | Complete |
+| UI-03 | Phase 9 | Complete |
+| UI-04 | Phase 9 | Complete |
+| UI-05 | Phase 9 | Complete |
 | ALG-01 | Phase 10 | Pending |
 | ALG-02 | Phase 10 | Pending |
 | ALG-03 | Phase 10 | Pending |
