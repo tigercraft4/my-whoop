@@ -318,6 +318,8 @@ struct SettingsView: View {
     // MARK: - Debug section (hidden in Release builds)
 
     #if DEBUG
+    @State private var dbStats: String = "Tap to check"
+
     private var debugSection: some View {
         Section(header: Text("Developer")) {
             Button(action: {
@@ -329,6 +331,21 @@ struct SettingsView: View {
                     Spacer()
                     Text(imuModeOn ? "ON" : "OFF")
                         .foregroundColor(imuModeOn ? .green : .secondary)
+                }
+            }
+            HStack {
+                Text("DB Stats")
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text(dbStats)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .onTapGesture {
+                Task {
+                    if let s = try? await metrics.whoopStore?.storageStats() {
+                        dbStats = "decoded:\(s.decodedRows) raw:\(s.rawBatches)"
+                    }
                 }
             }
             Button("Reset HealthKit Cursors") {
@@ -357,6 +374,9 @@ struct SettingsView: View {
                     )
                     try? await metrics.whoopStore?.upsertDailyMetrics([today], deviceId: AppConfig.deviceId)
                     await metrics.refresh()
+                    if let s = try? await metrics.whoopStore?.storageStats() {
+                        dbStats = "decoded:\(s.decodedRows) raw:\(s.rawBatches)"
+                    }
                 }
             }
         }
