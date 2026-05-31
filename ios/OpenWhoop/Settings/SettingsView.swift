@@ -19,41 +19,6 @@ struct Profile: Codable, Equatable {
     }
 }
 
-// MARK: - Unit system
-
-enum UnitSystem: String, CaseIterable {
-    case imperial = "Imperial"
-    case metric   = "Metric"
-}
-
-// MARK: - Imperial ↔ Metric helpers (public for unit tests)
-
-enum ProfileUnits {
-    /// Convert feet + inches to centimetres (rounded to 1 decimal).
-    static func heightCm(feet: Double, inches: Double) -> Double {
-        let totalInches = feet * 12 + inches
-        return (totalInches * 2.54 * 10).rounded() / 10
-    }
-
-    /// Convert centimetres to feet + inches.
-    /// Returns (feet, inches) where inches is in [0, 12).
-    static func heightFtIn(cm: Double) -> (feet: Double, inches: Double) {
-        let totalInches = cm / 2.54
-        let feet = floor(totalInches / 12)
-        let inches = ((totalInches - feet * 12) * 10).rounded() / 10
-        return (feet, inches)
-    }
-
-    /// Convert pounds to kilograms (rounded to 1 decimal).
-    static func weightKg(lbs: Double) -> Double {
-        return (lbs * 0.45359237 * 10).rounded() / 10
-    }
-
-    /// Convert kilograms to pounds (rounded to 1 decimal).
-    static func weightLbs(kg: Double) -> Double {
-        return (kg / 0.45359237 * 10).rounded() / 10
-    }
-}
 
 // MARK: - Local persistence
 
@@ -80,18 +45,10 @@ struct SettingsView: View {
     @EnvironmentObject private var metrics: MetricsRepository
     @EnvironmentObject private var model: LiveViewModel
 
-    // Unit system
-    @State private var unitSystem: UnitSystem = .imperial
-
-    // Height fields (imperial)
-    @State private var heightFeet: String   = ""
-    @State private var heightInches: String = ""
-
-    // Height field (metric)
+    // Height (metric)
     @State private var heightCmStr: String  = ""
 
-    // Weight
-    @State private var weightLbsStr: String = ""
+    // Weight (metric)
     @State private var weightKgStr: String  = ""
 
     // Age
@@ -138,7 +95,6 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                unitsSection
                 heightSection
                 weightSection
                 ageSection
@@ -161,45 +117,13 @@ struct SettingsView: View {
 
     // MARK: - Form sections
 
-    private var unitsSection: some View {
-        Section {
-            Picker("Units", selection: $unitSystem) {
-                ForEach(UnitSystem.allCases, id: \.self) { u in
-                    Text(u.rawValue).tag(u)
-                }
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: unitSystem) { _ in
-                convertFields()
-            }
-        } header: {
-            Text("Unit System")
-        }
-    }
-
     private var heightSection: some View {
         Section {
-            if unitSystem == .imperial {
-                HStack {
-                    TextField("ft", text: $heightFeet)
-                        .keyboardType(.numberPad)
-                        .frame(maxWidth: 80)
-                    Text("ft")
-                        .foregroundStyle(WH.Color.textSecondary)
-                    TextField("in", text: $heightInches)
-                        .keyboardType(.decimalPad)
-                        .frame(maxWidth: 80)
-                    Text("in")
-                        .foregroundStyle(WH.Color.textSecondary)
-                    Spacer()
-                }
-            } else {
-                HStack {
-                    TextField("cm", text: $heightCmStr)
-                        .keyboardType(.decimalPad)
-                    Text("cm")
-                        .foregroundStyle(WH.Color.textSecondary)
-                }
+            HStack {
+                TextField("cm", text: $heightCmStr)
+                    .keyboardType(.decimalPad)
+                Text("cm")
+                    .foregroundStyle(WH.Color.textSecondary)
             }
         } header: {
             Text("Height")
@@ -208,20 +132,11 @@ struct SettingsView: View {
 
     private var weightSection: some View {
         Section {
-            if unitSystem == .imperial {
-                HStack {
-                    TextField("lbs", text: $weightLbsStr)
-                        .keyboardType(.decimalPad)
-                    Text("lb")
-                        .foregroundStyle(WH.Color.textSecondary)
-                }
-            } else {
-                HStack {
-                    TextField("kg", text: $weightKgStr)
-                        .keyboardType(.decimalPad)
-                    Text("kg")
-                        .foregroundStyle(WH.Color.textSecondary)
-                }
+            HStack {
+                TextField("kg", text: $weightKgStr)
+                    .keyboardType(.decimalPad)
+                Text("kg")
+                    .foregroundStyle(WH.Color.textSecondary)
             }
         } header: {
             Text("Weight")
@@ -401,91 +316,18 @@ struct SettingsView: View {
     }
 
     private func applyProfile(_ p: Profile) {
-        if let h = p.heightCm {
-            if unitSystem == .imperial {
-                let (ft, ins) = ProfileUnits.heightFtIn(cm: h)
-                heightFeet   = formatDouble(ft, zeroIsEmpty: true)
-                heightInches = formatDouble(ins, zeroIsEmpty: false)
-            } else {
-                heightCmStr = formatDouble(h, zeroIsEmpty: true)
-            }
-        }
-        if let w = p.weightKg {
-            if unitSystem == .imperial {
-                weightLbsStr = formatDouble(ProfileUnits.weightLbs(kg: w), zeroIsEmpty: true)
-            } else {
-                weightKgStr  = formatDouble(w, zeroIsEmpty: true)
-            }
-        }
+        if let h = p.heightCm { heightCmStr = formatDouble(h, zeroIsEmpty: true) }
+        if let w = p.weightKg { weightKgStr = formatDouble(w, zeroIsEmpty: true) }
         if let a = p.age { ageStr = a > 0 ? String(a) : "" }
         if let s = p.sex, !s.isEmpty { sex = s }
-    }
-
-    // MARK: - Unit field conversion
-
-    /// When the user switches unit system, convert the current field values in place.
-    private func convertFields() {
-        switch unitSystem {
-        case .imperial:
-            // Was metric → convert cm → ft/in and kg → lbs.
-            if let cm = Double(heightCmStr) {
-                let (ft, ins) = ProfileUnits.heightFtIn(cm: cm)
-                heightFeet   = formatDouble(ft, zeroIsEmpty: true)
-                heightInches = formatDouble(ins, zeroIsEmpty: false)
-            } else {
-                heightFeet = ""; heightInches = ""
-            }
-            if let kg = Double(weightKgStr) {
-                weightLbsStr = formatDouble(ProfileUnits.weightLbs(kg: kg), zeroIsEmpty: true)
-            } else {
-                weightLbsStr = ""
-            }
-        case .metric:
-            // Was imperial → convert ft/in → cm and lbs → kg.
-            let ft = Double(heightFeet) ?? 0
-            let ins = Double(heightInches) ?? 0
-            if ft > 0 || ins > 0 {
-                heightCmStr = formatDouble(ProfileUnits.heightCm(feet: ft, inches: ins), zeroIsEmpty: true)
-            } else {
-                heightCmStr = ""
-            }
-            if let lbs = Double(weightLbsStr) {
-                weightKgStr = formatDouble(ProfileUnits.weightKg(lbs: lbs), zeroIsEmpty: true)
-            } else {
-                weightKgStr = ""
-            }
-        }
     }
 
     // MARK: - Build profile from fields
 
     private func buildProfile() -> Profile {
-        let heightCm: Double? = {
-            switch unitSystem {
-            case .imperial:
-                let ft = Double(heightFeet) ?? 0
-                let ins = Double(heightInches) ?? 0
-                let cm = ProfileUnits.heightCm(feet: ft, inches: ins)
-                return cm > 0 ? cm : nil
-            case .metric:
-                return Double(heightCmStr).flatMap { $0 > 0 ? $0 : nil }
-            }
-        }()
-
-        let weightKg: Double? = {
-            switch unitSystem {
-            case .imperial:
-                return Double(weightLbsStr).flatMap { lbs -> Double? in
-                    let kg = ProfileUnits.weightKg(lbs: lbs)
-                    return kg > 0 ? kg : nil
-                }
-            case .metric:
-                return Double(weightKgStr).flatMap { $0 > 0 ? $0 : nil }
-            }
-        }()
-
-        let age = Int(ageStr).flatMap { $0 > 0 ? $0 : nil }
-
+        let heightCm = Double(heightCmStr).flatMap { $0 > 0 ? $0 : nil }
+        let weightKg = Double(weightKgStr).flatMap { $0 > 0 ? $0 : nil }
+        let age      = Int(ageStr).flatMap { $0 > 0 ? $0 : nil }
         return Profile(heightCm: heightCm, weightKg: weightKg, age: age, sex: sex)
     }
 
