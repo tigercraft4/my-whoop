@@ -45,7 +45,7 @@ private struct LiveContentView: View {
     /// Haptics playground state. patternId indexes the device's preset patterns (the strap reports
     /// 7 via GET_ALL_HAPTICS_PATTERN); the official app fires id 2, so that's the default. loops = repeats.
     @State private var hapticPattern = 2
-    @State private var hapticLoops = 0
+    @State private var hapticLoops = 3
 
     /// Server config — overrides xcconfig at runtime; persisted across launches.
     @AppStorage("customServerURL")    private var serverURL: String = ""
