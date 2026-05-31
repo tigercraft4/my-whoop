@@ -310,7 +310,10 @@ public final class BLEManager: NSObject, ObservableObject {
     private func routeBackfillFrame(_ frame: [UInt8]) {
         backfillFrameCount += 1
         if backfillFrameCount == 1 || backfillFrameCount % 50 == 0 {
-            BLEManager.logger.notice("BF: frame #\(self.backfillFrameCount, privacy: .public) type=\(frame.first ?? 0, privacy: .public)")
+            let isMav = frame.count > 1 && frame[1] == 0x01
+            let typeOff = isMav ? 8 : 4
+            let pktType = frame.count > typeOff ? frame[typeOff] : 0
+            BLEManager.logger.notice("BF: frame #\(self.backfillFrameCount, privacy: .public) type=\(pktType, privacy: .public) len=\(frame.count, privacy: .public) mav=\(isMav, privacy: .public)")
         }
         backfillFrameQueue.append(frame)
         guard !backfillDraining else { return }
@@ -876,6 +879,7 @@ extension BLEManager: CBPeripheralDelegate {
                 if frame.count > cmdOff, frame[cmdOff] == WhoopCommand.getDataRange.rawValue,
                    let newest = BLEManager.dataRangeNewestUnix(from: frame) {
                     strapNewestTs = newest                        // feeds the liveness watchdog
+                    BLEManager.logger.notice("BF: GET_DATA_RANGE newest=\(newest, privacy: .public) (\(Date(timeIntervalSince1970: TimeInterval(newest)), privacy: .public))")
                 }
                 // Clock correlation runs in both live and backfill modes. Once established it
                 // unblocks both the Collector (live path) and the Backfiller (chunk decoding).
