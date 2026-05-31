@@ -56,6 +56,9 @@ public final class BLEManager: NSObject, ObservableObject {
     private var strapNewestTs: Int?
     /// Fires if the strap goes silent mid-offload; re-armed on every frame during backfill.
     private var backfillTimeout: DispatchWorkItem?
+    /// Fires if the FF key exchange is not completed within 15s after connect handshake.
+    /// Clears ffExchangePending and triggers requestSync(.connect) so backfill can proceed.
+    private var ffExchangeTimeout: DispatchWorkItem?
     /// Periodic opportunistic upload while connected. Without it, upload only fires at connect +
     /// backfill-exit, so during a long live session decoded rows pile up locally and the server
     /// (dashboard) lags. Started on bond, cancelled on disconnect.
@@ -286,6 +289,10 @@ public final class BLEManager: NSObject, ObservableObject {
         // firing SEND_HISTORICAL ahead of hello/SET_CLOCK was part of the storm that stopped serving.
         guard connectHandshakeDone else {
             log("Backfill: deferred — connect handshake not done yet")
+            return
+        }
+        guard !ffExchangePending else {
+            log("Backfill: deferred — FF key exchange still in progress")
             return
         }
         guard let backfiller else {
@@ -829,11 +836,15 @@ extension BLEManager: CBPeripheralDelegate {
         ffNames = []
         send(.startFFKeyExchange, payload: [0x01])   // REQUIRED: begin FF exchange before historical data
         send(.getDataRange)                          // refresh strap's stored range for the watchdog
-        // Plain offload (no high-freq-sync), rate-limited (first connect always runs; reconnect-flaps are
-        // throttled by BackfillPolicy). Deferred ~1.5s so SET_CLOCK/GET_DATA_RANGE round-trip first and
-        // SEND_HISTORICAL runs on a settled link, like the paced Mac prototype. beginBackfill is itself
-        // gated on connectHandshakeDone so a racing foreground/restore trigger can't fire it early.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.requestSync(.connect) }
+        ffExchangeTimeout?.cancel()
+        let ffTimeoutItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            BLEManager.logger.notice("BF: FF exchange timeout (15s) — clearing pending, attempting backfill")
+            self.ffExchangePending = false
+            self.requestSync(.connect)
+        }
+        ffExchangeTimeout = ffTimeoutItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: ffTimeoutItem)
         uploadOpportunistically()
         // NOTE: the server pull + cloud-restore are deliberately NOT kicked here. They share the
         // WhoopStore actor with the historical offload, and a large first-run pull would starve the
@@ -873,8 +884,11 @@ extension BLEManager: CBPeripheralDelegate {
                 send(.setFFValue, payload: payload)
             }
         }
+        ffExchangeTimeout?.cancel()
+        ffExchangeTimeout = nil
         ffExchangePending = false
-        BLEManager.logger.notice("BF: FF exchange complete — backfill will trigger on next cycle")
+        requestSync(.connect)
+        BLEManager.logger.notice("BF: FF exchange complete — requestSync(.connect) triggered")
     }
 
     /// Newest plausible-unix marker in a GET_DATA_RANGE COMMAND_RESPONSE = the strap's newest stored
