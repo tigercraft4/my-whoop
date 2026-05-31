@@ -18,10 +18,12 @@
 | 1 | **Home** | HomeView (Overview/Today) |
 | 2 | **Coaching** | CoachViewController |
 | 3 | **Health** | HealthView |
-| 4 | **Community** | CommunityLandingView |
+| 4 | **Sleep** | SleepDetailsView (via Coaching calendar) |
 | 5 | **Trends** | WhoopHistoricalTrends |
 
-Secondary tabs (accessible via More): Profile, Shop, Plan.
+Additional tabs in WHOOP app (not in OpenWhoop scope): Community (CommunityLandingView), Profile, Shop, Plan — accessible via More.
+
+> **Note on WHOOP tab mapping:** In WHOOP iOS 5.37.0, Sleep is not a standalone primary tab — it is accessed via the Coaching tab calendar/list. The table above reflects the OpenWhoop-adapted tab ordering (matching `docs/plans/2026-05-27-app-ux-plan.md`), which adds a dedicated Sleep tab for better UX. See *Inconsistencies with Prior UX Plan* section for full details.
 
 ---
 
@@ -155,7 +157,7 @@ Secondary tabs (accessible via More): Profile, Shop, Plan.
 |-----------------|-------------------|-------------|
 | Day Strain (coaching view) | `DailyMetric.strain` (Double 0.0–21.0) | ALG-03 |
 | Activity Strain (live) | `[computed from hrSample stream]` | ALG-03 |
-| Activity DURATION | `Workout.duration` (seconds) | — |
+| Activity DURATION | `[not in local model — per-activity duration from hrSample timestamps]` | — |
 | Activity CALORIES | `[computed from hrSample stream]` | — |
 | Activity MAX HR | `[computed from hrSample stream]` | — |
 | Activity AVG HR | `[computed from hrSample stream]` | — |
