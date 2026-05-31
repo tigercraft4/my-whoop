@@ -3,6 +3,7 @@ the static datastore dashboard."""
 import datetime as _dt
 import logging
 import os
+import secrets
 import threading
 import time
 
@@ -55,7 +56,7 @@ def architecture():
 
 def require_auth(authorization: str = Header(default="")) -> None:
     expected = f"Bearer {cfg.api_key}"
-    if authorization != expected:
+    if not secrets.compare_digest(authorization, expected):
         raise HTTPException(status_code=401, detail="unauthorized")
 
 
