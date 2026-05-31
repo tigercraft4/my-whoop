@@ -1,245 +1,42 @@
 # Roadmap — WHOOP 5.0
 
 **Project:** my-whoop (clean fork for WHOOP 5.0)
-**Granularity:** coarse (5 phases)
-**Mode:** standard
-**Date:** 2026-05-30
-**Coverage:** 45/45 v1 requirements mapped
 
 ---
 
-## Strategy
+## Milestones
 
-This is a **port, not a rewrite**. The 4.0 inner BLE framing (`0xAA` SOF, CRC8 poly 0x07, CRC32-LE, command/event enums) is reused unchanged on 5.0. Only the GATT service UUID prefix changes (`fd4b0001-…` replaces `61080001-…`), with a probable Maverick outer wrapper around the inner frame.
-
-The roadmap is built around the **critical CRC gate in Phase 3**: until ≥98% of captured 5.0 frames validate against the 4.0 CRC algorithms (or the Maverick wrapper is fully characterised), no decoder work begins. This gate is the hinge of the whole project — pass it and Phase 4–5 are largely a port; fail it and Phase 3 expands to a full framing RE.
-
-Phases follow a hard dependency chain: tools → bonding → framing → decode → product.
+- ✅ **v1.0 — WHOOP 5.0 Protocol + iOS App** — Phases 1–5 (shipped 2026-05-31)
+- 📋 **v2.0** — TBD (run `/gsd-new-milestone` to define)
 
 ---
 
 ## Phases
 
-- [x] **Phase 1: Capture Foundation** — All RE tools installed and verified; decrypted 5.0 BLE traffic visible end-to-end (completed 2026-05-30)
-- [x] **Phase 2: GATT Survey & Bonding** — UUID confirmed on user's device, bonding replicated without official app, standard HR/battery readable (completed 2026-05-30)
-- [x] **Phase 3: Framing Confirmation (Critical Gate)** — 4.0 inner framing CRC-validated on ≥20 frames OR Maverick wrapper characterised (completed 2026-05-30)
-- [x] **Phase 4: Protocol Decode & Schema** — All v1 biometric streams decoded and validated; `whoop_protocol_5.json` and `FINDINGS_5.md` complete (completed 2026-05-30)
-- [x] **Phase 5: iOS App & Server Port** — Functional iOS app connecting to WHOOP 5.0 end-to-end; optional server ingest working (completed 2026-05-31)
+<details>
+<summary>✅ v1.0 — WHOOP 5.0 Protocol + iOS App (Phases 1–5) — SHIPPED 2026-05-31</summary>
 
----
+- [x] Phase 1: Capture Foundation (3/3 plans) — completed 2026-05-30
+- [x] Phase 2: GATT Survey & Bonding (4/4 plans) — completed 2026-05-30
+- [x] Phase 3: Framing Confirmation — Critical Gate (3/3 plans) — completed 2026-05-30
+- [x] Phase 4: Protocol Decode & Schema (5/5 plans) — completed 2026-05-30
+- [x] Phase 5: iOS App & Server Port (6/6 plans) — completed 2026-05-31
 
-## Phase Details
+Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 
-### Phase 1: Capture Foundation
-
-**Goal**: All RE tools installed and verified; developer can capture, extract, and view decrypted WHOOP 5.0 BLE traffic from both iOS and Android sources
-**Depends on**: Nothing (first phase)
-**Requirements**: TOOL-01, TOOL-02, TOOL-03, TOOL-04
-**Success Criteria** (what must be TRUE):
-
-  1. Developer launches PacketLogger on Mac with iPhone tethered and sees ATT-layer traffic during a live WHOOP app ↔ 5.0 strap session (`iOSBluetoothLogging.mobileconfig` installed; no empty trace)
-  2. Developer captures an Android `btsnoop_hci.log` via Developer Options + `adb bugreport` extraction, with reproducible written steps in the repo
-  3. Developer opens a captured `.pklg` and a captured `.btsnoop` in Wireshark 4.4.x, filters to the ATT/GATT layer, and sees the WHOOP custom service traffic
-  4. Developer loads the official WHOOP Android APK in JADX-GUI 1.5.1 and can navigate to the Maverick/packet-type enum definitions (referencing whoop-vault's r52 map)**Plans**: 3 plans
-
-**Wave 1**
-
-  - [x] 01-01-PLAN.md — Toolchain: Brewfile + check-tools.sh version-asserter + gitignore/dir scaffolding (wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-  - [x] 01-02-PLAN.md — Host analysis runbooks: wireshark.md (TOOL-04) + jadx.md (TOOL-03) (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-  - [x] 01-03-PLAN.md — Capture runbooks + live capture + evidence + README index (TOOL-01/02, wave 3, has checkpoint)
-
-### Phase 2: GATT Survey & Bonding
-
-**Goal**: WHOOP 5.0 GATT surface fully enumerated on the user's specific device; bonding replicated without the official app; standard HR and battery characteristics readable
-**Depends on**: Phase 1
-**Requirements**: PROTO-01, PROTO-02, PROTO-03
-**Success Criteria** (what must be TRUE):
-
-  1. GATT services and all 7 custom characteristics (cmd-in `…0002`, cmd-resp `…0003`, events `…0004`, data `…0005`, diagnostics `…0007`, plus standard HR and battery) enumerated via nRF Connect and Bleak, with UUIDs documented per device
-  2. Presence (or absence) of legacy `61080001-…` alongside `fd4b0001-…` confirmed on the user's specific 5.0 unit and recorded in `FINDINGS_5.md`
-  3. Bleak script bonds to the strap from a fresh state (Forget Device first) without the official WHOOP app running, using the confirmed-write trick or 5.0 equivalent, and SMP packets are visible in PacketLogger
-  4. Standard heart-rate characteristic streams live BPM values via Bleak subscription, confirming bond + notifications work end-to-end
-
-**Plans**: 4 plans
-
-**Wave 1**
-
-  - [x] 02-01-PLAN.md — nRF Connect GATT enumeration + FINDINGS_5.md bootstrap + device_local_5 gitignore (wave 1, has checkpoint)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-  - [x] 02-02-PLAN.md — re/survey_5/ scaffolding + Python 3.11 venv (bleak 3.0.2) + survey_gatt_5.py programmatic enumeration (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-  - [x] 02-03-PLAN.md — bond_5.py confirmed-write bonding + hr_5.py HR/battery streaming (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-  - [x] 02-04-PLAN.md — Evidence commit + FINDINGS_5.md completion + re/survey_5/README.md (wave 4)
-
-### Phase 3: Framing Confirmation (Critical Gate)
-
-**Goal**: 4.0 inner framing (`0xAA` SOF, len-LE-u16, CRC8 poly 0x07, type/seq/cmd, payload, CRC32-LE) validated against captured 5.0 frames OR the Maverick outer wrapper (version, length, role bytes, CRC16, 4-byte aligned inner buffer) fully characterised. Schema v0 envelope committed.
-**Depends on**: Phase 2
-**Requirements**: PROTO-04, PROTO-05
-**Success Criteria** (what must be TRUE):
-
-  1. ≥20 distinct frames captured from custom characteristics across at least two sessions (mix of cmd-resp, events, data) and replayed through the 4.0 CRC8 + CRC32 validator
-  2. Either (a) ≥98% CRC pass rate documented, confirming 4.0 inner framing reuse, OR (b) Maverick outer wrapper structure (version offset, length encoding, role bytes, CRC16 polynomial, inner-buffer alignment) fully reverse-engineered and documented
-  3. `protocol/whoop_protocol_5.json` v0 envelope committed with framing section, confidence level explicitly tagged (`VERIFIED` for confirmed parts, `HYPOTHESIS` for unconfirmed), and rationale captured in `FINDINGS_5.md`
-  4. Go/no-go decision for Phase 4 recorded in `FINDINGS_5.md` — either "framing locked, decode work cleared" or "wrapper characterised, decode work cleared with wrapper-strip step"
-
-**Plans**: 3 plans
-
-**Wave 1**
-
-  - [x] 03-01-PLAN.md — validate_frames_5.py: 4.0 CRC gate (documents 0% result) + parse_maverick/strip_maverick + tshark extraction + frames_5_golden.json corpus (PROTO-04/05, wave 1)
-  - [x] 03-02-PLAN.md — whoop_protocol_5.json v0: Maverick wrapper envelope + GATT constants + WG50_r52 firmware, confidence-tagged (PROTO-05, wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-  - [x] 03-03-PLAN.md — framing evidence sidecar + FINDINGS_5.md §7 + go/no-go verdict (Phase 4 entry condition) (PROTO-04/05, wave 2)
-
-### Phase 4: Protocol Decode & Schema
-
-**Goal**: All v1 biometric streams decoded and validated against ground truth; `protocol/whoop_protocol_5.json` is complete and schema-driven; `FINDINGS_5.md` is the canonical protocol reference; golden fixtures exist for each packet type.
-**Depends on**: Phase 3 (framing gate passed)
-**Requirements**: PROTO-06, PROTO-07, PROTO-08, PROTO-09, PROTO-10, PROTO-11, PROTO-12, PROTO-13, PROTO-14, PROTO-15, PROTO-16, SCHEMA-01, SCHEMA-02, SCHEMA-03, SCHEMA-04, SCHEMA-05
-**Success Criteria** (what must be TRUE):
-
-  1. `re_harness.py` probes command IDs 0–255, the responding command surface is enumerated, and the 4.0 reused IDs (1, 2, 3, 7, 11, 14, 22, 26, 35, 81, 82, 106, 107, 145) are cross-validated as still functional on 5.0
-  2. Live HR + RR intervals, battery level, events (IDs 3, 7, 8, 9, 10, 17, 24, 33, 46, 63), SpO₂ (type 53 byte 10), skin temperature (event 17 LE-int / 100000), respiration rate, and IMU/gravity each stream decoded values that match ground-truth references (oximeter for SpO₂, thermometer for skin temp, HR strap for HR)
-  3. Historical data offload runs end-to-end with store-then-ack discipline — an intentional process kill during a pending ack does NOT lose data on the next reconnect (idempotent ingest verified)
-  4. `protocol/whoop_protocol_5.json` is complete, every field tagged with `"epoch": "device"|"unix"`, provenance note, and confidence level (`VERIFIED` for ground-truth-matched, `HYPOTHESIS` otherwise); firmware version recorded in every capture session's metadata
-  5. Cross-source golden fixtures (iOS PacketLogger + Android btsnoop) exist for every decoded packet type and round-trip through both the Python decoder and the schema validator; `scripts/sync-schema-5.sh` syncs the canonical schema to the Swift bundle resource
-
-**Plans**: 5 plans
-
-**Wave 1** *(parallel)*
-
-  - [x] 04-01-PLAN.md — decode_5.py body-offset-4 decoder + D-01 gate + full-corpus extraction with stream_type (PROTO-06/15, SCHEMA-04, wave 1)
-  - [x] 04-02-PLAN.md — D-05 targeted PacketLogger biometric capture + redacted evidence sidecar with firmware revision (PROTO-16/07/11/12/13/14, wave 1, has checkpoint — autonomous: false)
-
-**Wave 2** *(blocked on 04-01)*
-
-  - [x] 04-03-PLAN.md — command surface (observed-vs-r52) + events/battery + metadata/historical-offload + dual-epoch, from existing corpus (PROTO-06/08/09/10/15, wave 2)
-
-**Wave 3** *(blocked on 04-01, 04-02)*
-
-  - [x] 04-04-PLAN.md — biometric streams from D-05 capture: HR/RR + IMU + SpO2/temp/respiration (VERIFIED-if-observed, else HYPOTHESIS) (PROTO-07/11/12/13/14/16, wave 3)
-
-**Wave 4** *(blocked on 04-03, 04-04)*
-
-  - [x] 04-05-PLAN.md — complete whoop_protocol_5.json (enums+packets) + sync-schema-5.sh + golden fixtures + FINDINGS_5.md §Phase 4 (SCHEMA-01/02/03/04/05, wave 4)
-
-### Phase 5: iOS App & Server Port
-
-**Goal**: Functional iOS app on physical iPhone connecting to WHOOP 5.0 end-to-end (live + historical + offline), with optional FastAPI + TimescaleDB server ingest accepting 5.0 streams.
-**Depends on**: Phase 4 (schema + decoder complete)
-**Requirements**: SWIFT-01, SWIFT-02, SWIFT-03, SWIFT-04, SWIFT-05, SWIFT-06, IOS-01, IOS-02, IOS-03, IOS-04, IOS-05, IOS-06, IOS-07, IOS-08, IOS-09, SRV-01, SRV-02, SRV-03, SRV-04, SRV-05
-**Success Criteria** (what must be TRUE):
-
-  1. `Packages/WhoopProtocol/` parses 5.0 frames via `parseFrame()` (handling Maverick wrapper if present) and `extractStreams()` decodes all v1 streams; Swift unit tests pass with 5.0 golden fixtures and match Python decoder output byte-for-byte
-  2. iOS app on physical iPhone bonds to the WHOOP 5.0 via CoreBluetooth and the Live view shows real-time HR, battery level, and BLE connection status
-  3. Today, Sleep, and Trends views populate with daily recovery/HRV/sleep summary and historical charts (HR, HRV, SpO₂, skin temp); 14+ days of historical backfill completes with the safe-trim invariant and no data loss
-  4. App functions fully offline (`AppConfig.uploaderConfig()` returns nil on placeholder values) AND CoreBluetooth state preservation (`CBCentralManagerOptionRestoreIdentifierKey`, `willRestoreState`) reconnects in background after force-quit
-  5. Server runs via `docker compose up -d --build`; `POST /v1/ingest-decoded` accepts 5.0 decoded streams with `device_generation` field; `compute_day()` analysis runs after ingest; `GET /v1/daily-metrics`, `/v1/sleep-sessions`, `/v1/workouts` return 5.0 data from the migrated TimescaleDB hypertables
-
-**Plans**: 6 plans
-
-**Wave 1** *(parallel)*
-
-  - [x] 05-01-PLAN.md — Swift decoder core: loadSchema 5.0 (D-01) + stripMaverick/parseFrame (D-02) + GravitySample gyro (D-06) + Python load_schema_5 (SWIFT-01/02/03/04/06, wave 1)
-  - [x] 05-03-PLAN.md — WhoopStore migration v8: gyro columns nullable em gravitySample (D-06/D-08, IOS-09, wave 1)
-  - [x] 05-04-PLAN.md — Server port: device_generation no init.sql (D-09) + DecodedBatch (D-10) + docker compose e2e (SRV-01..05, wave 1)
-
-**Wave 2** *(05-02 blocked on 05-01; 05-05 blocked on 05-01+05-03)*
-
-  - [x] 05-02-PLAN.md — Golden fixtures 5.0 + Parity5Tests + SchemaSyncTests fix (D-03, SWIFT-05, wave 2)
-  - [x] 05-05-PLAN.md — iOS BLE wiring: UUIDs FD4B0001 (D-04, IOS-01) + Commands enum revisto (D-05) + offline/state-preservation (IOS-07/08, wave 2)
-
-**Wave 3** *(blocked on 05-05+05-02+05-04)*
-
-  - [x] 05-06-PLAN.md — iPhone e2e: 5 vistas + backfill 14+ dias + kill-process store-then-ack (D-11, IOS-02/03/04/05/06, wave 3, has checkpoint — autonomous: false)
-
-**UI hint**: yes
+</details>
 
 ---
 
 ## Progress
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Capture Foundation | 3/3 | Complete    | 2026-05-30 |
-| 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
-| 3. Framing Confirmation (Critical Gate) | 3/3 | Complete    | 2026-05-30 |
-| 4. Protocol Decode & Schema | 5/5 | Complete    | 2026-05-30 |
-| 5. iOS App & Server Port | 6/6 | Complete   | 2026-05-31 |
-
----
-
-## Coverage Map
-
-| Requirement | Phase |
-|-------------|-------|
-| TOOL-01 | Phase 1 |
-| TOOL-02 | Phase 1 |
-| TOOL-03 | Phase 1 |
-| TOOL-04 | Phase 1 |
-| PROTO-01 | Phase 2 |
-| PROTO-02 | Phase 2 |
-| PROTO-03 | Phase 2 |
-| PROTO-04 | Phase 3 |
-| PROTO-05 | Phase 3 |
-| PROTO-06 | Phase 4 |
-| PROTO-07 | Phase 4 |
-| PROTO-08 | Phase 4 |
-| PROTO-09 | Phase 4 |
-| PROTO-10 | Phase 4 |
-| PROTO-11 | Phase 4 |
-| PROTO-12 | Phase 4 |
-| PROTO-13 | Phase 4 |
-| PROTO-14 | Phase 4 |
-| PROTO-15 | Phase 4 |
-| PROTO-16 | Phase 4 |
-| SCHEMA-01 | Phase 4 |
-| SCHEMA-02 | Phase 4 |
-| SCHEMA-03 | Phase 4 |
-| SCHEMA-04 | Phase 4 |
-| SCHEMA-05 | Phase 4 |
-| SWIFT-01 | Phase 5 |
-| SWIFT-02 | Phase 5 |
-| SWIFT-03 | Phase 5 |
-| SWIFT-04 | Phase 5 |
-| SWIFT-05 | Phase 5 |
-| SWIFT-06 | Phase 5 |
-| IOS-01 | Phase 5 |
-| IOS-02 | Phase 5 |
-| IOS-03 | Phase 5 |
-| IOS-04 | Phase 5 |
-| IOS-05 | Phase 5 |
-| IOS-06 | Phase 5 |
-| IOS-07 | Phase 5 |
-| IOS-08 | Phase 5 |
-| IOS-09 | Phase 5 |
-| SRV-01 | Phase 5 |
-| SRV-02 | Phase 5 |
-| SRV-03 | Phase 5 |
-| SRV-04 | Phase 5 |
-| SRV-05 | Phase 5 |
-
-**Total mapped:** 45/45 ✓ (no orphans, no duplicates)
-
----
-
-*Last updated: 2026-05-30 (Phase 3 planned)*
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Capture Foundation | v1.0 | 3/3 | Complete | 2026-05-30 |
+| 2. GATT Survey & Bonding | v1.0 | 4/4 | Complete | 2026-05-30 |
+| 3. Framing Confirmation | v1.0 | 3/3 | Complete | 2026-05-30 |
+| 4. Protocol Decode & Schema | v1.0 | 5/5 | Complete | 2026-05-30 |
+| 5. iOS App & Server Port | v1.0 | 6/6 | Complete | 2026-05-31 |
 
 ---
 
@@ -256,3 +53,16 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 - [ ] JADX-GUI APK live navigation: pull split APK via `adb shell pm path`, navigate to Maverick/packet-type enums, produce enum notes cross-referenced against whoop-vault r52 (ROADMAP criterion 4, TOOL-03)
 
 **Unblocked by:** Access to a physical Android device running the WHOOP app
+
+### Phase 999.2: Hardware validation — v1.0 UNCERTAIN items (BACKLOG)
+
+**Goal:** Validate the 5 hardware-dependent items deferred at v1.0 close
+**Deferred at:** 2026-05-31 during v1.0 milestone close
+**Plans:**
+- [ ] IOS-03/04/05: Today/Sleep/Trends views — requires WHOOP with unsynced data (don't use official app for 1+ week)
+- [ ] IOS-06: 14+ day historical backfill with safe-trim invariant (same session as above)
+- [ ] IOS-08: Background reconnect after force-quit — 30s test on physical iPhone
+- [ ] PROTO-02 D-03b: SMP PacketLogger capture during official-app re-bonding
+- [ ] PROTO-11/12/13/14: IMU/SpO2/skin temp/respiration — requires dedicated TOGGLE_IMU_MODE capture session
+
+**Unblocked by:** Physical iPhone + WHOOP with fresh data; available development session

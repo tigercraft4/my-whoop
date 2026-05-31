@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A clean fork of the existing WHOOP 4.0 reverse-engineering project, targeting the WHOOP 5.0 hardware. The goal is to document the 5.0 BLE protocol through systematic traffic capture and analysis, then build a fully functional local-first iOS app (collect → decode → store → sync) backed by an optional self-hosted server — the same architecture as the 4.0 project, rebuilt for the new device.
+A clean fork of the existing WHOOP 4.0 reverse-engineering project, targeting the WHOOP 5.0 hardware. v1.0 shipped a fully characterised 5.0 BLE protocol (Maverick outer wrapper documented), a canonical decode schema (`whoop_protocol_5.json`), a Python decoder, and a functional iOS app connecting to the WHOOP 5.0 end-to-end — backed by an optional self-hosted FastAPI + TimescaleDB server.
 
 ## Core Value
 
@@ -10,80 +10,76 @@ Own your WHOOP 5.0 biometric data: read it from your own device over BLE, store 
 
 ## Requirements
 
-### Validated
+### Validated (v1.0)
 
-- ✓ BLE protocol for WHOOP 4.0 fully documented — `protocol/whoop_protocol.json` + `FINDINGS.md`
-- ✓ iOS app (collect → decode → store → sync) working for 4.0
-- ✓ FastAPI + TimescaleDB server pipeline working for 4.0
-- ✓ Schema-driven decode shared between Swift and Python
-- ✓ RE tooling (harness, dashboard, golden fixtures) established
+- ✓ WHOOP 5.0 BLE protocol fully characterised — Maverick outer wrapper (0xAA 0x01, len at buf[2..3], role, flat body) — v1.0
+- ✓ `protocol/whoop_protocol_5.json` canonical decode schema — confidence-tagged, dual-epoch, synced to Swift bundle — v1.0
+- ✓ `FINDINGS_5.md` canonical protocol reference — framing, commands, events, historical offload — v1.0
+- ✓ Python decoder (`decode_5.py`, `parse_body_5`, `load_schema_5()`) — all decoded types — v1.0
+- ✓ Swift decoder (`parseFrame()` + `stripMaverick()` + `extractStreams()`) — 72/72 tests, byte-for-byte parity with Python — v1.0
+- ✓ iOS app bonds to WHOOP 5.0 on physical iPhone — live HR confirmed (~75 bpm) — v1.0
+- ✓ WhoopStore migration v8 (gx/gy/gz nullable) — v1.0
+- ✓ FastAPI + TimescaleDB server ported (device_generation, ingest-decoded, compute_day) — v1.0
+- ✓ RE toolchain established (PacketLogger, Wireshark, bleak, nRF Connect runbooks) — v1.0
+- ✓ Golden fixtures (19 Maverick-wrapped frames, cross-validated Python ↔ Swift) — v1.0
 
-### Active
+### Active (v2.0 targets)
 
-- [ ] WHOOP 5.0 BLE services and characteristics enumerated
-- [ ] Raw BLE traffic captured from 5.0 → app session (PacketLogger on Mac)
-- [ ] Android HCI snoop log captured as second reference source
-- [x] Frame framing format confirmed (same or different from 4.0) — Validated in Phase 3: Maverick outer wrapper characterised, 4.0 CRC gate 0.0%, decode cleared with strip_maverick()
-- [ ] Packet types / command IDs identified and mapped
-- [ ] Biometric decode layout reverse-engineered (HR, RR, SpO₂, skin temp, resp, gravity)
-- [x] `protocol/whoop_protocol_5.json` schema written and validated — v0 committed in Phase 3 (Maverick wrapper envelope + GATT constants + WG50_r52, confidence-tagged)
-- [ ] `FINDINGS_5.md` — protocol reference document
-- [ ] Swift decoder updated / forked for 5.0 schema
-- [ ] iOS app functional end-to-end with WHOOP 5.0
-- [ ] Server ingest and analysis pipeline adapted for 5.0
+- [ ] PROTO-02 D-03b: SMP PacketLogger capture during official-app bonding (physical action required)
+- [ ] IOS-03/04/05: Today/Sleep/Trends views validated with real WHOOP 5.0 data (requires WHOOP with unsynced data)
+- [ ] IOS-06: 14+ day historical backfill end-to-end with safe-trim invariant validated
+- [ ] IOS-08: Background reconnect after force-quit validated (physical test)
+- [ ] IMU/SpO2/skin temp/respiration decode VERIFIED (requires TOGGLE_IMU_MODE capture — PROTO-11/12/13/14)
+- [ ] TOOL-02/03: Android btsnoop capture + JADX APK navigation (requires Android device)
 
 ### Out of Scope
 
-- WHOOP 4.0 support in this fork — separate repo handles it; dual-support adds complexity before protocol is understood
-- Older WHOOP generations (1.0, 2.0, 3.0) — different hardware entirely
-- WHOOP cloud API integration — the whole point is local-first independence
-- Android app — iOS first; Android is only used as a BLE capture tool
+- WHOOP 4.0 support in this fork — separate repo handles it
+- Dual 4.0/5.0 in single fork — over-complex before protocol fully understood (revisit in v2.0+)
+- WHOOP MG ECG pathway — virgin RE territory, separate milestone
+- macOS app / watchOS complications / Android app
+- WHOOP cloud API integration — local-first by design
 - Clinical validation of biometric computations — personal/educational use only
+- Firmware modification — RE only, no writes to the strap
 
 ## Context
 
-- **Hardware available:** WHOOP 5.0 (owned by user), iPhone (primary platform), Android (capture tool only)
-- **Mac + Xcode available:** PacketLogger (Apple Bluetooth Frame Logger) is the primary BLE capture tool — no jailbreak needed, captures full HCI trace including WHOOP app ↔ device traffic
-- **Android role:** Enable HCI snoop log via Developer Options → capture `btsnoop_hci.log` as secondary reference when app is running on Android
-- **User skill level:** Medium RE experience — familiar with the domain from the 4.0 project, needs guidance on systematic capture and analysis workflow
-- **Starting point:** The 4.0 codebase is the reference implementation. The 5.0 work is a clean fork — same architecture, new protocol
-- **Key unknown:** How different is the 5.0 BLE protocol from 4.0? Same framing + new commands, or completely different service UUIDs and frame layout?
-- **4.0 BLE custom service:** `61080001-8d6d-82b8-614a-1c8cb0f8dcc6` — first test is whether 5.0 advertises the same UUID
+- **Hardware available:** WHOOP 5.0, iPhone 16 Pro Max (validated end-to-end in v1.0), Mac
+- **Android:** Not available during v1.0 — Android runbooks complete but untested live
+- **v1.0 codebase state:** ~17,500 LOC Swift, ~30,400 LOC Python
+- **Tech stack:** Swift + CoreBluetooth + GRDB (iOS), Python + bleak (RE), FastAPI + TimescaleDB (server), JSON schema (protocol canonical source)
+- **Key insight from v1.0:** WHOOP 5.0 is asymmetric — accepts 4.0 format writes (commands from phone), sends Maverick format reads (responses from device). This was undocumented and required full RE to discover.
+- **Server:** Running on gonzaga via Dockge, image GHCR, docker compose stack
 
 ## Constraints
 
 - **Hardware:** WHOOP 5.0 only — no simulator, physical device required for all BLE work
-- **Capture platform:** Mac required for PacketLogger (Apple Bluetooth Framework Logger); iOS PacketLogger requires pairing device to Mac in Xcode
-- **Legal:** Same RE framework as 4.0 — 17 U.S.C. §1201(f) interoperability, own device, own data, no proprietary material reproduced
-- **No root/jailbreak:** Both iPhone and Android are stock — techniques limited to HCI logging and passive capture
-- **iOS deployment:** Final app targets iOS 16+ on iPhone; same SwiftUI + CoreBluetooth + GRDB architecture
+- **Capture platform:** Mac required for PacketLogger; iOS PacketLogger requires Xcode pairing
+- **Legal:** 17 U.S.C. §1201(f) interoperability, own device, own data, no proprietary material reproduced
+- **No root/jailbreak:** iPhone and Android are stock — techniques limited to HCI logging and passive capture
+- **iOS deployment:** iOS 16+ on iPhone; SwiftUI + CoreBluetooth + GRDB architecture
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Clean fork (not dual-support) | Protocol may be substantially different; don't pollute 4.0 codebase before understanding 5.0 | — Pending |
-| Mac PacketLogger as primary capture tool | No jailbreak needed, captures full HCI including app traffic, Apple-native | — Pending |
-| Android HCI log as secondary source | Second independent capture to cross-reference and fill gaps | — Pending |
-| Same architecture as 4.0 | Proven design; reuse Swift packages, server pipeline, schema-driven decode | — Pending |
+| Clean fork (not dual-support) | Protocol may be substantially different; don't pollute 4.0 codebase | ✓ Correct — Maverick wrapper required new strip_maverick path |
+| Mac PacketLogger as primary capture | No jailbreak needed, captures full HCI including app traffic, Apple-native | ✓ Correct — all corpus captured this way |
+| Android HCI log as secondary source | Second independent capture to cross-reference | — Deferred (no Android device) |
+| Same architecture as 4.0 | Proven design; reuse Swift packages, server pipeline, schema-driven decode | ✓ Correct |
+| Phase 3 as explicit CRC gate | All decode work wasted if framing wrong | ✓ Critical — 0% CRC triggered Maverick RE |
+| Python discovery before Swift | Byte-level RE is 10–100× faster in Python | ✓ Correct — saved days |
+| D-11: 4.0 writes / Maverick reads asymmetry | WHOOP 5.0 reads 4.0 commands, sends Maverick responses | ✓ Resolved — key v1.0 protocol discovery |
 
 ---
+
 ## Evolution
 
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone** (via `/gsd:complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
+**After v1.0 (2026-05-31):**
+- Framing characterised: Maverick wrapper asymmetric read/write
+- iOS app validated on iPhone 16 Pro Max (IOS-01/02 VERIFIED)
+- Server ported and running on gonzaga
+- Open: 5 hardware-dependent items (IOS-03/04/05/06/08), 4 HYPOTHESIS biometric offsets, 1 partial PROTO-02
 
 ---
-*Last updated: 2026-05-30 — Phase 4 complete (protocol decode & schema — decode_5.py, command surface, biometrics VERIFIED/HYPOTHESIS, whoop_protocol_5.json canonical schema)*
+*Last updated: 2026-05-31 after v1.0 milestone*

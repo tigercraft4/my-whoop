@@ -1,6 +1,6 @@
 # WHOOP 5.0 BLE Protocol — Reverse-Engineering Findings
 
-_Last updated: 2026-05-30. Working dir: `~/Documents/my-whoop`. Target: the user's own WHOOP 5.0 (serial `[REDACTED]`, macOS BLE UUID `[REDACTED]`). Hardware revision `WG50_r52`._
+_Last updated: 2026-05-31. Working dir: `~/Documents/my-whoop`. Target: the user's own WHOOP 5.0 (serial `[REDACTED]`, macOS BLE UUID `[REDACTED]`). Hardware revision `WG50_r52`. v1.0 shipped._
 
 ## Goal
 
@@ -22,7 +22,11 @@ Read raw biometrics off your own WHOOP 5.0 **locally over BLE**, for interoperab
 | Battery (standard `0x2A19`) | **Confirmed** — read via Bleak, unbonded (23%, see section 4) |
 | Command/response protocol (framing) | **Maverick wrapper characterised** — 4.0 inner CRC gate fails 0% on 5028 frames; outer wrapper `[AA][01][len][role]...[trailer]` confirmed, `strip_maverick()` working (see section 7) |
 | Trailer checksum algorithm | **OPEN** (HYPOTHESIS) — standard CRC16/CRC32 variants ruled out; non-blocking (see section 7) |
-| Decoded data streams (HR/RR, IMU, PPG, historical) | Phase 4 — **cleared to start** (go/no-go verdict in section 7) |
+| Decoded data streams (HR/RR, historical offload) | **VERIFIED** — HR/RR 84–131 bpm confirmed (Phase 4); iOS app live HR confirmed (Phase 5) |
+| IMU / SpO₂ / skin temp / respiration | **HYPOTHESIS** — offsets not in D-05 capture; TOGGLE_IMU_MODE capture needed |
+| iOS app — bond + live HR | **VERIFIED** — iPhone 16 Pro Max bonded + live ~75 bpm (Phase 5, v1.0) |
+| iOS app — views + backfill | **UNCERTAIN** — pipeline wired; hardware validation pending |
+| Server ingest (FastAPI + TimescaleDB) | **VERIFIED** — docker compose e2e + /v1/ingest-decoded confirmed (Phase 5) |
 
 ---
 
@@ -297,5 +301,16 @@ IMU/SpO₂/skin-temp/respiration bytes are genuinely **absent** from the capture
 - `re/survey_5/decode_biometrics_5.py` — per-stream biometric decoders + VERIFIED/HYPOTHESIS verdicts.
 - `re/survey_5/frames_5_golden.json` — 123 curated cross-type fixtures (COMMAND/COMMAND_RESPONSE/EVENT/METADATA/CONSOLE_LOGS/HISTORICAL_DATA/REALTIME_DATA), round-trip-verified through `parse_body_5`.
 - `re/capture/evidence/*.meta.yaml` — redacted biometric-capture evidence sidecar (raw `.pklg` gitignored / local-only).
+
+**Phase 5 artifacts (iOS app + server port, v1.0):**
+- `Packages/WhoopProtocol/` — Swift decoder with `parseFrame()` (Maverick strip), `extractStreams()`, `extractHistoricalStreams()`; 72 unit tests pass with 5.0 golden fixtures
+- `Packages/WhoopProtocol/.../Resources/whoop_protocol_5.json` — Swift bundle copy (byte-identical to canonical)
+- `Packages/WhoopProtocol/.../Resources/frames_5.json` + `golden_5.json` — 19 Maverick-wrapped golden fixtures, byte-for-byte parity with Python decoder
+- `Packages/WhoopStore/` — schema migration v8, gx/gy/gz nullable columns
+- `ios/OpenWhoop/BLE/BLEManager.swift` — WHOOP 5.0 UUIDs (`FD4B0001-...`), confirmed-write bonding, state restoration
+- `ios/OpenWhoop/BLE/Commands.swift` — enum reviewed against 10 VERIFIED Phase-4 command codes
+- `server/db/init.sql` — `device_generation` column in 8 hypertables (idempotent `ADD COLUMN IF NOT EXISTS`)
+- `server/ingest/app/main.py` — `POST /v1/ingest-decoded` with `DecodedBatch.device_generation`
+- `scripts/gen_synthetic_fixtures.py` — `build_maverick_frame()` for test fixture generation
 
 **DISCLAIMER §2 restated:** only protocol-structure facts are committed here — no BD_ADDR, serial, SMP keys, or device UUID. Device identity is `[REDACTED]`; raw captures are gitignored. Console-log narration is digit-run-scrubbed (T-04-04). Independent reverse-engineering for interoperability; not affiliated with WHOOP, Inc.

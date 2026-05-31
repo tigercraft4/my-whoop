@@ -1,11 +1,15 @@
 # Capture runbooks
 
-Passive HCI-capture tooling and evidence for WHOOP 5.0 BLE traffic. This directory is the
-capture counterpart to the active Bleak RE harness in `../` — it provides step-by-step
+Passive HCI-capture tooling and evidence for WHOOP 5.0 (and 4.0) BLE traffic. This directory
+is the capture counterpart to the active Bleak RE harness in `../` — it provides step-by-step
 runbooks for recording raw HCI frames from iOS (PacketLogger) and Android (HCI snoop), plus
-host-side analysis workflows in Wireshark and JADX. The authoritative protocol findings are
-in `../../FINDINGS.md`; this directory covers only the capture mechanics. For the broader RE
-context see `../README.md`.
+host-side analysis workflows in Wireshark and JADX.
+
+**Authoritative protocol references:**
+- `../../FINDINGS_5.md` — WHOOP 5.0 (Maverick framing, GATT map, decoded streams)
+- `../../FINDINGS.md` — WHOOP 4.0
+
+This directory covers only the capture mechanics. For the broader RE context see `../README.md`.
 
 ---
 
