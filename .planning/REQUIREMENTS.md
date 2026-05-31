@@ -17,7 +17,7 @@
 
 - [ ] **IOS-03**: Today view mostra recovery score, HRV e sleep summary com dados reais do WHOOP 5.0 (após backfill funcional) — hardware validation pending (requires physical device + Phase 6 backfill)
 - [ ] **IOS-04**: Sleep view mostra sessões de sono históricas reais com staging (REM/Deep/Light/Awake) — hardware validation pending (requires physical device + Phase 6 backfill)
-- [ ] **IOS-05**: Trends view mostra gráficos de HR/HRV/SpO₂/skin temp com séries temporais reais (deferred to Phase 9 SwiftUI Redesign)
+- [x] **IOS-05**: Trends view mostra gráficos de HR/HRV/SpO₂/skin temp com séries temporais reais (deferred to Phase 9 SwiftUI Redesign)
 - [ ] **IOS-08**: Background reconnect após force-quit funciona — app reconecta via `willRestoreState` sem intervenção manual — Maestro test ready (ios/maestro/07_ios08_background_reconnect.yaml); hardware execution pending (requires physical iPhone + WHOOP 5.0)
 
 ### Biométricos HYPOTHESIS → VERIFIED
@@ -91,7 +91,7 @@ Um requisito está **Done** quando:
 | BF-02 | Phase 6 | Pending |
 | IOS-03 | Phase 7 | Pending |
 | IOS-04 | Phase 7 | Pending |
-| IOS-05 | Phase 7 | Pending |
+| IOS-05 | Phase 7 | Complete |
 | IOS-08 | Phase 7 | Pending |
 | PROTO-11 | Phase 7 | Pending |
 | PROTO-12 | Phase 7 | Pending |
