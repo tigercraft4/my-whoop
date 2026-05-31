@@ -24,7 +24,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 - [x] **Phase 2: GATT Survey & Bonding** — UUID confirmed on user's device, bonding replicated without official app, standard HR/battery readable (completed 2026-05-30)
 - [x] **Phase 3: Framing Confirmation (Critical Gate)** — 4.0 inner framing CRC-validated on ≥20 frames OR Maverick wrapper characterised (completed 2026-05-30)
 - [x] **Phase 4: Protocol Decode & Schema** — All v1 biometric streams decoded and validated; `whoop_protocol_5.json` and `FINDINGS_5.md` complete (completed 2026-05-30)
-- [ ] **Phase 5: iOS App & Server Port** — Functional iOS app connecting to WHOOP 5.0 end-to-end; optional server ingest working
+- [x] **Phase 5: iOS App & Server Port** — Functional iOS app connecting to WHOOP 5.0 end-to-end; optional server ingest working (completed 2026-05-31)
 
 ---
 
@@ -167,7 +167,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 
 **Wave 3** *(blocked on 05-05+05-02+05-04)*
 
-  - [ ] 05-06-PLAN.md — iPhone e2e: 5 vistas + backfill 14+ dias + kill-process store-then-ack (D-11, IOS-02/03/04/05/06, wave 3, has checkpoint — autonomous: false)
+  - [x] 05-06-PLAN.md — iPhone e2e: 5 vistas + backfill 14+ dias + kill-process store-then-ack (D-11, IOS-02/03/04/05/06, wave 3, has checkpoint — autonomous: false)
 
 **UI hint**: yes
 
@@ -181,7 +181,7 @@ Phases follow a hard dependency chain: tools → bonding → framing → decode 
 | 2. GATT Survey & Bonding | 4/4 | Complete   | 2026-05-30 |
 | 3. Framing Confirmation (Critical Gate) | 3/3 | Complete    | 2026-05-30 |
 | 4. Protocol Decode & Schema | 5/5 | Complete    | 2026-05-30 |
-| 5. iOS App & Server Port | 5/6 | In Progress|  |
+| 5. iOS App & Server Port | 6/6 | Complete   | 2026-05-31 |
 
 ---
 
