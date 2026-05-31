@@ -1,0 +1,74 @@
+appId: com.openwhoop.OpenWhoop
+---
+# Flow 7: Force-quit reconnect via willRestoreState (IOS-08)
+# Verifies: App reconnects to WHOOP 5.0 within 30s after force-quit without manual intervention
+#
+# Prerequisites:
+#   - Physical iPhone with WHOOP 5.0 in range (BLE required — simulator cannot test this)
+#   - WHOOP 5.0 previously bonded to the app (CoreBluetooth state restoration requires prior bond)
+#   - Phase 6 backfill functional (app should have established a prior BLE session)
+#
+# IOS-08 success criterion (ROADMAP Phase 7):
+#   App reconnects within 30s via willRestoreState without manual intervention.
+#
+# BLEManager.willRestoreState implementation: BLEManager.swift line ~685
+#   - Captures restored peripheral into restoredPeripheral
+#   - Does NOT call p.discoverServices() immediately (OS drives reconnect after willRestoreState)
+#   - Connected status reflected in LiveState.connected → LiveView connectionSection → "Connected"
+
+- launchApp
+- runFlow: utils/allow_notifications.yaml
+
+# Wait for initial connection to establish (allow time for BLE state restoration or fresh bond)
+- waitForAnimationToEnd:
+    timeout: 8000
+
+- takeScreenshot: /tmp/maestro_07a_initial.png
+
+# Navigate to Device tab to see BLE connection status
+- tapOn:
+    text: "Device"
+
+- waitForAnimationToEnd:
+    timeout: 4000
+
+- takeScreenshot: /tmp/maestro_07b_device_tab.png
+
+# Assert connected before force-quit
+# LiveView.connectionSection: state.connected ? "Connected" : "Disconnected"
+# (LiveView.swift line 182)
+- assertVisible:
+    text: "Connected"
+
+- takeScreenshot: /tmp/maestro_07c_connected.png
+
+# Force-quit the app (Maestro stopApp sends SIGKILL equivalent to the app process)
+- stopApp
+
+# Relaunch — iOS CBCentralManager will call willRestoreState on next launch
+# willRestoreState fires synchronously during CBCentralManager.init (inside LiveViewModel.init)
+- launchApp
+- runFlow: utils/allow_notifications.yaml
+
+- takeScreenshot: /tmp/maestro_07d_relaunch.png
+
+# Navigate back to Device tab
+- tapOn:
+    text: "Device"
+
+- waitForAnimationToEnd:
+    timeout: 4000
+
+# Wait up to 30s for reconnect (IOS-08 criterion: reconnects within 30s)
+# CoreBluetooth calls willRestoreState → app captures restoredPeripheral → OS reconnects
+- waitForAnimationToEnd:
+    timeout: 30000
+
+- takeScreenshot: /tmp/maestro_07e_reconnected.png
+
+# Assert reconnect succeeded — "Connected" indicator visible after force-quit and relaunch
+# IOS-08 PASS condition: "Connected" visible without any manual user intervention
+- assertVisible:
+    text: "Connected"
+
+- takeScreenshot: /tmp/maestro_07f_final.png
