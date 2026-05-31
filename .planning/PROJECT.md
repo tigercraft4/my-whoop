@@ -130,4 +130,4 @@ Own your WHOOP 5.0 biometric data: read it from your own device over BLE, store 
 - HealthKit export
 
 ---
-*Last updated: 2026-05-31 — starting v2.0 milestone*
+*Last updated: 2026-05-31 — Phase 11 complete: HealthKit export (HR, HRV, Sleep) implemented; HK-03 deferred per PROTO-11*
