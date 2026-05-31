@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import WhoopProtocol
 import WhoopStore
 
@@ -45,6 +46,7 @@ final class Backfiller {
     /// decoded streams are still durable and the trim is still acked (decoded is the product of
     /// record). Injected for tests; backed by UserDefaults in the production init site.
     private let enableRawCapture: Bool
+    private static let logger = Logger(subsystem: "com.francisco.openwhoop", category: "Backfiller")
 
     /// The clock reference set by BLEManager when GET_CLOCK confirms (required for decoding).
     var clockRef: ClockRef?
@@ -82,9 +84,8 @@ final class Backfiller {
     func ingest(_ frame: [UInt8]) async {
         let parsed = parseFrame(frame)
         let meta = classifyHistoricalMeta(parsed)
-        // DEBUG: log frame classification
-        let preview = frame.prefix(8).map { String(format: "%02x", $0) }.joined()
-        print("[Backfiller] ingest typeName=\(parsed.typeName) meta=\(meta) ok=\(parsed.ok) hex=\(preview)")
+        let preview = frame.prefix(12).map { String(format: "%02x", $0) }.joined()
+        Self.logger.info("BF ingest type=\(parsed.typeName, privacy: .public) meta=\(String(describing: meta), privacy: .public) ok=\(parsed.ok) hex=\(preview, privacy: .public)")
         switch meta {
         case .start:
             isBackfilling = true
