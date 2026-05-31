@@ -130,8 +130,13 @@ public func frameFromPayload(_ data: [UInt8], type: UInt8, seq: UInt8 = 0, cmd: 
 }
 
 /// Accumulate BLE notification fragments into complete frames.
-/// A complete frame is `length + 4` bytes where length = u16 LE at buf[1..3].
-/// Mirrors framing.py Reassembler.
+/// Accumulate BLE notification fragments into complete frames.
+///
+/// Handles two wire formats:
+/// - 4.0: `[0xAA][len u16 LE][crc8][inner...][crc32]` — total = len + 4, len at buf[1..2]
+/// - 5.0 Maverick: `[0xAA][0x01][len u16 LE][body...][trailer 4B]` — total = len + 8, len at buf[2..3]
+///
+/// Detection: buf[1] == 0x01 → Maverick (the 4.0 length field would never be 0x0001 in practice).
 public final class Reassembler {
     private var buf: [UInt8] = []
 
@@ -145,17 +150,21 @@ public final class Reassembler {
                 buf.removeAll(keepingCapacity: true)
                 break
             }
-            if sof > 0 {
-                buf.removeFirst(sof)
+            if sof > 0 { buf.removeFirst(sof) }
+            guard buf.count >= 4 else { break }
+            let isMaverick = buf[1] == 0x01
+            let length: Int
+            let total: Int
+            if isMaverick {
+                // Need at least 5 bytes to read the 2-byte length at buf[2..3].
+                guard buf.count >= 5 else { break }
+                length = Int(buf[2]) | (Int(buf[3]) << 8)
+                total = length + 8  // 4-byte header (0xAA 0x01 len0 len1) + body + 4-byte trailer
+            } else {
+                length = Int(buf[1]) | (Int(buf[2]) << 8)
+                total = length + 4
             }
-            if buf.count < 4 {
-                break
-            }
-            let length = Int(buf[1]) | (Int(buf[2]) << 8)
-            let total = length + 4
-            if buf.count < total {
-                break
-            }
+            guard buf.count >= total, total > 0 else { break }
             out.append(Array(buf[0..<total]))
             buf.removeFirst(total)
         }
