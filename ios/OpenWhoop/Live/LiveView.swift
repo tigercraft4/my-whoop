@@ -268,18 +268,49 @@ private struct LiveContentView: View {
             VStack(alignment: .leading, spacing: WH.Spacing.sm) {
                 sectionHeader("Live")
 
-                // Big HR readout
-                HStack(alignment: .lastTextBaseline, spacing: WH.Spacing.xs) {
-                    Text(state.heartRate.map(String.init) ?? "––")
-                        .font(WH.Font.metricHero(size: 72))
-                        .foregroundStyle(state.connected
-                            ? WH.Color.recoveryRed
-                            : WH.Color.textSecondary)
-                        .monospacedDigit()
-                    Text("BPM")
-                        .font(WH.Font.unit)
-                        .foregroundStyle(WH.Color.textSecondary)
-                        .padding(.bottom, 6)
+                // HR + Session Strain side by side
+                HStack(alignment: .top) {
+                    // Big HR readout
+                    VStack(spacing: 2) {
+                        HStack(alignment: .lastTextBaseline, spacing: WH.Spacing.xs) {
+                            Text(state.heartRate.map(String.init) ?? "––")
+                                .font(WH.Font.metricHero(size: 64))
+                                .foregroundStyle(state.connected
+                                    ? WH.Color.recoveryRed
+                                    : WH.Color.textSecondary)
+                                .monospacedDigit()
+                            Text("BPM")
+                                .font(WH.Font.unit)
+                                .foregroundStyle(WH.Color.textSecondary)
+                                .padding(.bottom, 4)
+                        }
+                        Text("Heart Rate")
+                            .font(WH.Font.caption)
+                            .foregroundStyle(WH.Color.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Divider()
+                        .frame(height: 60)
+                        .background(WH.Color.separator)
+
+                    // Session Strain (live accumulation)
+                    VStack(spacing: 2) {
+                        HStack(alignment: .lastTextBaseline, spacing: 3) {
+                            Text(String(format: "%.1f", model.strainAccumulator.dayStrain))
+                                .font(WH.Font.metricHero(size: 64))
+                                .foregroundStyle(strainColor(model.strainAccumulator.dayStrain))
+                                .monospacedDigit()
+                            Text("/ 21")
+                                .font(WH.Font.unit)
+                                .foregroundStyle(WH.Color.textSecondary)
+                                .padding(.bottom, 4)
+                        }
+                        Text("Day Strain")
+                            .font(WH.Font.caption)
+                            .foregroundStyle(WH.Color.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
 
@@ -306,6 +337,14 @@ private struct LiveContentView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func strainColor(_ strain: Double) -> Color {
+        switch strain {
+        case 0..<10: return WH.Color.recoveryGreen
+        case 10..<14: return WH.Color.recoveryYellow
+        default:     return WH.Color.recoveryRed
         }
     }
 

@@ -13,6 +13,9 @@ public final class LiveViewModel: ObservableObject {
     /// One-line storage summary for the UI; refreshed periodically from LiveView.
     @Published public var storageSummary: String = "stored: —"
 
+    /// Real-time strain accumulator — mirrors WHOOP on-device computation.
+    public let strainAccumulator = LiveStrainAccumulator()
+
     public init(deviceId: String = "my-whoop") {
         let s = LiveState()
         self.state = s
@@ -27,6 +30,21 @@ public final class LiveViewModel: ObservableObject {
         s.$lastSyncedAt
             .compactMap { $0 }
             .sink { _ in SyncNudge.reschedule() }
+            .store(in: &cancellables)
+
+        // Feed every HR sample into the real-time strain accumulator (mirrors WHOOP on-device).
+        s.$heartRate
+            .compactMap { $0 }
+            .sink { [weak self] hr in
+                guard let self else { return }
+                Task { @MainActor in self.strainAccumulator.ingest(heartRate: hr) }
+            }
+            .store(in: &cancellables)
+
+        // Reset accumulator on disconnect (start fresh on next connect).
+        s.$connected
+            .filter { !$0 }
+            .sink { [weak self] _ in self?.strainAccumulator.reset() }
             .store(in: &cancellables)
     }
 
