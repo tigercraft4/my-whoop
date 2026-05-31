@@ -1,0 +1,28 @@
+PROTO-13: Respiration Rate
+==========================
+
+Status: NOT_OBSERVED — likely cloud-derived (hypothesis confirmed by absence)
+Date: 2026-05-31
+Session: 07A TOGGLE_IMU_MODE capture session
+
+Reason: TOGGLE_IMU_MODE capture session was not executed in Phase 7 automated context.
+Hardware requirement: WHOOP 5.0 physical BLE connection (bleak).
+
+Prior evidence (Phase 4, 2026-05-30):
+  - capture_all-V3.pklg: no respiration field in notification payloads
+  - FINDINGS_5.md §Phase 4 table: "no respiration field on the wire; likely derived/sleep metric, may be cloud-only"
+  - Respiration not observed in 159 REALTIME_DATA frames or 300 HISTORICAL_DATA frames
+
+Assessment:
+  Respiration rate on WHOOP is most likely a derived metric computed from:
+  - HRV (R-R interval variability)
+  - IMU accelerometer (respiratory motion)
+  These are combined algorithmically on the strap or cloud side.
+  The on-wire representation (if any) may appear only in HISTORICAL_DATA during sleep sessions,
+  not as a real-time stream.
+
+Manual capture instructions:
+  1. Run TOGGLE_IMU_MODE session wearing strap during sleep or rest
+  2. Search all notification fields for "resp", "rr_rate", "breath" patterns
+  3. Check HISTORICAL_DATA frames for respiration-rate fields
+  4. If not found after full session: document as "not observed — likely cloud-derived"

@@ -1,0 +1,26 @@
+PROTO-14: IMU / Gravity (REALTIME_RAW_DATA type 43)
+====================================================
+
+Status: NOT_OBSERVED — HYPOTHESIS maintained
+Date: 2026-05-31
+Session: 07A TOGGLE_IMU_MODE capture session
+
+Reason: TOGGLE_IMU_MODE capture session was not executed in Phase 7 automated context.
+Hardware requirement: WHOOP 5.0 physical BLE connection to Mac (bleak).
+Action required: Run manually — see re/re_harness.py imu_on flow.
+
+Prior evidence (Phase 4, 2026-05-30):
+  - capture_all-V3.pklg: raw_imu_present=false (confirmed in 2026-05-30-biometric-5.meta.yaml)
+  - type 43 (REALTIME_RAW_DATA) absent across 1049 AA-framed custom-service frames
+  - TOGGLE_IMU_MODE (cmd 106) not sent in Phase 4 capture
+
+Manual capture instructions:
+  1. Close WHOOP app on iPhone
+  2. cd /Users/francisco/Documents/my-whoop/re
+  3. python re_harness.py
+  4. Wait for connection (GET_HELLO_HARVARD response visible in logs)
+  5. echo imu_on >> control.txt
+  6. Monitor re_log.jsonl for "type": 43 frames
+  7. Once observed (or after 10 minutes): echo quit >> control.txt
+  8. cp re_log.jsonl re/capture/evidence/07_imu_capture_session.jsonl
+  9. Extract 10-20 type-43 frames and update this file with VERIFIED status

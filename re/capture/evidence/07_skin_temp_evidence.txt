@@ -1,0 +1,26 @@
+PROTO-12: Skin Temperature (EVENT type event_17 / TEMPERATURE_LEVEL)
+====================================================================
+
+Status: NOT_OBSERVED — HYPOTHESIS maintained
+Date: 2026-05-31
+Session: 07A TOGGLE_IMU_MODE capture session
+
+Reason: TOGGLE_IMU_MODE capture session was not executed in Phase 7 automated context.
+Hardware requirement: WHOOP 5.0 physical BLE connection (bleak).
+
+Prior evidence (Phase 4, 2026-05-30):
+  - capture_all-V3.pklg: event 17 (TEMPERATURE_LEVEL) not observed
+  - FINDINGS_5.md §Phase 4 table: "event 17 TEMPERATURE_LEVEL not observed; 4.0 never captured it"
+  - 69 EVENT frames observed total — none resolved to EventNumber 17
+
+Note on stream nature:
+  Skin temperature may be a periodic event (not continuous stream) — TEMPERATURE_LEVEL
+  (event 17) may fire on temperature change only, not at fixed rate. The TOGGLE_IMU_MODE
+  session should observe at least one event if the sensor is active.
+
+Manual capture instructions:
+  1. Run TOGGLE_IMU_MODE session (see 07_imu_evidence.txt for setup)
+  2. Filter re_log.jsonl for EventNumber 17 (TEMPERATURE_LEVEL)
+  3. Extract raw temperature bytes + decoded value
+  4. Document units (°C or raw ADC count requiring calibration)
+  5. Update this file with VERIFIED status if observed

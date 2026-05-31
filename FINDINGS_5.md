@@ -286,10 +286,10 @@ IMU/SpO₂/skin-temp/respiration bytes are genuinely **absent** from the capture
 | Battery SOC | PROTO-08 | HYPOTHESIS | 4.0 A6 layout does not cleanly resolve 23% on 5.0; GET_BATTERY_LEVEL capture flagged for Phase 5 |
 | Historical offload | PROTO-10 | **VERIFIED** (framing, doc-only) | METADATA markers + scrubbed CONSOLE_LOGS; trim cursor `0x00000004:000130ef`; live test deferred (D-09) |
 | Dual-epoch | PROTO-15 | **VERIFIED** | unix (GET_DATA_RANGE) + device (EVENT body[8]) both decoded |
-| IMU / gravity (RAW 43) | PROTO-14 | HYPOTHESIS | type 43 absent (`raw_imu_present=false`); 4.0 Gen4 template ready; needs TOGGLE_IMU_MODE capture |
-| SpO₂ | PROTO-11 | HYPOTHESIS | type 53 byte not observed; 4.0 = cloud-computed off-wire |
-| Skin temperature | PROTO-12 | HYPOTHESIS | event 17 TEMPERATURE_LEVEL not observed; 4.0 never captured it |
-| Respiration | PROTO-13 | HYPOTHESIS | no respiration field on the wire; likely derived/sleep metric, may be cloud-only |
+| IMU / gravity (RAW 43) | PROTO-14 | HYPOTHESIS | TOGGLE_IMU_MODE session ran 2026-05-31 (Phase 7); frame type 43 not observed in automated context — hardware capture pending; see re/capture/evidence/07_imu_evidence.txt |
+| SpO₂ | PROTO-11 | HYPOTHESIS | TOGGLE_IMU_MODE session ran 2026-05-31 (Phase 7); type 53 not observed in automated context — hardware capture pending; SpO₂ validation (±2% vs oximeter) pending; see re/capture/evidence/07_spo2_evidence.txt |
+| Skin temperature | PROTO-12 | HYPOTHESIS | TOGGLE_IMU_MODE session ran 2026-05-31 (Phase 7); event 17 TEMPERATURE_LEVEL not observed in automated context — hardware capture pending; see re/capture/evidence/07_skin_temp_evidence.txt |
+| Respiration | PROTO-13 | HYPOTHESIS | TOGGLE_IMU_MODE session ran 2026-05-31 (Phase 7); no respiration field observed — likely cloud-derived; hardware capture pending; see re/capture/evidence/07_respiration_evidence.txt |
 
 ### Committed artifacts
 

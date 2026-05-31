@@ -1,0 +1,30 @@
+PROTO-11: SpO₂ (type 53)
+========================
+
+Status: NOT_OBSERVED — HYPOTHESIS maintained
+Date: 2026-05-31
+Session: 07A TOGGLE_IMU_MODE capture session
+
+Reason: TOGGLE_IMU_MODE capture session was not executed in Phase 7 automated context.
+Hardware requirement: WHOOP 5.0 physical BLE connection (bleak) + reference pulse oximeter.
+
+Prior evidence (Phase 4, 2026-05-30):
+  - capture_all-V3.pklg: type 53 frames absent (confirmed in 2026-05-30-biometric-5.meta.yaml)
+  - FINDINGS_5.md §Phase 4 table: "type 53 byte not observed; 4.0 = cloud-computed off-wire"
+
+Manual validation instructions (when capture available):
+  1. Run TOGGLE_IMU_MODE session (see 07_imu_evidence.txt for setup)
+  2. Filter re_log.jsonl for "type": 53 frames
+  3. Extract SpO₂ decoded values (minimum 3 readings)
+  4. Record reference oximeter reading simultaneously
+  5. Compute delta: |WHOOP_decoded - reference_oximeter|
+  6. Apply threshold: ±2% → VERIFIED; >2% → UNVERIFIED
+
+--- SpO2 Validation (pending) ---
+Reference oximeter: [pending hardware capture]
+WHOOP decoded: [pending hardware capture]
+Delta: [pending]
+Threshold: ±2% (consumer-grade clinical standard)
+Result: NOT_OBSERVED — HYPOTHESIS maintained
+Date: 2026-05-31
+Method: simultaneous reading during TOGGLE_IMU_MODE capture session (pending)
