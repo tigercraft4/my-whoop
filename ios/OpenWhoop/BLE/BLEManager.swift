@@ -78,6 +78,7 @@ public final class BLEManager: NSObject, ObservableObject {
     private var bondRetryCount = 0
     private static let maxBondRetries = 3
     private var backfillLiveFrameCount = 0
+    private var liveFrameDebugCount = 0
     /// Re-entrancy guard for captureRawAccel: true while a bounded on-demand window is running.
     /// A second tap is a no-op until the active capture's asyncAfter block fires and clears this.
     private var rawCaptureInFlight = false
@@ -781,7 +782,8 @@ extension BLEManager: CBPeripheralDelegate {
                                            // (Offload no longer depends on this — Backfiller falls back to an
                                            // identity clockRef — but a real correlation helps realtime decode.)
         }
-        send(.sendR10R11Realtime, payload: [0x00])   // stop the type-43 realtime flood (BLE airtime/battery)
+        // DEBUG: temporarily NOT stopping realtime flood to verify data flows from WHOOP
+        // send(.sendR10R11Realtime, payload: [0x00])
         send(.getDataRange)                          // refresh the strap's stored range for the watchdog
         // Plain offload (no high-freq-sync), rate-limited (first connect always runs; reconnect-flaps are
         // throttled by BackfillPolicy). Deferred ~1.5s so SET_CLOCK/GET_DATA_RANGE round-trip first and
@@ -871,7 +873,12 @@ extension BLEManager: CBPeripheralDelegate {
                         }
                     }
                 } else {
-                    // Live path (unchanged): synchronous ingest preserves delegate arrival order.
+                    // Live path: log first few frames to verify data flows from WHOOP.
+                    let ftype = frame.count > 4 ? frame[4] : 0xFF
+                    if liveFrameDebugCount < 10 {
+                        liveFrameDebugCount += 1
+                        log("Live: frame type=\(ftype) len=\(frame.count) char=\(characteristic.uuid.uuidString.prefix(8))")
+                    }
                     collector?.ingest(frame)
                 }
             }
