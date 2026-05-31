@@ -246,6 +246,13 @@ def get_daily(device: str,
         return read.query_daily(conn, device, start, end)
 
 
+@app.get("/v1/today", dependencies=[Depends(require_auth)])
+def get_today(device: str):
+    """Most-recent daily_metrics row for the device (ORDER BY day DESC LIMIT 1), or null."""
+    with psycopg.connect(cfg.db_dsn) as conn:
+        return read.query_today(conn, device)
+
+
 @app.get("/v1/sleep", dependencies=[Depends(require_auth)])
 def get_sleep(device: str, date: str):
     """Sleep sessions whose night ENDS on ``date`` (YYYY-MM-DD)."""
