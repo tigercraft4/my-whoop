@@ -19,18 +19,60 @@ struct OpenWhoopApp: App {
 ///
 /// The MetricsRepository opens its on-disk store lazily (on the first load/refresh call),
 /// so there is no need to wait for an async factory before showing the UI.
+///
+/// BACKFILL WIRE — why `.onAppear` is not sufficient as the sole wire point:
+/// With BLE state restoration (strap already bonded), CoreBluetooth can call
+/// `willRestoreState` synchronously during `CBCentralManager.init`, which happens inside
+/// `LiveViewModel.init`. The 1.5 s handshake delay before `beginBackfill` means the first
+/// backfill normally completes well after `.onAppear`, but on a fast device with an
+/// already-bonded strap the race window is real: `exitBackfilling` calls
+/// `onBackfillComplete?()` while the closure is still nil → silent no-op →
+/// `computeLocalMetrics()` is never called → data sits in the DB but never surfaces.
+///
+/// Fix: both objects are created inside `AppRootCoordinator.init()` (a `@MainActor` class)
+/// and the backfill closure is wired immediately after both objects are constructed — before
+/// SwiftUI evaluates `body` and before any CoreBluetooth event can arrive.
 private struct AppRoot: View {
-    @StateObject private var metrics = MetricsRepository(deviceId: AppConfig.deviceId)
-    @StateObject private var live    = LiveViewModel(deviceId: AppConfig.deviceId)
+    @StateObject private var coordinator = AppRootCoordinator()
 
     var body: some View {
         RootTabView()
-            .environmentObject(metrics)
-            .environmentObject(live)
+            .environmentObject(coordinator.metrics)
+            .environmentObject(coordinator.live)
             .onAppear {
-                live.onBackfillComplete {
-                    Task { await metrics.computeLocalMetrics() }
-                }
+                // Idempotent re-wire on every appear (simple closure assignment).
+                // Belt-and-suspenders: covers normal launch + any future scene re-insertion.
+                coordinator.wireBackfill()
             }
+    }
+}
+
+/// Owns MetricsRepository + LiveViewModel and wires the backfill→metrics bridge
+/// synchronously in `init()` so the closure is registered before any BLE event arrives.
+///
+/// `@MainActor` is required because `LiveViewModel.init` is `@MainActor`-isolated. SwiftUI
+/// initialises `@StateObject` wrapped values on the main thread, satisfying this requirement
+/// at runtime; the annotation makes the isolation explicit to the Swift concurrency checker.
+@MainActor
+private final class AppRootCoordinator: ObservableObject {
+    let metrics: MetricsRepository
+    let live: LiveViewModel
+
+    init() {
+        let m = MetricsRepository(deviceId: AppConfig.deviceId)
+        let l = LiveViewModel(deviceId: AppConfig.deviceId)
+        self.metrics = m
+        self.live = l
+        // Wire synchronously — both objects are fully constructed here.
+        l.onBackfillComplete {
+            Task { await m.computeLocalMetrics() }
+        }
+    }
+
+    /// Idempotent re-wire called from `.onAppear` as belt-and-suspenders.
+    func wireBackfill() {
+        live.onBackfillComplete { [metrics = self.metrics] in
+            Task { await metrics.computeLocalMetrics() }
+        }
     }
 }
