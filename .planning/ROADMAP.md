@@ -32,7 +32,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 
 - [x] **Phase 6: Backfill Fix** — Corrigir a race condition no FF key exchange para que os dados históricos fluam do WHOOP 5.0 — completed 2026-05-31
 - [x] **Phase 7: iOS Validation + Biometrics Capture** — Validar todas as iOS views com dados reais e verificar streams biométricos HYPOTHESIS (completed 2026-05-31)
-- [ ] **Phase 8: JADX APK Analysis + UI Design Document** — Analisar o APK Android via JADX e documentar a arquitectura de informação da app WHOOP
+- [x] **Phase 8: JADX APK Analysis + UI Design Document** — Analisar o APK Android via JADX e documentar a arquitectura de informação da app WHOOP — completed 2026-05-31
 - [ ] **Phase 9: SwiftUI Redesign WHOOP-Style** — Redesenhar a UI em WHOOP-style com tab bar, Recovery card, Sleep card e Strain card
 - [ ] **Phase 10: Algorithms Display + Server Endpoint** — Ligar os resultados dos algoritmos às iOS views e adicionar o endpoint GET /v1/today
 - [ ] **Phase 11: HealthKit Export** — Exportar dados biométricos do WHOOP para a Apple Health
@@ -71,7 +71,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
   1. JADX analysis complete: each of the 5 main tabs documented with field names, labels, and data relationships
   2. UI design document committed to `docs/` with wireframe-level description of each card (Recovery, Sleep, Strain) — no artwork or assets copied
   3. Field-to-model mapping table: each UI field mapped to its corresponding `DailyMetric`/`CachedSleepSession` property or `ALG-*` requirement
-**Plans**: TBD
+**Plans**: 2/2 complete
 
 ### Phase 9: SwiftUI Redesign WHOOP-Style
 **Goal**: Evolve the existing iOS app UI to WHOOP-style: new tab bar structure with @SceneStorage, Recovery card, Sleep card, Strain card — all wired to real data from Phase 7
@@ -123,7 +123,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 5. iOS App & Server Port | v1.0 | 6/6 | Complete | 2026-05-31 |
 | 6. Backfill Fix | v2.0 | 2/2 | Complete | 2026-05-31 |
 | 7. iOS Validation + Biometrics Capture | v2.0 | 3/3 | Complete   | 2026-05-31 |
-| 8. JADX APK Analysis + UI Design Document | v2.0 | 0/? | Not started | - |
+| 8. JADX APK Analysis + UI Design Document | v2.0 | 2/2 | Complete | 2026-05-31 |
 | 9. SwiftUI Redesign WHOOP-Style | v2.0 | 0/? | Not started | - |
 | 10. Algorithms Display + Server Endpoint | v2.0 | 0/? | Not started | - |
 | 11. HealthKit Export | v2.0 | 0/? | Not started | - |
