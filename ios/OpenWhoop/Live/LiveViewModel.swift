@@ -50,7 +50,7 @@ public final class LiveViewModel: ObservableObject {
     /// Fire a preset haptic pattern on the strap (makes it buzz). `pattern` indexes the device's
     /// preset patterns; `loops` is the repeat count. Confirmed write so the strap acks it.
     public func runHaptic(pattern: UInt8, loops: UInt8) {
-        ble.send(.runHapticsPattern, payload: [pattern, loops, 0, 0, 0], writeType: .withResponse)
+        ble.send(.runHapticPatternMaverick, payload: [pattern, loops, 0, 0, 0], writeType: .withResponse)
     }
     public func stopHaptics() { ble.send(.stopHaptics, payload: [0x00], writeType: .withResponse) }
 

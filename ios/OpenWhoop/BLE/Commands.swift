@@ -67,10 +67,13 @@ public enum WhoopCommand: UInt8, CaseIterable {
     case toggleIMUMode         = 106
     /// HYPOTHESIS (5.0 unverified) — referenced only by OpenWhoopTests; no production call site.
     case enableOpticalData     = 107
-    /// Fire a preset haptic pattern. Payload = `[patternId, numLoops, 0, 0, 0]` (5 bytes, from
-    /// the device's preset table). patternId indexes the device's preset patterns (GET_ALL_HAPTICS_PATTERN
-    /// reports 7 on harvard); the official app fires id=2. Safe/reversible — just buzzes the motor.
-    /// HYPOTHESIS (5.0 unverified) — used by BLEManager.testAlarmBuzz / LiveViewModel.
+    /// Fire a preset haptic pattern — WHOOP 5.0 Maverick command (r52 CommandNumber map, cmd 19).
+    /// Payload = `[patternId, numLoops, 0, 0, 0]` (5 bytes, same format as 4.0 — unconfirmed by capture).
+    /// Replaces runHapticsPattern (79) which is the 4.0 legacy command silently ignored by 5.0 firmware.
+    /// HYPOTHESIS (5.0, payload format unconfirmed — command ID confirmed via r52 enum map).
+    case runHapticPatternMaverick = 19
+    /// Fire a preset haptic pattern — WHOOP 4.0 legacy command. Kept for test compatibility.
+    /// DO NOT use in production on WHOOP 5.0 — firmware ignores it silently (use runHapticPatternMaverick).
     case runHapticsPattern     = 79
     /// Stop an in-progress haptic pattern. Payload `[0x00]`. Safe/reversible.
     /// HYPOTHESIS (5.0 unverified) — used by LiveViewModel.stopHaptics.
@@ -125,7 +128,8 @@ public enum WhoopCommand: UInt8, CaseIterable {
         case .getExtendedBatteryInfo:return "Get Extended Battery Info"
         case .toggleIMUMode:         return "Toggle IMU Mode"
         case .enableOpticalData:     return "Enable Optical Data"
-        case .runHapticsPattern:     return "Run Haptics Pattern"
+        case .runHapticPatternMaverick: return "Run Haptics Pattern (5.0)"
+        case .runHapticsPattern:     return "Run Haptics Pattern (4.0 legacy)"
         case .stopHaptics:           return "Stop Haptics"
         case .sendR10R11Realtime:    return "R10/R11 Realtime (raw stream)"
         case .setAlarmTime:          return "Set Alarm Time"
