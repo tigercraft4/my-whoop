@@ -39,6 +39,7 @@ private struct AppRoot: View {
         RootTabView()
             .environmentObject(coordinator.metrics)
             .environmentObject(coordinator.live)
+            .environmentObject(coordinator.hkExporter)
             .onAppear {
                 // Idempotent re-wire on every appear (simple closure assignment).
                 // Belt-and-suspenders: covers normal launch + any future scene re-insertion.
@@ -55,14 +56,17 @@ private struct AppRoot: View {
 /// at runtime; the annotation makes the isolation explicit to the Swift concurrency checker.
 @MainActor
 private final class AppRootCoordinator: ObservableObject {
-    let metrics: MetricsRepository
-    let live: LiveViewModel
+    let metrics:    MetricsRepository
+    let live:       LiveViewModel
+    let hkExporter: HealthKitExporterViewModel
 
     init() {
-        let m = MetricsRepository(deviceId: AppConfig.deviceId)
-        let l = LiveViewModel(deviceId: AppConfig.deviceId)
-        self.metrics = m
-        self.live = l
+        let m  = MetricsRepository(deviceId: AppConfig.deviceId)
+        let l  = LiveViewModel(deviceId: AppConfig.deviceId)
+        let hk = HealthKitExporterViewModel()
+        self.metrics    = m
+        self.live       = l
+        self.hkExporter = hk
         // Wire synchronously — both objects are fully constructed here.
         l.onBackfillComplete {
             Task { await m.computeLocalMetrics() }

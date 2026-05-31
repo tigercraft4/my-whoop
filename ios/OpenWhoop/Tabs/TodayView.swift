@@ -1,4 +1,5 @@
 import SwiftUI
+import HealthKit
 
 // MARK: - TodayView
 // The command-centre "Today" tab. Renders server-cached recovery/strain/sleep/HRV/RHR
@@ -6,12 +7,17 @@ import SwiftUI
 // Tapping any metric card → MetricDetailView (full history, range selector).
 
 struct TodayView: View {
-    @EnvironmentObject private var metrics: MetricsRepository
-    @EnvironmentObject private var live: LiveViewModel
+    @EnvironmentObject private var metrics:    MetricsRepository
+    @EnvironmentObject private var live:       LiveViewModel
+    @EnvironmentObject private var hkExporter: HealthKitExporterViewModel
+
+    // One-time "Health not connected" banner state
+    @State private var showHealthBanner = false
+    @AppStorage("hk.authDeniedShown") private var authDeniedShown = false
 
     var body: some View {
         NavigationStack {
-            ZStack {
+            ZStack(alignment: .top) {
                 WH.Color.background.ignoresSafeArea()
 
                 Group {
@@ -21,13 +27,36 @@ struct TodayView: View {
                         scrollContent
                     }
                 }
+
+                // Subtle "Health not connected" banner — shown once on denial
+                if showHealthBanner {
+                    healthNotConnectedBanner
+                        .padding(.top, WH.Spacing.sm)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(1)
+                }
             }
             // Hide the system nav bar on the root so the custom ScreenHeader sits tight
             // below the status bar/Dynamic Island. Pushed detail views manage their own bars.
             .toolbar(.hidden, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
-        .task { await metrics.refresh() }
+        .task {
+            await metrics.refresh()
+            // Lazy HealthKit auth — only when there is data to export (D-03)
+            guard metrics.today != nil else { return }
+            if let store = metrics.whoopStore {
+                await hkExporter.requestAuthorizationAndExport(
+                    whoopStore: store,
+                    deviceId: AppConfig.deviceId
+                )
+            }
+            // Show one-time "Health not connected" banner if denied and not previously shown
+            if hkExporter.authDenied && !authDeniedShown {
+                withAnimation { showHealthBanner = true }
+                authDeniedShown = true
+            }
+        }
         .refreshable { await metrics.refresh() }
     }
 
@@ -307,6 +336,46 @@ struct TodayView: View {
             }
             Spacer()
         }
+    }
+
+    // MARK: - Health Not Connected Banner (one-time, non-blocking)
+
+    private var healthNotConnectedBanner: some View {
+        HStack(spacing: WH.Spacing.sm) {
+            Image(systemName: "heart.slash")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(WH.Color.textSecondary)
+            Text("Health not connected")
+                .font(WH.Font.caption)
+                .foregroundStyle(WH.Color.textSecondary)
+            Spacer()
+            Button {
+                // Attempt Apple Health deep link; fall back to Settings
+                if let healthURL = URL(string: "x-apple-health://"),
+                   UIApplication.shared.canOpenURL(healthURL) {
+                    UIApplication.shared.open(healthURL)
+                } else if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(settingsURL)
+                }
+            } label: {
+                Text("Open")
+                    .font(WH.Font.caption)
+                    .foregroundStyle(WH.Color.textSecondary)
+                    .underline()
+            }
+            Button {
+                withAnimation { showHealthBanner = false }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(WH.Color.textSecondary)
+            }
+        }
+        .padding(.horizontal, WH.Spacing.md)
+        .padding(.vertical, WH.Spacing.xs)
+        .background(WH.Color.surface2,
+                    in: Capsule())
+        .padding(.horizontal, WH.Spacing.md)
     }
 
     // MARK: - Error banner

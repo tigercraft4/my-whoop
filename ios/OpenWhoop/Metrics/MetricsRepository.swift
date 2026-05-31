@@ -29,6 +29,10 @@ final class MetricsRepository: ObservableObject {
     private var serverSync: ServerSync?
     private let deviceId: String
 
+    /// Read-only access to the opened WhoopStore for HealthKit export.
+    /// Returns nil until the store is opened (after the first async call to refresh/load).
+    var whoopStore: WhoopStore? { store }
+
     // Lazy-open state (app path).
     private var _alreadyOpen = false
     private var _openTask: Task<Void, Never>?
