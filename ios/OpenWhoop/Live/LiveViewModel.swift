@@ -95,6 +95,12 @@ public final class LiveViewModel: ObservableObject {
     /// User tapped "Sync now" — force an offload regardless of the periodic floor.
     public func syncNow() { ble.requestSync(.manual) }
 
+    /// Send TOGGLE_IMU_MODE command to the strap.
+    ///
+    /// Debug passthrough — used by SettingsView debug section (#if DEBUG).
+    /// When `on` is `true`, activates biometric streams; when `false`, deactivates them.
+    public func toggleIMUMode(on: Bool) { ble.toggleIMUMode(on: on) }
+
     /// Refresh the storage summary line from the store (polled every few seconds by LiveView).
     public func refreshStorage() {
         Task { @MainActor in

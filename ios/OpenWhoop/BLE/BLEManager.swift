@@ -584,6 +584,19 @@ public final class BLEManager: NSObject, ObservableObject {
         log("Alarm: test buzz fired (patternId=2, runAlarm)")
     }
 
+    /// Send TOGGLE_IMU_MODE command to the strap.
+    ///
+    /// When `on` is `true`, activates biometric streams (IMU/gravity, SpO₂, skin temp, respiration).
+    /// When `false`, deactivates the streams.
+    ///
+    /// HYPOTHESIS (5.0 unverified) — command rawValue 106, inherited from 4.0.
+    /// Physical validation is performed in Phase 7 (plan 07A) via re_harness.py capture session.
+    public func toggleIMUMode(on: Bool) {
+        let payload: [UInt8] = on ? [0x01] : [0x00]
+        log("toggleIMUMode(on: \(on))")
+        send(.toggleIMUMode, payload: payload)
+    }
+
     /// Parse a standard BLE Heart Rate Measurement (0x2A37) via the pure StandardHeartRate parser.
     private func parseStandardHR(_ data: [UInt8]) {
         guard let m = StandardHeartRate.parse(data) else { return }

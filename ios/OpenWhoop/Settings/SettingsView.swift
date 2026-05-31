@@ -77,6 +77,7 @@ private enum ProfileStorage {
 
 struct SettingsView: View {
     @EnvironmentObject private var metrics: MetricsRepository
+    @EnvironmentObject private var model: LiveViewModel
 
     // Unit system
     @State private var unitSystem: UnitSystem = .imperial
@@ -101,6 +102,9 @@ struct SettingsView: View {
     // Save status
     @State private var saveStatus: SaveStatus = .idle
     @State private var isBackfilling = false
+
+    // IMU mode (debug only)
+    @State private var imuModeOn: Bool = false
 
     private enum SaveStatus: Equatable {
         case idle
@@ -140,6 +144,9 @@ struct SettingsView: View {
                 sexSection
                 saveSection
                 footerSection
+                #if DEBUG
+                debugSection
+                #endif
             }
             .scrollContentBackground(.hidden)
             .background(WH.Color.background)
@@ -307,6 +314,26 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Debug section (hidden in Release builds)
+
+    #if DEBUG
+    private var debugSection: some View {
+        Section(header: Text("Developer")) {
+            Button(action: {
+                imuModeOn.toggle()
+                model.toggleIMUMode(on: imuModeOn)
+            }) {
+                HStack {
+                    Text("IMU Mode")
+                    Spacer()
+                    Text(imuModeOn ? "ON" : "OFF")
+                        .foregroundColor(imuModeOn ? .green : .secondary)
+                }
+            }
+        }
+    }
+    #endif
+
     // MARK: - Load
 
     private func loadProfile() async {
@@ -473,4 +500,5 @@ struct SettingsView: View {
 #Preview("Settings") {
     SettingsView()
         .environmentObject(MetricsRepository(deviceId: "preview"))
+        .environmentObject(LiveViewModel(deviceId: "preview"))
 }
