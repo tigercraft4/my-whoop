@@ -79,6 +79,7 @@ public final class BLEManager: NSObject, ObservableObject {
     private static let maxBondRetries = 3
     private var backfillLiveFrameCount = 0
     private var liveFrameDebugCount = 0
+    private var rawNotifDebugCount = 0
     /// Re-entrancy guard for captureRawAccel: true while a bounded on-demand window is running.
     /// A second tap is a no-op until the active capture's asyncAfter block fires and clears this.
     private var rawCaptureInFlight = false
@@ -608,6 +609,8 @@ extension BLEManager: CBCentralManagerDelegate {
         clockRequested = false
         connectHandshakeDone = false
         bondRetryCount = 0
+        rawNotifDebugCount = 0
+        liveFrameDebugCount = 0
         // Reset backfill state so the next connect starts a fresh offload.
         backfillStarted = false
         backfilling = false
@@ -826,6 +829,12 @@ extension BLEManager: CBPeripheralDelegate {
                            error: Error?) {
         guard let data = characteristic.value else { return }
         let bytes = [UInt8](data)
+        // DEBUG: log first few raw notifications per char
+        if rawNotifDebugCount < 20 {
+            rawNotifDebugCount += 1
+            let preview = bytes.prefix(8).map { String(format: "%02x", $0) }.joined()
+            log("RAW notify char=\(characteristic.uuid.uuidString.prefix(8)) len=\(bytes.count) bytes=\(preview)")
+        }
 
         switch characteristic.uuid {
         case BLEManager.heartRateChar:
