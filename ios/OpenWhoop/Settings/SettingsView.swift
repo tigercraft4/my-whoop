@@ -330,6 +330,11 @@ struct SettingsView: View {
                         .foregroundColor(imuModeOn ? .green : .secondary)
                 }
             }
+            Button("Reset HealthKit Cursors") {
+                UserDefaults.standard.removeObject(forKey: "hk.hrHighwater")
+                UserDefaults.standard.removeObject(forKey: "hk.hrvHighwater")
+            }
+            .foregroundColor(.secondary)
         }
     }
     #endif
