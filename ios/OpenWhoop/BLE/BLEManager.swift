@@ -246,8 +246,9 @@ public final class BLEManager: NSObject, ObservableObject {
             return
         }
         seq = seq &+ 1
-        // WHOOP 5.0 requires Maverick-wrapped writes (Open Question #1 resolved, plan 05-06).
-        let frame = command.maverickFrame(seq: seq, payload: payload)
+        // WHOOP 5.0 reads commands in 4.0 format, sends responses in Maverick format.
+        // Open Question #1 resolved: writes stay 4.0, Reassembler handles incoming Maverick.
+        let frame = command.frame(seq: seq, payload: payload)
         p.writeValue(Data(frame), for: ch, type: writeType)
         log("→ \(command.label) payload=\(hex(payload))")
     }
@@ -785,8 +786,7 @@ extension BLEManager: CBPeripheralDelegate {
                                            // (Offload no longer depends on this — Backfiller falls back to an
                                            // identity clockRef — but a real correlation helps realtime decode.)
         }
-        // DEBUG: temporarily NOT stopping realtime flood to verify data flows from WHOOP
-        // send(.sendR10R11Realtime, payload: [0x00])
+        send(.sendR10R11Realtime, payload: [0x00])   // stop the type-43 realtime flood (BLE airtime/battery)
         send(.getDataRange)                          // refresh the strap's stored range for the watchdog
         // Plain offload (no high-freq-sync), rate-limited (first connect always runs; reconnect-flaps are
         // throttled by BackfillPolicy). Deferred ~1.5s so SET_CLOCK/GET_DATA_RANGE round-trip first and
