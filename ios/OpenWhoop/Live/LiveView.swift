@@ -749,7 +749,7 @@ private struct DeveloperView: View {
                             disturbances: 4, restingHr: 58, avgHrv: 52.3,
                             recovery: 78.0, strain: 12.4, exerciseCount: 1
                         )
-                        try? await metrics.whoopStore?.upsertDailyMetrics([today], deviceId: AppConfig.deviceId)
+                        _ = try? await metrics.whoopStore?.upsertDailyMetrics([today], deviceId: AppConfig.deviceId)
                         await metrics.refresh()
                         if let s = try? await metrics.whoopStore?.storageStats() {
                             dbStats = "decoded:\(s.decodedRows) raw:\(s.rawBatches)"
