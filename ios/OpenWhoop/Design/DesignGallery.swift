@@ -54,6 +54,38 @@ struct DesignGallery: View {
 
                 Divider().background(WH.Color.separator)
 
+                // Section: Zone rings (ZoneRingView — parametrisable)
+                sectionHeader("Ring Components")
+
+                HStack(spacing: WH.Spacing.md) {
+                    VStack(spacing: WH.Spacing.xs) {
+                        ZoneRingView(value: 78, maxValue: 100,
+                                     color: WH.Color.recoveryGreen, centerLabel: "78")
+                        Text("Recovery (78%)")
+                            .font(WH.Font.caption)
+                            .foregroundStyle(WH.Color.textSecondary)
+                    }
+                    Spacer()
+                    VStack(spacing: WH.Spacing.xs) {
+                        ZoneRingView(value: 52, maxValue: 100,
+                                     color: WH.Color.recoveryYellow, centerLabel: "52")
+                        Text("Recovery (52%)")
+                            .font(WH.Font.caption)
+                            .foregroundStyle(WH.Color.textSecondary)
+                    }
+                    Spacer()
+                    VStack(spacing: WH.Spacing.xs) {
+                        ZoneRingView(value: 13.5, maxValue: 21,
+                                     color: WH.Color.strainAccent, centerLabel: "13.5")
+                        Text("Strain (13.5)")
+                            .font(WH.Font.caption)
+                            .foregroundStyle(WH.Color.textSecondary)
+                    }
+                }
+                .padding(.horizontal, WH.Spacing.xs)
+
+                Divider().background(WH.Color.separator)
+
                 // Section: Metric cards (plain)
                 sectionHeader("Metric Cards")
 
