@@ -12,6 +12,9 @@ enum MetricKind: String, Identifiable {
     case rhr
     case strain
     case sleepDuration
+    /// Sleep performance (0–100%). Sourced from DailyMetric.efficiency (stored 0–1 on server).
+    /// Replaces sleepDuration as the primary sleep metric in the Trends cards loop (D-09/D-10/D-11).
+    case sleepPerformance
     /// Blood oxygen saturation (%). Daily aggregate from sleep session.
     /// Nil when PROTO-11 stream is not yet verified for this device.
     case spo2
@@ -26,34 +29,37 @@ enum MetricKind: String, Identifiable {
 
     /// The ordered list of daily-aggregate metrics shown in the Trends cards loop.
     /// rawHR is intentionally excluded — it is stream-backed, not daily.
+    /// sleepPerformance replaces sleepDuration as the primary sleep metric (D-11).
     /// spo2 and skinTemp are included; they return nil when PROTO-11 stream is unavailable.
-    static let dailyCases: [MetricKind] = [.recovery, .hrv, .rhr, .strain, .sleepDuration, .spo2, .skinTemp]
+    static let dailyCases: [MetricKind] = [.recovery, .hrv, .rhr, .strain, .sleepPerformance, .spo2, .skinTemp]
 
     // MARK: Display
 
     var title: String {
         switch self {
-        case .recovery:      return "Recovery"
-        case .hrv:           return "HRV"
-        case .rhr:           return "Resting HR"
-        case .strain:        return "Day Strain"
-        case .sleepDuration: return "Sleep"
-        case .spo2:          return "Blood Oxygen"
-        case .skinTemp:      return "Skin Temp"
-        case .rawHR:         return "Heart Rate"
+        case .recovery:         return "Recovery"
+        case .hrv:              return "HRV"
+        case .rhr:              return "RHR"
+        case .strain:           return "Day Strain"
+        case .sleepDuration:    return "Sleep"
+        case .sleepPerformance: return "Sleep Performance"
+        case .spo2:             return "Blood Oxygen"
+        case .skinTemp:         return "Skin Temp"
+        case .rawHR:            return "Heart Rate"
         }
     }
 
     var unit: String {
         switch self {
-        case .recovery:      return "%"
-        case .hrv:           return "ms"
-        case .rhr:           return "bpm"
-        case .strain:        return "/ 21"
-        case .sleepDuration: return "hr"
-        case .spo2:          return "%"
-        case .skinTemp:      return "°C"
-        case .rawHR:         return "bpm"
+        case .recovery:         return "%"
+        case .hrv:              return "ms"
+        case .rhr:              return "bpm"
+        case .strain:           return "/ 21"
+        case .sleepDuration:    return "hr"
+        case .sleepPerformance: return "%"
+        case .spo2:             return "%"
+        case .skinTemp:         return "°C"
+        case .rawHR:            return "bpm"
         }
     }
 
@@ -61,14 +67,15 @@ enum MetricKind: String, Identifiable {
 
     var color: Color {
         switch self {
-        case .recovery:      return WH.Color.recoveryGreen   // band-colored at runtime
-        case .hrv:           return WH.Color.teal
-        case .rhr:           return WH.Color.textPrimary
-        case .strain:        return WH.Color.strainBlue
-        case .sleepDuration: return WH.Color.sleepPurple
-        case .spo2:          return WH.Color.teal             // cyan — distinct from other metrics
-        case .skinTemp:      return SwiftUI.Color(hex: "#FF9F0A")  // warm orange — deviation signal
-        case .rawHR:         return WH.Color.recoveryRed
+        case .recovery:         return WH.Color.recoveryGreen   // band-colored at runtime
+        case .hrv:              return WH.Color.teal
+        case .rhr:              return WH.Color.textPrimary
+        case .strain:           return WH.Color.strainBlue
+        case .sleepDuration:    return WH.Color.sleepPurple
+        case .sleepPerformance: return WH.Color.sleepPurple
+        case .spo2:             return WH.Color.teal             // cyan — distinct from other metrics
+        case .skinTemp:         return SwiftUI.Color(hex: "#FF9F0A")  // warm orange — deviation signal
+        case .rawHR:            return WH.Color.recoveryRed
         }
     }
 
@@ -79,7 +86,7 @@ enum MetricKind: String, Identifiable {
     var markType: MarkType {
         switch self {
         case .recovery, .hrv, .rhr, .spo2, .skinTemp, .rawHR: return .line
-        case .strain, .sleepDuration: return .bar
+        case .strain, .sleepDuration, .sleepPerformance: return .bar
         }
     }
 
@@ -87,12 +94,13 @@ enum MetricKind: String, Identifiable {
 
     var fixedYDomain: ClosedRange<Double>? {
         switch self {
-        case .recovery: return 0...100
-        case .strain:   return 0...21
-        case .spo2:     return 90...100  // physiologically relevant SpO2 range
-        case .skinTemp: return nil       // auto-scale — deviation range varies
-        case .rawHR:    return nil       // auto-scaled — HR range varies widely
-        default:        return nil
+        case .recovery:         return 0...100
+        case .strain:           return 0...21
+        case .sleepPerformance: return 0...100
+        case .spo2:             return 90...100  // physiologically relevant SpO2 range
+        case .skinTemp:         return nil       // auto-scale — deviation range varies
+        case .rawHR:            return nil       // auto-scaled — HR range varies widely
+        default:                return nil
         }
     }
 
@@ -109,28 +117,30 @@ enum MetricKind: String, Identifiable {
 
     func format(_ value: Double) -> String {
         switch self {
-        case .recovery:      return String(format: "%.0f%%", value)
-        case .hrv:           return String(format: "%.0f ms", value)
-        case .rhr:           return String(format: "%.0f bpm", value)
-        case .strain:        return String(format: "%.1f", value)
-        case .sleepDuration: return String(format: "%.1f hr", value)
-        case .spo2:          return String(format: "%.0f%%", value)
-        case .skinTemp:      return String(format: "%+.1f °C", value)  // show sign for deviation
-        case .rawHR:         return String(format: "%.0f bpm", value)
+        case .recovery:         return String(format: "%.0f%%", value)
+        case .hrv:              return String(format: "%.0f ms", value)
+        case .rhr:              return String(format: "%.0f bpm", value)
+        case .strain:           return String(format: "%.1f", value)
+        case .sleepDuration:    return String(format: "%.1f hr", value)
+        case .sleepPerformance: return String(format: "%.0f%%", value)
+        case .spo2:             return String(format: "%.0f%%", value)
+        case .skinTemp:         return String(format: "%+.1f °C", value)  // show sign for deviation
+        case .rawHR:            return String(format: "%.0f bpm", value)
         }
     }
 
     /// Short value-only label (no unit) for axis labels and stat strip.
     func formatShort(_ value: Double) -> String {
         switch self {
-        case .recovery:      return String(format: "%.0f", value)
-        case .hrv:           return String(format: "%.0f", value)
-        case .rhr:           return String(format: "%.0f", value)
-        case .strain:        return String(format: "%.1f", value)
-        case .sleepDuration: return String(format: "%.1f", value)
-        case .spo2:          return String(format: "%.0f", value)
-        case .skinTemp:      return String(format: "%+.1f", value)
-        case .rawHR:         return String(format: "%.0f", value)
+        case .recovery:         return String(format: "%.0f", value)
+        case .hrv:              return String(format: "%.0f", value)
+        case .rhr:              return String(format: "%.0f", value)
+        case .strain:           return String(format: "%.1f", value)
+        case .sleepDuration:    return String(format: "%.1f", value)
+        case .sleepPerformance: return String(format: "%.0f", value)
+        case .spo2:             return String(format: "%.0f", value)
+        case .skinTemp:         return String(format: "%+.1f", value)
+        case .rawHR:            return String(format: "%.0f", value)
         }
     }
 
@@ -153,6 +163,8 @@ enum MetricKind: String, Identifiable {
         case .sleepDuration:
             guard let m = metric.totalSleepMin, m > 0 else { return nil }
             return m / 60.0   // minutes → hours
+        case .sleepPerformance:
+            return metric.efficiency.map { $0 * 100 }  // 0–1 fraction → 0–100 percent
         case .spo2:
             return metric.spo2Pct      // nil when PROTO-11 stream not verified
         case .skinTemp:
