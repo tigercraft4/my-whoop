@@ -29,6 +29,8 @@ enum WH {
 
         // Accents
         static let strainBlue      = SwiftUI.Color(hex: "#0093E7")
+        /// Alias for strainBlue — used as the primary accent on the Strain ring and tab
+        static let strainAccent    = strainBlue
         /// HRV teal — distinct from recoveryGreen, pairs well on dark backgrounds
         static let teal            = SwiftUI.Color(hex: "#00C4B4")
         /// Sleep/duration purple — matches sleep-stage feel
