@@ -44,11 +44,11 @@
 
 ### HealthKit Export
 
-- [ ] **HK-01**: Amostras de HR exportadas para HealthKit (`HKQuantityType(.heartRate)`, unidade `count/min`) após cada ingest/backfill; cursor de highwater em UserDefaults para idempotência
-- [ ] **HK-02**: HRV RMSSD exportado para HealthKit (`HKQuantityType(.heartRateVariabilitySDNN)`) por sessão de sono
-- [ ] **HK-03**: SpO₂ exportado para HealthKit (`HKQuantityType(.oxygenSaturation)`, valor `0.0–1.0`) — **gateado atrás de PROTO-11 VERIFIED**
-- [ ] **HK-04**: Sessões de sono exportadas para HealthKit (`HKCategoryType(.sleepAnalysis)`) com stages `.asleepCore/.asleepDeep/.asleepREM` (iOS 16+); sem sobreposição temporal
-- [ ] **HK-05**: Autorização HealthKit pedida lazily na Today view (não em `AppRootCoordinator.init()`); app degrada graciosamente se negada
+- [x] **HK-01**: Amostras de HR exportadas para HealthKit (`HKQuantityType(.heartRate)`, unidade `count/min`) após cada ingest/backfill; cursor de highwater em UserDefaults para idempotência
+- [x] **HK-02**: HRV RMSSD exportado para HealthKit (`HKQuantityType(.heartRateVariabilitySDNN)`) por sessão de sono
+- [x] **HK-03**: SpO₂ exportado para HealthKit (`HKQuantityType(.oxygenSaturation)`, valor `0.0–1.0`) — **gateado atrás de PROTO-11 VERIFIED**
+- [x] **HK-04**: Sessões de sono exportadas para HealthKit (`HKCategoryType(.sleepAnalysis)`) com stages `.asleepCore/.asleepDeep/.asleepREM` (iOS 16+); sem sobreposição temporal
+- [x] **HK-05**: Autorização HealthKit pedida lazily na Today view (não em `AppRootCoordinator.init()`); app degrada graciosamente se negada
 
 ---
 
@@ -106,8 +106,8 @@ Um requisito está **Done** quando:
 | ALG-02 | Phase 10 | Pending |
 | ALG-03 | Phase 10 | Pending |
 | ALG-04 | Phase 10 | Pending |
-| HK-01 | Phase 11 | Pending |
-| HK-02 | Phase 11 | Pending |
-| HK-03 | Phase 11 | Pending |
-| HK-04 | Phase 11 | Pending |
-| HK-05 | Phase 11 | Pending |
+| HK-01 | Phase 11 | Complete |
+| HK-02 | Phase 11 | Complete |
+| HK-03 | Phase 11 | Complete |
+| HK-04 | Phase 11 | Complete |
+| HK-05 | Phase 11 | Complete |

@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Complete iOS + WHOOP-Style UI + Algorithms
-status: executing
-last_updated: "2026-05-31T19:28:15.244Z"
+status: ready_to_plan
+last_updated: 2026-05-31T19:44:39.415Z
 last_activity: 2026-05-31 -- Phase 11 execution started
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 41
   percent: 63
+stopped_at: Phase 11 complete (4/4) — ready to discuss Phase 999.1
 ---
 
 # State — WHOOP 5.0
@@ -26,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Phase 11 — healthkit-export
+**Current focus:** Phase 999.1 — follow up — phase 1 android device items (backlog)
 
 ---
 
 ## Current Position
 
-Phase: 11 (healthkit-export) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 11
-Last activity: 2026-05-31 -- Phase 11 execution started
+Phase: 999.1
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-31
 
 Progress: [████░░░░░░] 38%
 

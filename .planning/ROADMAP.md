@@ -126,7 +126,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 8. JADX APK Analysis + UI Design Document | v2.0 | 2/2 | Complete | 2026-05-31 |
 | 9. SwiftUI Redesign WHOOP-Style | v2.0 | 6/6 | Complete    | 2026-05-31 |
 | 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
-| 11. HealthKit Export | v2.0 | 4/4 | Complete   | 2026-05-31 |
+| 11. HealthKit Export | v2.0 | 4/4 | Complete    | 2026-05-31 |
 
 ---
 
