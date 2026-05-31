@@ -77,9 +77,6 @@ public final class BLEManager: NSObject, ObservableObject {
     private var connectHandshakeDone = false
     private var bondRetryCount = 0
     private static let maxBondRetries = 3
-    private var backfillLiveFrameCount = 0
-    private var liveFrameDebugCount = 0
-    private var rawNotifDebugCount = 0
     /// Re-entrancy guard for captureRawAccel: true while a bounded on-demand window is running.
     /// A second tap is a no-op until the active capture's asyncAfter block fires and clears this.
     private var rawCaptureInFlight = false
@@ -284,7 +281,6 @@ public final class BLEManager: NSObject, ObservableObject {
         }
         backfiller.begin()
         backfilling = true
-        backfillLiveFrameCount = 0
         // Payload MUST be [0x00], NOT empty: verified on-device that this strap serves type-47 only with
         // [0x00] (empty → 0 frames on a clean stable link with ~2k records pending); the Mac ground-truth
         // offload (re/sync_openwhoop.py, re/diagnose_biometrics.py) uses [0x00] too. Plain offload — the
@@ -615,8 +611,6 @@ extension BLEManager: CBCentralManagerDelegate {
         clockRequested = false
         connectHandshakeDone = false
         bondRetryCount = 0
-        rawNotifDebugCount = 0
-        liveFrameDebugCount = 0
         // Reset backfill state so the next connect starts a fresh offload.
         backfillStarted = false
         backfilling = false
@@ -835,18 +829,6 @@ extension BLEManager: CBPeripheralDelegate {
                            error: Error?) {
         guard let data = characteristic.value else { return }
         let bytes = [UInt8](data)
-        let charShort = characteristic.uuid.uuidString.prefix(8)
-        let preview = bytes.prefix(8).map { String(format: "%02x", $0) }.joined()
-        // Always log FD4B custom char notifications; limit 2A37/battery to first 5.
-        let isCustom = characteristic.uuid == BLEManager.dataNotifyChar
-            || characteristic.uuid == BLEManager.cmdNotifyChar
-            || characteristic.uuid == BLEManager.eventNotifyChar
-        if isCustom {
-            log("FD4B notify char=\(charShort) len=\(bytes.count) bytes=\(preview)")
-        } else if rawNotifDebugCount < 5 {
-            rawNotifDebugCount += 1
-            log("RAW notify char=\(charShort) len=\(bytes.count) bytes=\(preview)")
-        }
 
         switch characteristic.uuid {
         case BLEManager.heartRateChar:
@@ -881,25 +863,12 @@ extension BLEManager: CBPeripheralDelegate {
                         }
                     }
                 }
-                let isMav = frame.count > 1 && frame[1] == 0x01
-                let typeOff = isMav ? 8 : 4
-                let ftype = frame.count > typeOff ? frame[typeOff] : 0xFF
                 if backfilling {
                     if BLEManager.isOffloadFrame(frame) {
-                        log("Backfill: offload frame type=\(ftype) len=\(frame.count)")
                         armBackfillTimeout()
                         routeBackfillFrame(frame)
-                    } else {
-                        backfillLiveFrameCount += 1
-                        if backfillLiveFrameCount <= 5 || backfillLiveFrameCount % 50 == 0 {
-                            log("Backfill: live frame type=\(ftype) (total live=\(backfillLiveFrameCount))")
-                        }
                     }
                 } else {
-                    if liveFrameDebugCount < 10 {
-                        liveFrameDebugCount += 1
-                        log("Live: frame type=\(ftype) len=\(frame.count) char=\(characteristic.uuid.uuidString.prefix(8))")
-                    }
                     collector?.ingest(frame)
                 }
             }
