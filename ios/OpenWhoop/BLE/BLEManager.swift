@@ -253,9 +253,10 @@ public final class BLEManager: NSObject, ObservableObject {
             return
         }
         seq = seq &+ 1
-        // WHOOP 5.0 reads commands in 4.0 format, sends responses in Maverick format.
-        // Open Question #1 resolved: writes stay 4.0, Reassembler handles incoming Maverick.
-        let frame = command.frame(seq: seq, payload: payload)
+        // WHOOP 5.0 requires Maverick-wrapped writes for all commands (PROTO-05, resolved).
+        // golden corpus (frames_5_golden.json): all 27 writes to FD4B0002 are Maverick [AA][01][len][body][trailer].
+        // The 4.0 frame() format has 0% pass rate on 5.0 firmware (FINDINGS_5.md §7 PROTO-04).
+        let frame = command.maverickFrame(seq: seq, payload: payload)
         p.writeValue(Data(frame), for: ch, type: writeType)
         log("→ \(command.label) payload=\(hex(payload))")
     }
@@ -292,11 +293,10 @@ public final class BLEManager: NSObject, ObservableObject {
         backfiller.begin()
         backfilling = true
         backfillFrameCount = 0
-        // ENTER_HIGH_FREQ_SYNC (96, empty payload) is required for the strap to serve biometric
-        // type-47 records (HR/RR/SpO2/skin-temp). Without it the strap stays silent after
-        // SEND_HISTORICAL_DATA — confirmed in re/sync_openwhoop.py ("the missing piece").
-        send(.enterHighFreqSync, payload: [], writeType: .withoutResponse)
-        BLEManager.logger.notice("BF: → ENTER_HIGH_FREQ_SYNC sent")
+        // SEND_HISTORICAL_DATA triggers the historical offload on the WHOOP 5.0.
+        // START_FF_KEY_EXCHANGE was already sent in the connect handshake — that is what unlocks
+        // historical serving. ENTER_HIGH_FREQ_SYNC (cmd 96) is NOT sent — it never appears in
+        // the official WHOOP 5.0 app capture (capture_all-V3.pklg golden corpus).
         send(.sendHistoricalData, payload: [0x00], writeType: .withResponse)
         armBackfillTimeout()
         log("Backfill: session started — historical offload requested")
@@ -731,7 +731,7 @@ extension BLEManager: CBPeripheralDelegate {
                 // THE BONDING TRICK: one confirmed write triggers just-works bonding.
                 // GET_BATTERY_LEVEL is benign and what the Mac prototype uses.
                 seq = seq &+ 1
-                let bondFrame = WhoopCommand.getBatteryLevel.frame(seq: seq, payload: [0x00])
+                let bondFrame = WhoopCommand.getBatteryLevel.maverickFrame(seq: seq, payload: [0x00])
                 log("Bonding: confirmed write GET_BATTERY_LEVEL to FD4B0002")
                 peripheral.writeValue(Data(bondFrame), for: c, type: .withResponse)
             case BLEManager.cmdNotifyChar,
@@ -766,7 +766,7 @@ extension BLEManager: CBPeripheralDelegate {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                     guard let self, let p = self.peripheral, let ch = self.cmdCharacteristic else { return }
                     self.seq = self.seq &+ 1
-                    let frame = WhoopCommand.getBatteryLevel.frame(seq: self.seq, payload: [0x00])
+                    let frame = WhoopCommand.getBatteryLevel.maverickFrame(seq: self.seq, payload: [0x00])
                     p.writeValue(Data(frame), for: ch, type: .withResponse)
                     self.log("Bonding: retry write sent (\(self.bondRetryCount)/\(BLEManager.maxBondRetries))")
                 }
@@ -797,23 +797,27 @@ extension BLEManager: CBPeripheralDelegate {
         connectHandshakeDone = true
         backfillStarted = true
 
-        // WHOOP-faithful connect lifecycle: hello → set RTC,
-        // then offload. Hello is NOT strictly required to serve — verified on this strap via the Mac
-        // ground-truth test: plain SEND_HISTORICAL_DATA serves type-47 with no hello and no high-freq-sync
-        // (PHASE A = 50 records; PHASE B high-freq = 0). We still exchange hello to mirror WHOOP exactly.
-        send(.getHelloHarvard)
-        send(.getAdvertisingNameHarvard)
+        // WHOOP 5.0 connect lifecycle — sequence confirmed from capture_all-V3.pklg (official WHOOP app):
+        //   GET_HELLO(145,[0x01]) → GET_ADVERTISING_NAME(141,[0x01]) → DISABLE_ALARM(69,...) →
+        //   START_FF_KEY_EXCHANGE(117,[0x01]) → GET_DATA_RANGE(34) → SEND_HISTORICAL_DATA(22)
+        //
+        // Key facts from the golden corpus:
+        //   • GET_HELLO (cmd 145) replaces GET_HELLO_HARVARD (cmd 35, Gen4-only) on the 5.0.
+        //   • START_FF_KEY_EXCHANGE (cmd 117) is REQUIRED before SEND_HISTORICAL_DATA will be served.
+        //     Without it the strap receives the command but returns 0 frames (silent HISTORY_COMPLETE).
+        //   • ENTER_HIGH_FREQ_SYNC (cmd 96) NEVER appears in the official 5.0 app capture — omitted.
+        //   • TOGGLE_REALTIME_HR (cmd 3,[0x01]) enables the FD4B0005 data stream (realtime HR + history).
+        send(.getHello, payload: [0x01])             // WHOOP 5.0 hello (cmd 145)
+        send(.getAdvertisingNameHarvard)             // get device name (cmd 76, also observed as 141)
         send(.setClock, payload: BLEManager.setClockPayload())
         if clockRef == nil && !clockRequested {
             clockRequested = true
-            send(.getClock, payload: [])   // the strap expects GET_CLOCK with an EMPTY payload;
-                                           // the app's old default [0x00] is a wrong length the strap ignores.
-                                           // (Offload no longer depends on this — Backfiller falls back to an
-                                           // identity clockRef — but a real correlation helps realtime decode.)
+            send(.getClock, payload: [])
         }
-        send(.sendR10R11Realtime, payload: [0x00])   // stop the type-43 realtime flood (BLE airtime/battery)
-        send(.toggleRealtimeHR, payload: [0x01])     // WHOOP 5.0: activate custom data channel (FD4B0005)
-        send(.getDataRange)                          // refresh the strap's stored range for the watchdog
+        send(.sendR10R11Realtime, payload: [0x00])   // stop type-43 raw flood
+        send(.toggleRealtimeHR, payload: [0x01])     // activate FD4B0005 data channel
+        send(.startFFKeyExchange, payload: [0x01])   // REQUIRED: begin FF exchange before historical data
+        send(.getDataRange)                          // refresh strap's stored range for the watchdog
         // Plain offload (no high-freq-sync), rate-limited (first connect always runs; reconnect-flaps are
         // throttled by BackfillPolicy). Deferred ~1.5s so SET_CLOCK/GET_DATA_RANGE round-trip first and
         // SEND_HISTORICAL runs on a settled link, like the paced Mac prototype. beginBackfill is itself
@@ -827,13 +831,13 @@ extension BLEManager: CBPeripheralDelegate {
         startBackfillTimer()   // re-offload the type-47 store every backfillIntervalSeconds
     }
 
-    /// SET_CLOCK(10) payload: [seconds u32 LE][5 pad bytes] = 9 bytes total.
-    /// Matches re/sync_openwhoop.py (struct.pack("<I", now) + b"\x00\x00\x00\x00\x00"),
-    /// which is the verified ground-truth that makes the strap latch the RTC and serve type-47.
+    /// SET_CLOCK(10) payload: [seconds u32 LE][u32 zero] = 8 bytes (struct.pack("<II", now, 0)).
+    /// Format confirmed by re/fix_raw_flood.py + re/enable_dataproducts.py (WHOOP 5.0 reference
+    /// scripts). The older 9-byte form (re/sync_openwhoop.py Gen4) was a Gen4-only variant.
     static func setClockPayload(now: UInt32 = UInt32(Date().timeIntervalSince1970)) -> [UInt8] {
         [UInt8(now & 0xFF), UInt8((now >> 8) & 0xFF),
          UInt8((now >> 16) & 0xFF), UInt8((now >> 24) & 0xFF),
-         0, 0, 0, 0, 0]
+         0, 0, 0, 0]
     }
 
     /// Newest plausible-unix marker in a GET_DATA_RANGE COMMAND_RESPONSE = the strap's newest stored

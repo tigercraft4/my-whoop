@@ -30,6 +30,15 @@ public enum WhoopCommand: UInt8, CaseIterable {
     case getBatteryLevel       = 26
     case getDataRange          = 34
     case getHelloHarvard       = 35
+    // MARK: VERIFIED on WHOOP 5.0 (capture_all-V3.pklg — golden corpus)
+    /// GET_HELLO (cmd 145) — WHOOP 5.0 session init. The official WHOOP app sends this (seq=2,
+    /// payload=[0x01]) as the first command after bond. Required for the strap to accept
+    /// SEND_HISTORICAL_DATA. Distinct from GET_HELLO_HARVARD (cmd 35) which is Gen4-only.
+    case getHello              = 145
+    /// START_FF_KEY_EXCHANGE (cmd 117) — begins the Feature Flag exchange. The official WHOOP app
+    /// sends this (seq=5, payload=[0x01]) before GET_DATA_RANGE. Without it the strap ignores
+    /// SEND_HISTORICAL_DATA on the WHOOP 5.0 (FD4B service). Confirmed in capture_all-V3.pklg.
+    case startFFKeyExchange    = 117
     // MARK: HYPOTHESIS (5.0 unverified) — inherited from 4.0, retained because referenced
     /// HYPOTHESIS (5.0 unverified) — used by BLEManager connect handshake.
     case getAdvertisingNameHarvard = 76
@@ -96,6 +105,8 @@ public enum WhoopCommand: UInt8, CaseIterable {
         case .getBatteryLevel:       return "Get Battery Level"
         case .getDataRange:          return "Get Data Range"
         case .getHelloHarvard:       return "Get Hello (Harvard)"
+        case .getHello:              return "Get Hello"
+        case .startFFKeyExchange:    return "Start FF Key Exchange"
         case .getAdvertisingNameHarvard: return "Get Advertising Name (Harvard)"
         case .startRawData:          return "Start Raw Data"
         case .stopRawData:           return "Stop Raw Data"
