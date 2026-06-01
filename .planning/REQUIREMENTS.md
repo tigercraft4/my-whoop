@@ -29,10 +29,10 @@
 
 ### UI Redesign 1:1
 
-- [ ] **UI-01**: Actualizar tokens `WH.*` em `DesignTokens.swift` com constantes verificadas no Ghidra (cores hex, espaçamentos, raios de canto) — gate obrigatório antes de qualquer componente
-- [ ] **UI-02**: Modificar componentes UI por ecrã (RecoveryCard, SleepCard, StrainCard, TrendsView, e outros identificados em GHIDRA-01) de acordo com o screen map; clean-room — nenhum asset ou pseudocódigo do Ghidra directamente no Swift
-- [ ] **UI-03**: Suite de snapshot tests com `swift-snapshot-testing 1.17.6` por ecrã — referências criadas à medida que cada ecrã é implementado, usadas como gate de regressão visual
-- [ ] **UI-04**: Testes 1:1 no simulador via XcodeBuildMCP (`snapshot_ui`, `screenshot`) — validação visual interactiva contra referências do Ghidra para confirmar fidelidade antes de VERIFIED
+- [x] **UI-01**: Actualizar tokens `WH.*` em `DesignTokens.swift` com constantes verificadas no Ghidra (cores hex, espaçamentos, raios de canto) — gate obrigatório antes de qualquer componente
+- [x] **UI-02**: Modificar componentes UI por ecrã (RecoveryCard, SleepCard, StrainCard, TrendsView, e outros identificados em GHIDRA-01) de acordo com o screen map; clean-room — nenhum asset ou pseudocódigo do Ghidra directamente no Swift
+- [x] **UI-03**: Suite de snapshot tests com `swift-snapshot-testing 1.17.6` por ecrã — referências criadas à medida que cada ecrã é implementado, usadas como gate de regressão visual
+- [x] **UI-04**: Testes 1:1 no simulador via XcodeBuildMCP (`snapshot_ui`, `screenshot`) — validação visual interactiva contra referências do Ghidra para confirmar fidelidade antes de VERIFIED
 
 ### Hardware Validation (parallel-eligible, hardware-gated)
 
@@ -73,10 +73,10 @@
 | CLEAN-01 | Phase 16 | Complete |
 | CLEAN-02 | Phase 16 | Complete |
 | CLEAN-03 | Phase 16 | Complete |
-| UI-01 | Phase 17 | Pending |
-| UI-02 | Phase 17 | Pending |
-| UI-03 | Phase 17 | Pending |
-| UI-04 | Phase 17 | Pending |
+| UI-01 | Phase 17 | Complete |
+| UI-02 | Phase 17 | Complete |
+| UI-03 | Phase 17 | Complete |
+| UI-04 | Phase 17 | Complete |
 | PROTO-11 | Phase 18 | Pending |
 | PROTO-12 | Phase 18 | Pending |
 | PROTO-13 | Phase 18 | Pending |
