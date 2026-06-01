@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — UI Redesign + Bug Fix
-status: executing
-last_updated: "2026-06-01T21:15:57.950Z"
+status: ready_to_plan
+last_updated: 2026-06-01T21:25:43.713Z
 last_activity: 2026-06-01 -- Phase 16 execution started
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 9
   percent: 29
+stopped_at: Phase 16 complete (4/4) — ready to discuss Phase 17
 ---
 
 # State — WHOOP 5.0
@@ -26,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Phase 16 — repo-cleanup-gen4-sweep
+**Current focus:** Phase 17 — ui redesign 1:1
 
 ---
 
 ## Current Position
 
-Phase: 16 (repo-cleanup-gen4-sweep) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 16
-Last activity: 2026-06-01 -- Phase 16 execution started
+Phase: 17
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-01
 
 **v4.0 phase map:**
 

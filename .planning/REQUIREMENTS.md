@@ -23,9 +23,9 @@
 
 ### Repo Cleanup + Device Validation
 
-- [ ] **CLEAN-01**: Reorganizar estrutura de pastas do repositório (Swift ios/, Python server/, RE re/, docs/) sem mudanças de arquitectura; xcodegen generate + xcodebuild build como gate após cada move
-- [ ] **CLEAN-02**: Gen4 sweep — grep por 4.0/gen4/Gen4 em todo o codebase; anotar código dual-path intencional (canal 61080005 para dados históricos WHOOP 5.0); remover dead code do WHOOP 4.0
-- [ ] **CLEAN-03**: Device type validation — garantir que o código detecta correctamente WHOOP 4.0 vs 5.0 via device_generation quando conectado, e aplica os paths Maverick (5.0) vs Gen4 (4.0) correctos
+- [x] **CLEAN-01**: Reorganizar estrutura de pastas do repositório (Swift ios/, Python server/, RE re/, docs/) sem mudanças de arquitectura; xcodegen generate + xcodebuild build como gate após cada move
+- [x] **CLEAN-02**: Gen4 sweep — grep por 4.0/gen4/Gen4 em todo o codebase; anotar código dual-path intencional (canal 61080005 para dados históricos WHOOP 5.0); remover dead code do WHOOP 4.0
+- [x] **CLEAN-03**: Device type validation — garantir que o código detecta correctamente WHOOP 4.0 vs 5.0 via device_generation quando conectado, e aplica os paths Maverick (5.0) vs Gen4 (4.0) correctos
 
 ### UI Redesign 1:1
 
@@ -70,9 +70,9 @@
 | GHIDRA-01 | Phase 15 | Complete |
 | GHIDRA-02 | Phase 15 | Complete |
 | GHIDRA-03 | Phase 18 | Pending |
-| CLEAN-01 | Phase 16 | Pending |
-| CLEAN-02 | Phase 16 | Pending |
-| CLEAN-03 | Phase 16 | Pending |
+| CLEAN-01 | Phase 16 | Complete |
+| CLEAN-02 | Phase 16 | Complete |
+| CLEAN-03 | Phase 16 | Complete |
 | UI-01 | Phase 17 | Pending |
 | UI-02 | Phase 17 | Pending |
 | UI-03 | Phase 17 | Pending |
