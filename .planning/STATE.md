@@ -26,15 +26,15 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Phase 17 — ui redesign 1:1
+**Current focus:** Phase 17 — ui redesign 1:1 (Planned — 5 plans, ready to execute)
 
 ---
 
 ## Current Position
 
 Phase: 17
-Plan: Not started
-Status: Ready to plan
+Plan: 0/5 (planned)
+Status: Ready to execute
 Last activity: 2026-06-01
 
 **v4.0 phase map:**
