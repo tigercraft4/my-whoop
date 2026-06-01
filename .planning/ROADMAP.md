@@ -136,7 +136,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 11. HealthKit Export | v2.0 | 4/4 | Complete    | 2026-05-31 |
 | 12. UI Parity | v3.0 | 3/3 | Complete | 2026-06-01 |
-| 13. Backend Parity | v3.0 | 4/4 | Complete   | 2026-06-01 |
+| 13. Backend Parity | v3.0 | 4/4 | Complete    | 2026-06-01 |
 
 ### Phase 12: UI Parity
 **Goal**: Corrigir todos os labels e métricas identificados via IPA analysis (WHOOP 5.37.0) para atingir paridade visual com a app oficial
