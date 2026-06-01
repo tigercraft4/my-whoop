@@ -99,6 +99,9 @@ public final class BLEManager: NSObject, ObservableObject {
     var onBackfillComplete: (() -> Void)?
     /// FF exchange state — tracks rounds of SEND_NEXT_FF and accumulates FF names for SET_FF_VALUE.
     private var ffExchangePending = false
+    /// Set to true once FD4B0003 (cmdNotifyChar) subscription is confirmed — the WHOOP can only send
+    /// responses when the CCCD is acknowledged. Handshake must not start until this is true.
+    private var cmdNotifyReady = false
     private var ffRoundsRemaining = 0
     private var ffNames: [String] = []
 
@@ -677,6 +680,7 @@ extension BLEManager: @preconcurrency CBCentralManagerDelegate {
         didBond = false
         clockRequested = false
         connectHandshakeDone = false
+        cmdNotifyReady = false
         bondRetryCount = 0
         ffExchangePending = false
         ffRoundsRemaining = 0
@@ -840,11 +844,17 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
                 }
             }
         }
-        // Run the connect handshake EXACTLY ONCE per connection. didWriteValueFor re-fires on EVERY
-        // .withResponse write — the bond write, every SEND_HISTORICAL, every HISTORY_END ack. Without
-        // this guard those re-entries re-sent hello/SET_CLOCK at the strap *during* the offload and
-        // stopped it from streaming type-47. This was THE iOS-side root cause: the Mac prototype pulls
-        // type-47 fine because it runs the sequence once on a stable connection; the app stormed it.
+        // Handshake now starts from didUpdateNotificationStateFor once cmdNotifyChar (FD4B0003) is ready.
+        // This ensures the WHOOP can actually send responses before we issue any commands.
+        // The guard below is a safety net in case didUpdateNotificationStateFor fires the handshake
+        // before this callback (e.g. pre-bonded fast path where notify confirms come before write ack).
+        guard !connectHandshakeDone, cmdNotifyReady else { return }
+        runConnectHandshake()
+    }
+
+    /// Run the WHOOP 5.0 connect handshake. Called once per connection from
+    /// didUpdateNotificationStateFor when FD4B0003 (response char) is confirmed ready.
+    private func runConnectHandshake() {
         guard !connectHandshakeDone else { return }
         connectHandshakeDone = true
         backfillStarted = true
@@ -1081,8 +1091,18 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
                            error: Error?) {
         if let error = error {
             log("Notify state FAILED \(characteristic.uuid.uuidString.prefix(8)): \(error.localizedDescription)")
-        } else {
-            log("Notify state OK \(characteristic.uuid.uuidString.prefix(8)): isNotifying=\(characteristic.isNotifying)")
+            return
+        }
+        log("Notify state OK \(characteristic.uuid.uuidString.prefix(8)): isNotifying=\(characteristic.isNotifying)")
+        // FD4B0003 (cmdNotifyChar) is the response channel. The WHOOP can only deliver command
+        // responses once this CCCD is confirmed. Starting the handshake before confirmation causes
+        // the WHOOP to attempt responding on a channel it cannot yet use → silent FF exchange.
+        // Verified from PacketLogger 2026-06-01: in official app the CCCD Write_Rsp for FD4B0003
+        // is confirmed BEFORE GET_HELLO is ever sent.
+        if characteristic.uuid == BLEManager.cmdNotifyChar, characteristic.isNotifying {
+            cmdNotifyReady = true
+            log("FD4B0003 confirmed — starting handshake")
+            runConnectHandshake()
         }
     }
 }
