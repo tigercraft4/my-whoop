@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — UI Redesign + Bug Fix
 status: executing
-last_updated: "2026-06-01T22:04:42.932Z"
+last_updated: "2026-06-01T22:18:49.858Z"
 last_activity: 2026-06-01
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 3
   total_plans: 19
   completed_plans: 14
-  percent: 43
+  percent: 38
 ---
 
 # State — WHOOP 5.0
@@ -46,6 +46,10 @@ Last activity: 2026-06-01
 - Phase 18: Hardware Validation (parallel-eligible) — GHIDRA-03, PROTO-11/12/13 — does NOT gate v4.0 ship
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 18.1 inserted after Phase 18: Layout Restructure 1:1 — 3 rings em linha, header data nav, secções Home completas, tab bar Início/Saúde/Comunidade/Mais (URGENT)
 
 ### Key Decisions (v2.0 / v3.0 / v4.0)
 
@@ -128,9 +132,9 @@ Known deferred items at v3.0 close: 11 (see Deferred Items above)
 
 ## Session Continuity
 
-Last session: 2026-06-01T22:04:42.921Z
-Stopped at: Phase 18 deferred — hardware not available; v4.0 ready for milestone audit
-Resume file: .planning/phases/18-hardware-validation-parallel-eligible/18-CONTEXT.md
+Last session: 2026-06-01T22:18:49.848Z
+Stopped at: Phase 18.1 context gathered — ready for plan+execute
+Resume file: .planning/phases/18.1-layout-restructure-1-1/18.1-CONTEXT.md
 
 ## Decisions
 
