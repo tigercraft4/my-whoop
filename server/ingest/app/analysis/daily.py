@@ -545,8 +545,12 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
     # personalised need needs >= 3 valid nights; with fewer it returns None.
     _prior_7d = read.query_daily(
         conn, device_id, day - _dt.timedelta(days=7), day - _dt.timedelta(days=1))
+    # Exclude yesterday (last row) from the baseline so the debt formula
+    # baseline - sleep_yesterday does not subtract a value that is part of the
+    # baseline itself (double-counting bias that underestimates sleep debt).
+    _baseline_rows = _prior_7d[:-1] if len(_prior_7d) > 1 else []
     _prior_sleep_min = [
-        float(r["total_sleep_min"]) for r in _prior_7d
+        float(r["total_sleep_min"]) for r in _baseline_rows
         if r.get("total_sleep_min") is not None
     ]
     _last = _prior_7d[-1] if _prior_7d else None
