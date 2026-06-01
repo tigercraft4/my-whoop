@@ -36,9 +36,11 @@ public func extractHistoricalStreams(_ parsed: [ParsedFrame],
             if let raw = p["resp_rate_raw"]?.intValue {
                 out.resp.append(RespSample(ts: ts, raw: raw))
             }
-            if let gx = p["gravity_x"]?.doubleValue {
-                out.gravity.append(GravitySample(ts: ts, x: gx,
-                    y: p["gravity_y"]?.doubleValue ?? 0, z: p["gravity_z"]?.doubleValue ?? 0))
+            if let gx = p["gravity_x"]?.doubleValue,
+               let gy = p["gravity_y"]?.doubleValue,
+               let gz = p["gravity_z"]?.doubleValue,
+               gx.isFinite, gy.isFinite, gz.isFinite {
+                out.gravity.append(GravitySample(ts: ts, x: gx, y: gy, z: gz))
             }
         case "REALTIME_RAW_DATA":
             let ts = wall(p["timestamp"]?.intValue)
