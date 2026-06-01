@@ -1,12 +1,6 @@
 name: CodeQL Config
-paths:
-  - src
 paths-ignore:
   - tests
 queries:
   - uses: security-and-quality
-languages:
-  - python
-  - swift
-  - javascript
 disable-default-queries: false
