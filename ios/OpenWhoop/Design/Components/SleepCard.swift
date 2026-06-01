@@ -65,6 +65,31 @@ struct SleepCard: View {
                 .foregroundStyle(WH.Color.textSecondary)
                 .kerning(1.5)
 
+            // Sleep performance ring (sleepPerformanceDarkBlue — #7BA1BB verified from Assets.car)
+            if let score = daily?.sleepPerformance, score > 0 {
+                HStack {
+                    Spacer()
+                    VStack(spacing: WH.Spacing.xs) {
+                        ZoneRingView(
+                            value: score,
+                            maxValue: 100,
+                            color: WH.Color.sleepPurple,
+                            lineWidth: 18,
+                            size: 140,
+                            centerLabel: "\(Int(score.rounded()))%"
+                        )
+                        // Sleep need indicator in sleepNeedGreen
+                        if let needed = daily?.sleepNeededMin, needed > 0 {
+                            Text("NEED \(sleepNeededLabel)")
+                                .font(WH.Font.cardTitle)
+                                .foregroundStyle(WH.Color.sleepNeedGreen)
+                                .kerning(1.2)
+                        }
+                    }
+                    Spacer()
+                }
+            }
+
             // Stats row: Hours of Sleep | Sleep Performance | Sleep Needed
             HStack(spacing: 0) {
                 statColumn(label: "HOURS OF SLEEP", value: hoursSleepLabel)
@@ -97,7 +122,7 @@ struct SleepCard: View {
             }
         }
         .padding(WH.Spacing.lg)
-        .background(Color.black,
+        .background(WH.Color.surface,
                     in: RoundedRectangle(cornerRadius: WH.Radius.card, style: .continuous))
     }
 

@@ -48,10 +48,24 @@ struct StrainCard: View {
     }
 
     private var ringColor: Color {
-        daily?.strain != nil ? WH.Color.strainAccent : WH.Color.ringTrack
+        guard let s = daily?.strain else { return WH.Color.ringTrack }
+        switch s {
+        case ..<10: return WH.Color.strainBlue
+        case ..<18: return WH.Color.strainBlueMedium
+        default:    return WH.Color.strainBlueHigh
+        }
     }
 
     // MARK: - Body
+
+    /// Stats for the secondary row: Recovery % and Calories
+    private var recoveryStatLabel: String {
+        daily?.recovery.map { "\(Int(($0 * 100).rounded()))%" } ?? "—"
+    }
+
+    private var caloriesStatLabel: String {
+        daily?.totalCaloriesKcal.map { "\(Int($0)) kcal" } ?? "—"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: WH.Spacing.md) {
@@ -86,10 +100,39 @@ struct StrainCard: View {
                 }
                 Spacer()
             }
+
+            // Secondary stats row: Recovery | Calories
+            HStack(spacing: 0) {
+                statColumn(label: "RECOVERY", value: recoveryStatLabel)
+                Divider()
+                    .frame(height: 36)
+                    .background(WH.Color.separator)
+                statColumn(label: "CALORIES", value: caloriesStatLabel)
+            }
+            .padding(.top, WH.Spacing.xs)
         }
         .padding(WH.Spacing.lg)
-        .background(Color.black,
+        .background(WH.Color.surface,
                     in: RoundedRectangle(cornerRadius: WH.Radius.card, style: .continuous))
+    }
+
+    // MARK: - Sub-component
+
+    private func statColumn(label: String, value: String) -> some View {
+        VStack(spacing: WH.Spacing.xs) {
+            Text(label)
+                .font(WH.Font.cardTitle)
+                .foregroundStyle(WH.Color.textSecondary)
+                .kerning(1.2)
+            Text(value)
+                .font(WH.Font.metricMedium(size: 18))
+                .foregroundStyle(WH.Color.textPrimary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, WH.Spacing.xs)
     }
 }
 
