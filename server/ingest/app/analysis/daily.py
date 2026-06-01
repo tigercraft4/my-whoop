@@ -411,6 +411,21 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
     # Sleep efficiency (0..1) as the sleep-performance proxy.
     sleep_perf: float | None = sleep_summary.get("efficiency")
 
+    # ALG-10 Sleep Performance composite (0..100) — separate from sleep_perf,
+    # which stays as efficiency (0..1) for recovery_score. sleep_needed_min=None
+    # uses the internal 420-min fallback; ALG-12 (Plan 13-03) will supply a
+    # personalised need.
+    _sleep_perf_score: float | None = None
+    if sleep_summary.get("total_sleep_min") is not None:
+        _sleep_perf_score = _sleep.sleep_performance_score(
+            total_sleep_min=sleep_summary.get("total_sleep_min") or 0.0,
+            efficiency=sleep_summary.get("efficiency") or 0.0,
+            deep_min=sleep_summary.get("deep_min") or 0.0,
+            rem_min=sleep_summary.get("rem_min") or 0.0,
+            disturbances=int(sleep_summary.get("disturbances") or 0),
+            sleep_needed_min=None,  # ALG-12 (Plan 13-03); None → 420-min fallback
+        )
+
     recovery = None
     if avg_hrv is not None and resting_hr is not None:
         recovery = _recovery.recovery_score(
@@ -481,6 +496,7 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
         "spo2_pct": signals["spo2_pct"],
         "skin_temp_dev_c": signals["skin_temp_dev_c"],
         "resp_rate_bpm": signals["resp_rate_bpm"],
+        "sleep_performance": _sleep_perf_score,
     }
     # Delete the day's existing session rows first, then insert the fresh set, so a
     # recompute yielding FEWER sessions can't leave stale rows (which would desync
