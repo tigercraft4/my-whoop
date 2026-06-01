@@ -689,10 +689,10 @@ extension BLEManager: @preconcurrency CBCentralManagerDelegate {
         ffRoundsRemaining = 0
         ffNames = []
         // Reset backfill state so the next connect starts a fresh offload.
+        // exitBackfilling fires onBackfillComplete (→ LocalMetricsComputer) if a session
+        // was active when the link dropped; the guard inside is a no-op if not backfilling.
+        exitBackfilling(reason: "disconnect")
         backfillStarted = false
-        backfilling = false
-        backfillTimeout?.cancel()
-        backfillTimeout = nil
         backfillFrameQueue.removeAll()
         backfillDraining = false
         uploadTimer?.cancel()
