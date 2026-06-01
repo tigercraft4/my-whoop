@@ -181,6 +181,16 @@ extension WhoopStore {
                 t.add(column: "totalCaloriesKcal", .double)
             }
         }
+        migrator.registerMigration("v10") { db in
+            // Purge RR intervals stored with wrong offsets from WHOOP 5.0 (Maverick)
+            // HISTORICAL_DATA V128 frames. The rr_first_off=23 assumption (carried from
+            // 4.0 V24) was unverified for 5.0 — bytes at that position are NOT millisecond
+            // RR intervals and produced values up to 65535 ms (physiologically impossible).
+            // Normal human RR: 200–2000 ms (30–300 bpm). Delete everything outside that.
+            try db.execute(sql: "DELETE FROM rrInterval WHERE rrMs < 200 OR rrMs > 2000")
+            // Also clear cached HRV in dailyMetric — it was derived from the bad RR data.
+            try db.execute(sql: "UPDATE dailyMetric SET avgHrv = NULL")
+        }
         return migrator
     }
 }
