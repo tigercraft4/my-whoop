@@ -68,9 +68,10 @@ public enum WhoopCommand: UInt8, CaseIterable {
     /// HYPOTHESIS (5.0 unverified) — referenced only by OpenWhoopTests; no production call site.
     case enableOpticalData     = 107
     /// Fire a preset haptic pattern — WHOOP 5.0 Maverick command (r52 CommandNumber map, cmd 19).
-    /// Payload = `[patternId, numLoops, 0, 0, 0]` (5 bytes, same format as 4.0 — unconfirmed by capture).
-    /// Replaces runHapticsPattern (79) which is the 4.0 legacy command silently ignored by 5.0 firmware.
-    /// HYPOTHESIS (5.0, payload format unconfirmed — command ID confirmed via r52 enum map).
+    /// Payload (13 bytes, VERIFIED via PacketLogger 2026-06-01):
+    ///   [0x01, patternId, intensity, 0x00×8, 0x01, 0x00]
+    ///   Alarm pattern: patternId=0x2F(47), intensity=0x98(152)
+    /// Confirmed by HAPTICS_FIRED (event 60) + HAPTICS_TERMINATED (event 100) on h=0x09A0.
     case runHapticPatternMaverick = 19
     /// Query available haptic patterns. Payload `[0x00]`. Response contains pattern count.
     case getAllHapticsPattern    = 80

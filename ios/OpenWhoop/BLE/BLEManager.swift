@@ -579,9 +579,12 @@ public final class BLEManager: NSObject, ObservableObject {
     ///
     /// Haptic firing cannot be verified in the simulator (no strap motor). Test on-device only.
     func testAlarmBuzz() {
-        send(.runHapticPatternMaverick, payload: [2, 3, 0, 0, 0])  // patternId=2, 3 loops (Maverick cmd 19)
-        send(.runAlarm, payload: [0x01])
-        log("Alarm: test buzz fired (patternId=2, runAlarm)")
+        // VERIFIED payload from PacketLogger capture 2026-06-01:
+        // cmd=0x13(19) payload=[01 2F 98 00 00 00 00 00 00 00 00 01 00] (13 bytes)
+        // Confirmed: HAPTICS_FIRED (event 60) + HAPTICS_TERMINATED (event 100) received.
+        // patternId=0x2F(47)=alarm pattern, intensity/param=0x98(152)
+        send(.runHapticPatternMaverick, payload: [0x01, 0x2F, 0x98, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00])
+        log("Alarm: test buzz fired (pattern=0x2F alarm, VERIFIED payload)")
     }
 
     /// Send TOGGLE_IMU_MODE command to the strap.
