@@ -26,6 +26,18 @@ public final class BLEManager: NSObject, ObservableObject {
 
     static let restoreID = "com.openwhoop.ble.central"
 
+    // MARK: Device generation detection (CLEAN-03)
+    /// Detected hardware generation of the connected WHOOP strap.
+    /// Inferred from hardware revision (0x2A27). Defaults to .gen5 until 0x2A27 is read.
+    /// TODO(CLEAN-03): read 0x2A27 (Device Information) characteristic at connect for accurate detection.
+    private var detectedGeneration: DeviceGeneration = .gen5
+
+    /// Infer WHOOP hardware generation from the Device Information 0x2A27 hardware revision string.
+    /// "WG50" prefix → .gen5; anything else → .gen4.
+    static func inferGeneration(hardwareRevision: String) -> DeviceGeneration {
+        hardwareRevision.hasPrefix("WG50") ? .gen5 : .gen4
+    }
+
     // MARK: Published state
     public let state: LiveState
     private let router: FrameRouter
@@ -854,10 +866,25 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
 
     /// Run the WHOOP 5.0 connect handshake. Called once per connection from
     /// didUpdateNotificationStateFor when FD4B0003 (response char) is confirmed ready.
+    /// Apply generation-specific connection paths (CLEAN-03).
+    /// Gen5 (WHOOP 5.0): Maverick framing (FD4B0002/0003/0005) — current active path.
+    /// Gen4 (WHOOP 4.0): Gen4 framing (61080xxx) — stub only; full implementation in backlog 999.1.
+    private func applyGenerationRouting() {
+        switch detectedGeneration {
+        case .gen5:
+            log("Routing: gen5 path (Maverick FD4B0002/0003/0005)")
+            // Current path — no changes needed.
+        case .gen4:
+            log("Routing: gen4 path (61080xxx) — stub only, not implemented in this phase")
+            // TODO(backlog 999.1): implement Gen4 framing path
+        }
+    }
+
     private func runConnectHandshake() {
         guard !connectHandshakeDone else { return }
         connectHandshakeDone = true
         backfillStarted = true
+        applyGenerationRouting()  // CLEAN-03: routing based on detected generation
 
         // WHOOP 5.0 connect lifecycle — VERIFIED from PacketLogger 2026-06-01 (official WHOOP app):
         //   GET_HELLO(145,[01]) → SET_CLOCK(10) → GET_ADVERTISING_NAME(141,[01]) →
