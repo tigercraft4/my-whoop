@@ -174,3 +174,15 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 - [ ] PROTO-11/12/13/14: IMU/SpO2/skin temp/respiration — requires dedicated TOGGLE_IMU_MODE capture session
 
 **Unblocked by:** Physical iPhone + WHOOP with fresh data; available development session
+
+### Phase 999.3: WHOOP Cloud API MCP Integration (BACKLOG)
+
+**Goal:** Adicionar cloud sync opcional via WHOOP API oficial usando um servidor MCP TypeScript com OAuth2 PKCE
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Reference:** https://github.com/shashankswe2020-ux/whoop-mcp — implementação de referência com 14 health tools (recovery, sleep, workouts, cycles, analytics), trend detection via linear regression, token refresh automático
+**Notes:** Offline-first mantém-se como default; MCP cloud seria opt-in. Não gate nenhuma fase v4.0.
