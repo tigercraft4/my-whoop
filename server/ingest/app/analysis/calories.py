@@ -101,6 +101,62 @@ _COEFFS: dict[str, dict[str, float]] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Mifflin–St Jeor RMR coefficients (ALG-13).
+#
+# Distinct from the revised Harris–Benedict BMR used above for per-bout resting
+# burn: ALG-13 uses Mifflin–St Jeor (1990), the modern standard for whole-day
+# resting metabolic rate. In kcal/day, applied to height in CENTIMETRES:
+#
+#     men:    RMR = 10·kg + 6.25·cm − 5·age + 5
+#     women:  RMR = 10·kg + 6.25·cm − 5·age − 161
+#
+# "nonbinary"/unknown uses the mean intercept of the two sex-specific forms
+# (−78 = (5 + −161) / 2); weight/height/age coefficients are sex-invariant.
+#
+#   Mifflin, M.D. et al. (1990). "A new predictive equation for resting energy
+#   expenditure in healthy individuals." Am. J. Clin. Nutr., 51(2), 241–247.
+# ---------------------------------------------------------------------------
+
+_MIFFLIN_COEFFS: dict[str, dict[str, float]] = {
+    "male":      {"weight": 10.0, "height": 6.25, "age": 5.0, "intercept":    5.0},
+    "female":    {"weight": 10.0, "height": 6.25, "age": 5.0, "intercept": -161.0},
+    "nonbinary": {"weight": 10.0, "height": 6.25, "age": 5.0, "intercept":  -78.0},
+}
+
+
+def rmr_kcal_per_day(profile: dict | None) -> float | None:
+    """Resting metabolic rate (kcal/day) via Mifflin–St Jeor (ALG-13).
+
+    Parameters
+    ----------
+    profile :
+        Dict with keys ``weight_kg``, ``height_cm``, ``age``, ``sex``. Missing
+        numeric keys fall back to safe defaults (weight 70 kg, height 170 cm,
+        age 30); unknown/missing sex → "nonbinary" (mean intercept). ``None``
+        propagates as ``None`` (no profile → no whole-day calorie estimate).
+
+    Returns
+    -------
+    float | None
+        RMR in kcal/day, clamped to ≥ 0.0; ``None`` when ``profile is None``.
+    """
+    if profile is None:
+        return None
+    weight_kg = float(profile.get("weight_kg") or 70.0)
+    height_cm = float(profile.get("height_cm") or 170.0)
+    age = float(profile.get("age") or 30.0)
+    sex = (profile.get("sex") or "").lower().strip()
+    c = _MIFFLIN_COEFFS.get(sex, _MIFFLIN_COEFFS["nonbinary"])
+    rmr = (
+        weight_kg * c["weight"]
+        + height_cm * c["height"]
+        - age * c["age"]
+        + c["intercept"]
+    )
+    return max(0.0, rmr)
+
+
 # Active-threshold fraction of heart-rate reserve. Samples below resting_hr +
 # 30 % HRR are counted at the resting (BMR) rate; at/above, the Keytel rate.
 _ACTIVE_HRR_FRACTION = 0.30

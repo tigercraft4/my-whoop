@@ -79,6 +79,7 @@ from . import sleep as _sleep
 from . import strain as _strain
 from . import units as _units
 from . import baselines as _baselines
+from . import calories as _calories
 from ._utils import to_epoch
 
 _log = logging.getLogger(__name__)
@@ -634,6 +635,13 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
     # ── Persist (idempotent upserts) ─────────────────────────────────────────
     night_dicts = [_session_to_dict(s) for s in night_sessions]
     ex_dicts = [_exercise_to_dict(e) for e in exercises]
+
+    # ── Total daily calories (ALG-13): RMR (Mifflin–St Jeor) + exercise burn ──
+    # None when there's no device profile (no RMR basis) → iOS hides the card.
+    _rmr = _calories.rmr_kcal_per_day(device_profile)
+    _exercise_kcal = sum((e.get("calories_kcal") or 0.0) for e in ex_dicts)
+    _total_calories = round(_rmr + _exercise_kcal, 1) if _rmr is not None else None
+
     metrics = {
         "total_sleep_min": sleep_summary["total_sleep_min"],
         "efficiency": sleep_summary["efficiency"],
@@ -654,6 +662,7 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
         "sleep_performance": _sleep_perf_score,
         "training_state": _training_state,
         "sleep_needed_min": _sleep_needed,
+        "total_calories_kcal": _total_calories,
     }
     # Delete the day's existing session rows first, then insert the fresh set, so a
     # recompute yielding FEWER sessions can't leave stale rows (which would desync
