@@ -178,11 +178,13 @@ def _augment_units(kind, rows):
             r["unit"] = "%"
     elif kind == "skin_temp":
         for r in rows:
-            r["value"] = round(skin_temp_celsius(r["raw"]), 1)
+            raw = r.get("raw")
+            r["value"] = round(skin_temp_celsius(raw), 1) if raw is not None else None
             r["unit"] = "°C"
     elif kind == "resp":
         for r in rows:
-            r["value"] = round(resp_rate_bpm(r["raw"]), 1)
+            raw = r.get("raw")
+            r["value"] = round(resp_rate_bpm(raw), 1) if raw is not None else None
             r["unit"] = "bpm"
     return rows
 
