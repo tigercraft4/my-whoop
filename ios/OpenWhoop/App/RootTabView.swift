@@ -2,42 +2,59 @@ import SwiftUI
 
 struct RootTabView: View {
 
-    @SceneStorage("selectedTab") private var selectedTab = "today"
+    @SceneStorage("selectedTab") private var selectedTab = "home"
+    @State private var showLive = false
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            TodayView()
-                .tabItem {
-                    Label("Today", systemImage: "house")
-                }
-                .tag("today")
+        ZStack(alignment: .bottomTrailing) {
+            TabView(selection: $selectedTab) {
+                HomeView()
+                    .tabItem {
+                        Label("Início", systemImage: "house")
+                    }
+                    .tag("home")
 
-            SleepView()
-                .tabItem {
-                    Label("Sleep", systemImage: "bed.double")
-                }
-                .tag("sleep")
+                HealthView()
+                    .tabItem {
+                        Label("Saúde", systemImage: "heart.text.clipboard")
+                    }
+                    .tag("health")
 
-            StrainView()
-                .tabItem {
-                    Label("Strain", systemImage: "bolt.heart")
-                }
-                .tag("strain")
+                CommunityView()
+                    .tabItem {
+                        Label("Comunidade", systemImage: "person.3")
+                    }
+                    .tag("community")
 
-            TrendsView()
-                .tabItem {
-                    Label("Trends", systemImage: "chart.xyaxis.line")
-                }
-                .tag("trends")
+                MoreView()
+                    .tabItem {
+                        Label("Mais", systemImage: "line.3.horizontal")
+                    }
+                    .tag("more")
+            }
+            .preferredColorScheme(.dark)
 
+            // Botão W circular overlay — acede ao LiveView (dispositivo BLE)
+            Button {
+                showLive = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(WH.Color.sleepPurple)
+                        .frame(width: 52, height: 52)
+                    Text("W")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .shadow(color: WH.Color.sleepPurple.opacity(0.4), radius: 8, x: 0, y: 4)
+            .padding(.trailing, 20)
+            .padding(.bottom, 8)
+        }
+        .sheet(isPresented: $showLive) {
             NavigationStack {
                 LiveView()
             }
-            .tabItem {
-                Label("Device", systemImage: "wave.3.right")
-            }
-            .tag("device")
         }
-        .preferredColorScheme(.dark)
     }
 }
