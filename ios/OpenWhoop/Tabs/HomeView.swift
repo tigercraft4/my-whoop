@@ -177,7 +177,7 @@ struct HomeView: View {
                 Text(recoveryHeaderLabel)
                     .font(WH.Font.caption)
                     .foregroundStyle(recoveryHeaderColor)
-                Image(systemName: live.state.connected ? "wave.3.right" : "wave.3.right.slash")
+                Image(systemName: live.state.connected ? "wave.3.right" : "wifi.slash")
                     .font(.system(size: 13))
                     .foregroundStyle(live.state.connected ? WH.Color.recoveryGreen : WH.Color.textSecondary)
             }
