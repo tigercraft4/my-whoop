@@ -8,6 +8,17 @@ A clean fork of the WHOOP 4.0 reverse-engineering project, targeting the WHOOP 5
 
 Own your WHOOP 5.0 biometric data: read it from your own device over BLE, store it locally, and analyse it without any dependency on WHOOP's cloud.
 
+## Current Milestone: v4.0 — UI Redesign + Bug Fix
+
+**Goal:** Análise completa do IPA WHOOP via Ghidra para redesign 1:1 da app iOS, correcção de bugs críticos, e reorganização da estrutura do repositório.
+
+**Target features:**
+- Ghidra IPA deep-dive — mapear TODOS os ecrãs, flows e componentes da app oficial (5.37.0)
+- UI 1:1 redesign — replicar cada ecrã exactamente com base nos findings do Ghidra
+- Bug fixes — HRV/RR offsets, backfill stuck, UI placeholders, + bugs identificados via Ghidra
+- PROTO-11/12/13/14 — validação biométrica (hardware-dependente, quando disponível)
+- Repo cleanup — reorganizar pastas/estrutura do repositório, sem mudanças de arquitectura
+
 ## Current State (post-v3.0)
 
 All three milestones shipped. The app is functionally complete. Remaining items are hardware-validation backlog (999.1, 999.2) that require physical Android device or dedicated WHOOP capture sessions.
