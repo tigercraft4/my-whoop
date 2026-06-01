@@ -25,6 +25,13 @@ fixtures/*.jsonl
 # Decompiled proprietary app — DO NOT publish
 apk/
 
+# Ghidra RE workspace — IPA/APK binaries (local only; too large for git)
+re/ghidra/APPS/
+re/ghidra/*.gpr
+re/ghidra/*.rep
+re/ghidra/*.lock
+re/ghidra/*.lock~
+
 # Third-party clones (their own repos; documented in re/README.md)
 whoomp/
 whoop-reader/
