@@ -210,3 +210,15 @@ ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_end       TIMESTAMPTZ;
 ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS spo2_pct        REAL;
 ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS skin_temp_dev_c REAL;
 ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS resp_rate_bpm   REAL;
+-- ── Phase 13 Backend Parity columns (ALG-10..13) ──────────────────────────────
+-- Server-side derived daily metrics. All nullable; ALTER … IF NOT EXISTS keeps the
+-- bootstrap_schema startup re-apply a no-op once present. No algorithm logic here —
+-- the compute pipeline (Plans 13-02..13-04) populates these in upsert_daily_metrics.
+-- Phase 13 ALG-10: Sleep Performance weighted score 0–100
+ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_performance   REAL;
+-- Phase 13 ALG-11: Training State (RESTORATIVE | OPTIMAL | OVERREACHING | NULL)
+ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS training_state      TEXT;
+-- Phase 13 ALG-12: Sleep Needed (minutes), baseline + strain/sleep debt, clamp [300,660]
+ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_needed_min    REAL;
+-- Phase 13 ALG-13: Total daily calories (RMR Mifflin–St Jeor + exercise kcal)
+ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS total_calories_kcal REAL;
