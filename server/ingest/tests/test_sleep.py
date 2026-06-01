@@ -27,6 +27,7 @@ from app.analysis.sleep import (
     daily_sleep_summary,
     detect_sleep,
     hypnogram_metrics,
+    sleep_performance_score,
     _gravity_deltas,
     _merge_periods,
 )
@@ -736,3 +737,48 @@ class TestHypnogramMetrics:
         assert m["tst_s"] == 0
         assert m["efficiency"] == 0.0
         assert m["sol_s"] == pytest.approx(3600)  # never fell asleep
+
+
+# ---------------------------------------------------------------------------
+# ALG-10 — sleep_performance_score (pure, no DB)
+# ---------------------------------------------------------------------------
+
+
+class TestSleepPerformanceScore:
+    """ALG-10 Sleep Performance composite score (APPROXIMATE).
+
+    Weights W_dur=0.45, W_eff=0.25, W_stg=0.20, W_con=0.10. Always clamped
+    to [0.0, 100.0]. Pure function — no streams, no DB.
+    """
+
+    def test_perfect_sleep_saturates_to_100(self):
+        # 8h TST, 100% efficiency, restorative ratio 40% (96+96)/480, 0 disturbances
+        s = sleep_performance_score(480, 1.0, 96, 96, 0, 420)
+        assert abs(s - 100.0) < 0.1
+
+    def test_zero_sleep_returns_zero(self):
+        s = sleep_performance_score(0, 0.0, 0, 0, 0, 420)
+        assert s == 0.0
+
+    def test_typical_night_in_plausible_range(self):
+        s = sleep_performance_score(420, 0.85, 70, 70, 3, 420)
+        assert 70.0 <= s <= 95.0
+
+    def test_clamps_above_100(self):
+        s = sleep_performance_score(1000, 1.0, 500, 500, 0, 420)
+        assert s == 100.0
+
+    def test_sleep_needed_fallback_420(self):
+        # Omitting sleep_needed_min must behave identically to passing 420.0
+        a = sleep_performance_score(420, 0.85, 70, 70, 3)
+        b = sleep_performance_score(420, 0.85, 70, 70, 3, 420)
+        assert a == b
+
+    def test_result_is_clamped_non_negative(self):
+        # disturbances dominate but score never drops below 0
+        s = sleep_performance_score(0, 0.0, 0, 0, 100, 420)
+        assert s >= 0.0
+
+    def test_returns_float(self):
+        s = sleep_performance_score(480, 1.0, 96, 96, 0, 420)
+        assert isinstance(s, float)
