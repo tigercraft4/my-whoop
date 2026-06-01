@@ -33,6 +33,7 @@ public final class BLEManager: NSObject, ObservableObject {
     public let state: LiveState
     private let router: FrameRouter
     private var collector: Collector?
+    private var whoopStore: WhoopStore?   // kept for storage diagnostics
 
     // MARK: Upload
     private var uploader: Uploader?
@@ -151,6 +152,7 @@ public final class BLEManager: NSObject, ObservableObject {
         guard collector == nil else { return }
         guard let path = try? StorePaths.defaultDatabasePath() else { return }
         guard let store = try? await WhoopStore(path: path) else { return }
+        whoopStore = store
         try? await store.upsertDevice(id: deviceId, mac: nil, name: "WHOOP 5.0")
         // Research toggle — OFF by default. When disabled the app is decoded-only and never
         // persists raw frames. Flip "enableRawCapture" in UserDefaults to capture raw again.
@@ -407,6 +409,16 @@ public final class BLEManager: NSObject, ObservableObject {
         // LocalMetricsComputer derives all metrics from local BLE data.
         // Upload to server happens opportunistically as background backup.
         uploadOpportunistically()
+        // Log storage stats so we can verify what was saved.
+        Task {
+            if let stats = try? await whoopStore?.storageStats() {
+                BLEManager.logger.notice("""
+                    BF store: decodedRows=\(stats.decodedRows, privacy: .public) \
+                    rawBatches=\(stats.rawBatches, privacy: .public) \
+                    rawBytes=\(stats.rawBytes, privacy: .public)
+                    """)
+            }
+        }
         if reason == "HISTORY_COMPLETE" {
             state.lastSyncedAt = Date().timeIntervalSince1970
             UserDefaults.standard.set(state.lastSyncedAt, forKey: "lastSyncedAt")

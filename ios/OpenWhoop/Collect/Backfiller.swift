@@ -116,13 +116,20 @@ final class Backfiller {
     }
 
     /// The 8-byte `end_data` the high-freq-sync ack requires: metadata.data[10:18].
-    /// metadata.data begins at frame[7] (after [type,seq,cmd]), so end_data = frame[17:25].
-    /// trim cursor = the first u32 of end_data (data[10:14]). Returns nil if the frame is too
-    /// short to contain the field (shouldn't happen for a real HISTORY_END, which is >=14 data
-    /// bytes, but guards against a malformed frame).
+    ///
+    /// Frame layout:
+    ///   Gen4:     [AA][len_lo][len_hi][crc8][type][seq][cmd][data...] → data at frame[7]  → end_data = frame[17:25]
+    ///   Maverick: [AA][0x01][len_lo][len_hi][role][tok×3][ptype][seq][cmd][data...] → data at frame[11] → end_data = frame[21:29]
+    ///
+    /// FIXED 2026-06-01: WHOOP 5.0 sends METADATA Maverick-wrapped (frame[1]==0x01).
+    /// Old offset (frame[17:25]) extracted bytes 4 positions early → trim always=60 → cursor never advanced.
     static func endData(from frame: [UInt8]) -> [UInt8]? {
-        guard frame.count >= 25 else { return nil }
-        return Array(frame[17..<25])
+        let isMaverick = frame.count > 1 && frame[1] == 0x01
+        let dataStart    = isMaverick ? 11 : 7    // where metadata_data begins in the frame
+        let endDataStart = dataStart + 10          // metadata_data[10]
+        let endDataEnd   = endDataStart + 8        // metadata_data[18]
+        guard frame.count >= endDataEnd else { return nil }
+        return Array(frame[endDataStart..<endDataEnd])
     }
 
     /// Commit one HISTORY_END chunk: (persist decoded → enqueueRaw when present) → setCursor → ackTrim.
@@ -153,7 +160,20 @@ final class Backfiller {
             let ref = clockRef ?? { let now = Int(Date().timeIntervalSince1970); return ClockRef(device: now, wall: now) }()
             let parsed = frames.map { parseFrame($0) }
             let decoded = extract(parsed, ref.device, ref.wall)
-            do { try await store.insert(decoded, deviceId: deviceId) } catch { return }
+            do {
+                let inserted = try await store.insert(decoded, deviceId: deviceId)
+                let unixDate = Date(timeIntervalSince1970: TimeInterval(unix))
+                backfillerLogger.notice("""
+                    BF chunk saved: \
+                    hr=\(inserted.hr) rr=\(inserted.rr) \
+                    spo2=\(inserted.spo2) skin=\(inserted.skinTemp) resp=\(inserted.resp) \
+                    grav=\(inserted.gravity) | \
+                    trim=\(trim) unix=\(Int(unixDate.timeIntervalSince1970)) (\(unixDate.description))
+                    """)
+            } catch {
+                backfillerLogger.error("BF chunk insert FAILED: \(error.localizedDescription)")
+                return
+            }
 
             // RAW: only persisted when the research toggle is ON. Default OFF → decoded-only; the
             // chunk is still durably committed (decoded) so the trim is safe to advance + ack.
