@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — UI Redesign + Bug Fix
 status: executing
-last_updated: "2026-06-01T22:31:09.471Z"
+last_updated: "2026-06-01T22:45:50.883Z"
 last_activity: 2026-06-01 -- Phase 18.1 execution started
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 23
-  completed_plans: 14
-  percent: 30
+  completed_plans: 18
+  percent: 40
 ---
 
 # State — WHOOP 5.0
@@ -134,9 +134,9 @@ Known deferred items at v3.0 close: 11 (see Deferred Items above)
 
 ## Session Continuity
 
-Last session: 2026-06-01T22:18:49.848Z
-Stopped at: Phase 18.1 context gathered — ready for plan+execute
-Resume file: .planning/phases/18.1-layout-restructure-1-1/18.1-CONTEXT.md
+Last session: 2026-06-01T22:45:50.872Z
+Stopped at: Phase 18.1.1 context gathered — ready for plan+execute
+Resume file: .planning/phases/18.1.1-whoop-api-historical-dump/18.1.1-CONTEXT.md
 
 ## Decisions
 
