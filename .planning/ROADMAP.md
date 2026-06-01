@@ -135,7 +135,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 9. SwiftUI Redesign WHOOP-Style | v2.0 | 6/6 | Complete    | 2026-05-31 |
 | 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 11. HealthKit Export | v2.0 | 4/4 | Complete    | 2026-05-31 |
-| 12. UI Parity | v3.0 | 2/3 | In Progress|  |
+| 12. UI Parity | v3.0 | 3/3 | Complete | 2026-06-01 |
 | 13. Backend Parity | v3.0 | 0/? | Not started | - |
 
 ### Phase 12: UI Parity
@@ -160,7 +160,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Plans:** 2/3 plans executed
 - [x] 12-01-PLAN.md — SleepView labels (SLEEP PERFORMANCE / HOURS OF SLEEP / SLEEP LATENCY / SKIN TEMP) + AWAKE confirm
-- [ ] 12-02-PLAN.md — StrainCard Training State badge from recovery_to_strain.json
+- [x] 12-02-PLAN.md — StrainCard Training State badge from recovery_to_strain.json
 - [x] 12-03-PLAN.md — MetricKind.sleepPerformance + dailyCases, Today/DayDetail RHR & SKIN TEMP labels
 
 ### Phase 13: Backend Parity

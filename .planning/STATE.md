@@ -1,22 +1,22 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: — Complete iOS + WHOOP-Style UI + Algorithms
+milestone: v3.0
+milestone_name: — WHOOP Parity
 status: planning
-last_updated: "2026-05-31T23:32:25.603Z"
-last_activity: 2026-05-31
+last_updated: "2026-06-01T00:00:00.000Z"
+last_activity: 2026-06-01
 progress:
-  total_phases: 10
-  completed_phases: 6
-  total_plans: 23
-  completed_plans: 22
-  percent: 60
+  total_phases: 13
+  completed_phases: 12
+  total_plans: 26
+  completed_plans: 26
+  percent: 92
 ---
 
 # State — WHOOP 5.0
 
 **Project:** my-whoop (clean fork for WHOOP 5.0)
-**Last updated:** 2026-05-31 (v2.0 roadmap created)
+**Last updated:** 2026-06-01 (Phase 12 complete — Phase 13 next)
 
 ---
 
@@ -26,24 +26,24 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Phase 999.1 — follow up — phase 1 android device items (backlog)
+**Current focus:** Phase 13 — Backend Parity (Sleep Performance, Training State server-side, Sleep Needed, Calories)
 
 ---
 
 ## Current Position
 
-Phase: 999.1
+Phase: 13
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-31
+Last activity: 2026-06-01
 
-Progress: [██████████] 96%
+Progress: [████████████] 92%
 
 ---
 
 ## Accumulated Context
 
-### Key Decisions (v2.0)
+### Key Decisions (v2.0 / v3.0)
 
 | # | Decision | Rationale |
 |---|----------|-----------|
@@ -52,6 +52,8 @@ Progress: [██████████] 96%
 | 3 | HealthKit goes last (Phase 11) | Needs real store data AND stable view architecture |
 | 4 | SpO₂ HealthKit export gated on PROTO-11 VERIFIED | Cannot export unvalidated biometric offsets |
 | 5 | Algorithm pipeline is server-side only | Recovery/strain/sleep require multi-night baselines |
+| 6 | Training State iOS side uses bundled lookup table | Server computes recovery; iOS derives zone from recovery_to_strain.json |
+| 7 | Haptics Gen5 deferred to hardware session | DRV2605 payload requires PacketLogger capture — buzz-nao-funciona.md has root cause |
 
 ### Blockers / Concerns
 
@@ -59,10 +61,11 @@ Progress: [██████████] 96%
 - **HK-P1:** HealthKit entitlement + plist keys must be added BEFORE importing HealthKit framework
 - **HK-P2:** Unit conversions are not optional — SpO₂ must be 0.0–1.0 (not 0–100) for HealthKit
 - **PROTO-11/12/14:** Biometric stream correctness cannot be confirmed without working backfill + calibrated reference device
+- **Haptics:** Gen5 uses `RunAppDrivenHapticsCommandPacket` with DRV2605 waveform effects — command `0203000000` confirmed NOT working on WHOOP 5.0 (see .planning/debug/buzz-nao-funciona.md)
 
 ### Pending Todos
 
-None yet.
+None.
 
 ---
 
@@ -78,12 +81,20 @@ Items acknowledged and deferred at v1.0 milestone close on 2026-05-31:
 | verification_gap | Phase 02 / 02-VERIFICATION.md | human_needed |
 | verification_gap | Phase 05 / 05-VERIFICATION.md | human_needed |
 
+Items deferred from Phase 12 (hardware-dependent):
+
+| Category | Item | Status |
+|----------|------|--------|
+| criterion_gap | Phase 12 / Haptics Gen5 PacketLogger capture | hardware_needed |
+| backlog | Phase 999.1 — Android device BLE capture | hardware_needed |
+| backlog | Phase 999.2 — v1.0 hardware validation | hardware_needed |
+
 Root cause: All gaps require physical hardware not available in sandbox.
 
 ---
 
 ## Session Continuity
 
-Last session: 2026-05-31T23:32:25.593Z
-Stopped at: Phase 11 context gathered — all phases discussed
+Last session: 2026-06-01T00:00:00.000Z
+Stopped at: Phase 12 complete — ready to plan Phase 13
 Resume file: None
