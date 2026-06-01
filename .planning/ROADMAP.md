@@ -140,7 +140,7 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 | 11. HealthKit Export | v2.0 | 4/4 | Complete | 2026-05-31 |
 | 12. UI Parity | v3.0 | 3/3 | Complete | 2026-06-01 |
 | 13. Backend Parity | v3.0 | 4/4 | Complete | 2026-06-01 |
-| 14. Critical Bug Fixes (Data Layer) | v4.0 | 2/2 | Complete   | 2026-06-01 |
+| 14. Critical Bug Fixes (Data Layer) | v4.0 | 2/2 | Complete    | 2026-06-01 |
 | 15. Ghidra IPA Deep-Dive | v4.0 | 0/? | Not started | - |
 | 16. Repo Cleanup + Gen4 Sweep | v4.0 | 0/? | Not started | - |
 | 17. UI Redesign 1:1 | v4.0 | 0/? | Not started | - |

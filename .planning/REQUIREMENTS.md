@@ -10,9 +10,9 @@
 
 ### Bug Fixes (Data Layer)
 
-- [ ] **BUGFIX-01**: SleepCard e SleepView mostram `sleepNeededMin` (resultado ALG-12) — campo é calculado pelo LocalMetricsComputer mas nenhuma view o exibe actualmente
-- [ ] **BUGFIX-02**: SleepCard e RecoveryCard lêem `DailyMetric.sleepPerformance` (ALG-10, score composto 0–100) em vez de `efficiency` (raw 0.0–1.0) — correcção em 2 sítios
-- [ ] **BUGFIX-03**: Migration GRDB v10 para purgar/sinalizar valores `avgHrv` armazenados antes do commit e65fa31 (offsets V128 RR incorrectos) — baseline de recovery fica limpo
+- [x] **BUGFIX-01**: SleepCard e SleepView mostram `sleepNeededMin` (resultado ALG-12) — campo é calculado pelo LocalMetricsComputer mas nenhuma view o exibe actualmente
+- [x] **BUGFIX-02**: SleepCard e RecoveryCard lêem `DailyMetric.sleepPerformance` (ALG-10, score composto 0–100) em vez de `efficiency` (raw 0.0–1.0) — correcção em 2 sítios
+- [x] **BUGFIX-03**: Migration GRDB v10 para purgar/sinalizar valores `avgHrv` armazenados antes do commit e65fa31 (offsets V128 RR incorrectos) — baseline de recovery fica limpo
 - [ ] **BUGFIX-04**: Bugs adicionais identificados durante a fase Ghidra RE (GHIDRA-01) — scope concreto definido após análise do IPA
 
 ### Ghidra IPA Analysis
@@ -63,9 +63,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUGFIX-01 | Phase 14 | Pending |
-| BUGFIX-02 | Phase 14 | Pending |
-| BUGFIX-03 | Phase 14 | Pending |
+| BUGFIX-01 | Phase 14 | Complete |
+| BUGFIX-02 | Phase 14 | Complete |
+| BUGFIX-03 | Phase 14 | Complete |
 | BUGFIX-04 | Phase 15 | Pending |
 | GHIDRA-01 | Phase 15 | Pending |
 | GHIDRA-02 | Phase 15 | Pending |
