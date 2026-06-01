@@ -199,19 +199,33 @@ public enum WhoopCommand: UInt8, CaseIterable {
     /// Mirrors build_maverick_frame() in gen_synthetic_fixtures.py with role=0x00 for outbound writes.
     /// The 4-byte trailer is all-zeros (checksum algorithm open per schema Finding 6).
     public func maverickFrame(seq: UInt8, payload: [UInt8] = [0x00]) -> [UInt8] {
-        // body = [role=0x00][token0=0x00][token1=0x00][token2=0x00][type][seq][cmd][payload...]
-        let body: [UInt8] = [0x00, 0x00, 0x00, 0x00, Self.commandType, seq, rawValue] + payload
+        // body = [role=0x00][tok0][tok1][tok2][type][seq][cmd][payload...]
+        // Token is determined by payload length — VERIFIED from PacketLogger 2026-06-01
+        // (228 frames: same payload_len → always same token, regardless of cmd or content).
+        let token = WhoopCommand.maverickToken(payloadLen: payload.count)
+        let body: [UInt8] = [0x00, token[0], token[1], token[2],
+                             Self.commandType, seq, rawValue] + payload
         let length = UInt16(body.count)
-        // Trailer = CRC32 of body[4:] (= ptype+seq+cmd+payload), stored as u32 LE.
-        // VERIFIED from PacketLogger 2026-06-01: CRC32([ptype][seq][cmd][payload]) matches trailer
-        // in 3/3 frames (GET_HELLO ddfc978b, SET_CLOCK 4e2aefd7, HAPTICS b510a716).
-        // The WHOOP 5.0 silently discards frames with wrong trailer → zero trailer = no response.
-        let inner = Array(body[4...])  // [ptype, seq, cmd, payload...]
-        let crc = crc32(inner)         // public func from WhoopProtocol/Framing.swift
-        return [0xAA, 0x01,
-                UInt8(length & 0xFF), UInt8(length >> 8)]
+        // Trailer = CRC32(body[4:]) stored as u32 LE. VERIFIED: ddfc978b, 4e2aefd7, b510a716.
+        let inner = Array(body[4...])
+        let crc = crc32(inner)
+        return [0xAA, 0x01, UInt8(length & 0xFF), UInt8(length >> 8)]
                + body
                + [UInt8(crc & 0xFF), UInt8((crc >> 8) & 0xFF),
                   UInt8((crc >> 16) & 0xFF), UInt8((crc >> 24) & 0xFF)]
+    }
+
+    /// Token bytes (3B) for Maverick command frames, keyed by payload length.
+    /// Source: all 228 host→WHOOP writes from PacketLogger 2026-06-01 capture.
+    static func maverickToken(payloadLen: Int) -> [UInt8] {
+        switch payloadLen {
+        case 1:  return [0x01, 0xE6, 0x71]   // GET_HELLO, SEND_NEXT_FF, etc.
+        case 5:  return [0x01, 0xE7, 0x41]   // DISABLE_ALARM, SET_ALARM_TIME short
+        case 9:  return [0x01, 0xE0, 0xD1]   // SET_CLOCK, HISTORICAL_DATA_RESULT
+        case 13: return [0x01, 0xE1, 0xE1]   // HAPTICS
+        case 21: return [0x01, 0xE3, 0x81]   // SET_ALARM_TIME long
+        case 65: return [0x01, 0xF3, 0xB1]   // SET_FF_VALUE (padded name + version)
+        default: return [0x01, 0xE6, 0x71]   // fallback: use pl=1 token
+        }
     }
 }

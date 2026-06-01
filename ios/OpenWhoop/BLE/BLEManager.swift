@@ -905,9 +905,12 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
     /// Format confirmed by re/fix_raw_flood.py + re/enable_dataproducts.py (WHOOP 5.0 reference
     /// scripts). The older 9-byte form (re/sync_openwhoop.py Gen4) was a Gen4-only variant.
     static func setClockPayload(now: UInt32 = UInt32(Date().timeIntervalSince1970)) -> [UInt8] {
+        // 9 bytes — verified from PacketLogger 2026-06-01: [unix_u32_LE][subsec_u16_LE][0,0,0]
+        // The 5th–8th bytes in the capture were b1 6c 00 00 (subseconds field), then a 9th 0x00.
+        // We send zeros for subseconds — the WHOOP accepts any value in that field.
         [UInt8(now & 0xFF), UInt8((now >> 8) & 0xFF),
          UInt8((now >> 16) & 0xFF), UInt8((now >> 24) & 0xFF),
-         0, 0, 0, 0]
+         0, 0, 0, 0, 0]  // 9 bytes total (4 sec + 5 zero padding)
     }
 
     /// Send one SEND_NEXT_FF request to pull the next Feature Flag entry from the strap.
