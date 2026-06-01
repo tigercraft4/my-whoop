@@ -109,9 +109,12 @@ def upsert_daily_metrics(conn: psycopg.Connection, device_id: str, day, metrics:
         """INSERT INTO daily_metrics
            (device_id, day, total_sleep_min, efficiency, deep_min, rem_min, light_min,
             disturbances, resting_hr, avg_hrv, recovery, strain, exercise_count,
-            sleep_start, sleep_end, spo2_pct, skin_temp_dev_c, resp_rate_bpm, computed_at)
+            sleep_start, sleep_end, spo2_pct, skin_temp_dev_c, resp_rate_bpm,
+            sleep_performance, training_state, sleep_needed_min, total_calories_kcal,
+            computed_at)
            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                   to_timestamp(%s), to_timestamp(%s), %s, %s, %s, now())
+                   to_timestamp(%s), to_timestamp(%s), %s, %s, %s,
+                   %s, %s, %s, %s, now())
            ON CONFLICT (device_id, day) DO UPDATE SET
              total_sleep_min = EXCLUDED.total_sleep_min,
              efficiency      = EXCLUDED.efficiency,
@@ -129,13 +132,19 @@ def upsert_daily_metrics(conn: psycopg.Connection, device_id: str, day, metrics:
              spo2_pct        = EXCLUDED.spo2_pct,
              skin_temp_dev_c = EXCLUDED.skin_temp_dev_c,
              resp_rate_bpm   = EXCLUDED.resp_rate_bpm,
+             sleep_performance   = EXCLUDED.sleep_performance,
+             training_state      = EXCLUDED.training_state,
+             sleep_needed_min    = EXCLUDED.sleep_needed_min,
+             total_calories_kcal = EXCLUDED.total_calories_kcal,
              computed_at     = now()""",
         (device_id, day, metrics.get("total_sleep_min"), metrics.get("efficiency"),
          metrics.get("deep_min"), metrics.get("rem_min"), metrics.get("light_min"),
          metrics.get("disturbances"), metrics.get("resting_hr"), metrics.get("avg_hrv"),
          metrics.get("recovery"), metrics.get("strain"), metrics.get("exercise_count"),
          metrics.get("sleep_start"), metrics.get("sleep_end"),
-         metrics.get("spo2_pct"), metrics.get("skin_temp_dev_c"), metrics.get("resp_rate_bpm")),
+         metrics.get("spo2_pct"), metrics.get("skin_temp_dev_c"), metrics.get("resp_rate_bpm"),
+         metrics.get("sleep_performance"), metrics.get("training_state"),
+         metrics.get("sleep_needed_min"), metrics.get("total_calories_kcal")),
     )
 
 
