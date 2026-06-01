@@ -165,6 +165,27 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 
 ## Backlog
 
+### Phase 18.1: Layout Restructure 1:1 (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 18
+**Plans:** 0 plans
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 18.1 to break down)
+
+### Phase 18.1.1: WHOOP API Historical Dump (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 18.1
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 18.1.1 to break down)
+
 ### Phase 999.2: Hardware validation — v1.0 UNCERTAIN items (BACKLOG)
 
 **Goal:** Validate the 5 hardware-dependent items deferred at v1.0 close
