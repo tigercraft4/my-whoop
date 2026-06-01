@@ -36,7 +36,8 @@ struct RecoveryCard: View {
     }
 
     private var sleepLabel: String {
-        daily?.efficiency.map { "\(Int($0 * 100))%" } ?? "—"
+        // D-05: Read sleepPerformance (ALG-10, composite 0–100) — NOT efficiency (raw 0.0–1.0)
+        daily?.sleepPerformance.map { "\(Int($0.rounded()))%" } ?? "—"
     }
 
     // MARK: - Body
@@ -110,7 +111,7 @@ struct RecoveryCard: View {
                              efficiency: 0.84, deepMin: 90, remMin: 72, lightMin: 180,
                              disturbances: 3, restingHr: 56, avgHrv: 52,
                              recovery: 0.73, strain: 14.2, exerciseCount: nil,
-                             respRateBpm: 15.8)
+                             respRateBpm: 15.8, sleepPerformance: 84.0)
     VStack {
         RecoveryCard(daily: daily)
         RecoveryCard(daily: nil) // placeholder state
