@@ -351,39 +351,43 @@ final class ServerSync {
         }
     }
 
+    /// WR-02: single place that maps a server JSON dict → DailyMetric so the recovery
+    /// normalization (0–100 → 0–1) cannot silently diverge between getDaily and getTodayMetric.
+    private static func dailyMetricFrom(_ r: [String: Any]) -> DailyMetric? {
+        guard let day = r["day"] as? String else { return nil }
+        let int = ServerSync.int
+        let dbl = ServerSync.dbl
+        return DailyMetric(day: day,
+                           totalSleepMin: dbl(r, "total_sleep_min") ?? dbl(r, "totalSleepMin"),
+                           efficiency: dbl(r, "efficiency"),
+                           deepMin: dbl(r, "deep_min") ?? dbl(r, "deepMin"),
+                           remMin: dbl(r, "rem_min") ?? dbl(r, "remMin"),
+                           lightMin: dbl(r, "light_min") ?? dbl(r, "lightMin"),
+                           disturbances: int(r, "disturbances"),
+                           restingHr: int(r, "resting_hr") ?? int(r, "restingHr"),
+                           avgHrv: dbl(r, "avg_hrv") ?? dbl(r, "avgHrv"),
+                           // Server emits recovery as a 0–100 score; the app's
+                           // DailyMetric.recovery contract is a 0–1 fraction (all
+                           // display sites do `recovery * 100`). Normalize here once.
+                           recovery: dbl(r, "recovery").map { $0 / 100.0 },
+                           strain: dbl(r, "strain"),
+                           exerciseCount: int(r, "exercise_count") ?? int(r, "exerciseCount"),
+                           spo2Pct: dbl(r, "spo2_pct") ?? dbl(r, "spo2Pct"),
+                           skinTempDevC: dbl(r, "skin_temp_dev_c") ?? dbl(r, "skinTempDevC"),
+                           respRateBpm: dbl(r, "resp_rate_bpm") ?? dbl(r, "respRateBpm"),
+                           sleepPerformance: dbl(r, "sleep_performance") ?? dbl(r, "sleepPerformance"),
+                           trainingState: r["training_state"] as? String ?? r["trainingState"] as? String,
+                           sleepNeededMin: dbl(r, "sleep_needed_min") ?? dbl(r, "sleepNeededMin"),
+                           totalCaloriesKcal: dbl(r, "total_calories_kcal") ?? dbl(r, "totalCaloriesKcal"))
+    }
+
     private func getDaily(from: String, to: String) async -> [DailyMetric]? {
         let path = "/v1/daily?device=\(deviceId)&from=\(from)&to=\(to)"
         guard let body = await get(path: path),
               let arr = (try? JSONSerialization.jsonObject(with: body)) as? [[String: Any]] else {
             return nil
         }
-        let int = ServerSync.int
-        let dbl = ServerSync.dbl
-        return arr.compactMap { r in
-            guard let day = r["day"] as? String else { return nil }
-            return DailyMetric(day: day,
-                               totalSleepMin: dbl(r, "total_sleep_min") ?? dbl(r, "totalSleepMin"),
-                               efficiency: dbl(r, "efficiency"),
-                               deepMin: dbl(r, "deep_min") ?? dbl(r, "deepMin"),
-                               remMin: dbl(r, "rem_min") ?? dbl(r, "remMin"),
-                               lightMin: dbl(r, "light_min") ?? dbl(r, "lightMin"),
-                               disturbances: int(r, "disturbances"),
-                               restingHr: int(r, "resting_hr") ?? int(r, "restingHr"),
-                               avgHrv: dbl(r, "avg_hrv") ?? dbl(r, "avgHrv"),
-                               // Server emits recovery as a 0–100 score; the app's
-                               // DailyMetric.recovery contract is a 0–1 fraction (all
-                               // display sites do `recovery * 100`). Normalize here.
-                               recovery: dbl(r, "recovery").map { $0 / 100.0 },
-                               strain: dbl(r, "strain"),
-                               exerciseCount: int(r, "exercise_count") ?? int(r, "exerciseCount"),
-                               spo2Pct: dbl(r, "spo2_pct") ?? dbl(r, "spo2Pct"),
-                               skinTempDevC: dbl(r, "skin_temp_dev_c") ?? dbl(r, "skinTempDevC"),
-                               respRateBpm: dbl(r, "resp_rate_bpm") ?? dbl(r, "respRateBpm"),
-                               sleepPerformance: dbl(r, "sleep_performance") ?? dbl(r, "sleepPerformance"),
-                               trainingState: r["training_state"] as? String ?? r["trainingState"] as? String,
-                               sleepNeededMin: dbl(r, "sleep_needed_min") ?? dbl(r, "sleepNeededMin"),
-                               totalCaloriesKcal: dbl(r, "total_calories_kcal") ?? dbl(r, "totalCaloriesKcal"))
-        }
+        return arr.compactMap { ServerSync.dailyMetricFrom($0) }
     }
 
     /// Fetch the single most-recent `daily_metrics` row from the server via `/v1/today`.
@@ -396,30 +400,8 @@ final class ServerSync {
         // Server returns JSON `null` when no rows exist — handle both null and object.
         guard let json = try? JSONSerialization.jsonObject(with: body) else { return nil }
         if json is NSNull { return nil }
-        guard let r = json as? [String: Any], let day = r["day"] as? String else { return nil }
-        let int = ServerSync.int
-        let dbl = ServerSync.dbl
-        return DailyMetric(day: day,
-                           totalSleepMin: dbl(r, "total_sleep_min") ?? dbl(r, "totalSleepMin"),
-                           efficiency: dbl(r, "efficiency"),
-                           deepMin: dbl(r, "deep_min") ?? dbl(r, "deepMin"),
-                           remMin: dbl(r, "rem_min") ?? dbl(r, "remMin"),
-                           lightMin: dbl(r, "light_min") ?? dbl(r, "lightMin"),
-                           disturbances: int(r, "disturbances"),
-                           restingHr: int(r, "resting_hr") ?? int(r, "restingHr"),
-                           avgHrv: dbl(r, "avg_hrv") ?? dbl(r, "avgHrv"),
-                           // Server emits recovery as a 0–100 score; normalize to 0–1 fraction
-                           // consistent with getDaily and all display sites.
-                           recovery: dbl(r, "recovery").map { $0 / 100.0 },
-                           strain: dbl(r, "strain"),
-                           exerciseCount: int(r, "exercise_count") ?? int(r, "exerciseCount"),
-                           spo2Pct: dbl(r, "spo2_pct") ?? dbl(r, "spo2Pct"),
-                           skinTempDevC: dbl(r, "skin_temp_dev_c") ?? dbl(r, "skinTempDevC"),
-                           respRateBpm: dbl(r, "resp_rate_bpm") ?? dbl(r, "respRateBpm"),
-                           sleepPerformance: dbl(r, "sleep_performance") ?? dbl(r, "sleepPerformance"),
-                           trainingState: r["training_state"] as? String ?? r["trainingState"] as? String,
-                           sleepNeededMin: dbl(r, "sleep_needed_min") ?? dbl(r, "sleepNeededMin"),
-                           totalCaloriesKcal: dbl(r, "total_calories_kcal") ?? dbl(r, "totalCaloriesKcal"))
+        guard let r = json as? [String: Any] else { return nil }
+        return ServerSync.dailyMetricFrom(r)
     }
 
     private func getSleep(date: String) async -> [CachedSleepSession]? {
