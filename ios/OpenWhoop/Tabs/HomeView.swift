@@ -11,11 +11,8 @@ struct HomeView: View {
 
     @EnvironmentObject private var metrics: MetricsRepository
     @EnvironmentObject private var live: LiveViewModel
-    @EnvironmentObject private var hkExporter: HealthKitExporterViewModel
-
     @State private var selectedDate: Date = .now
     @State private var selectedDayMetric: DailyMetric? = nil
-    @AppStorage("hk.authDeniedShown") private var authDeniedShown = false
 
     // MARK: - Derived helpers
 
@@ -36,14 +33,22 @@ struct HomeView: View {
         return WH.Color.recoveryColor(forPercent: r * 100)
     }
 
+    private static let dayFmt: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE d MMM"
+        f.locale = Locale(identifier: "pt_PT")
+        return f
+    }()
+
+    private static let isoFmt: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
     private var dateLabelText: String {
-        if Calendar.current.isDateInToday(selectedDate) {
-            return "HOJE"
-        }
-        let fmt = DateFormatter()
-        fmt.dateFormat = "EEE d MMM"
-        fmt.locale = Locale(identifier: "pt_PT")
-        return fmt.string(from: selectedDate).uppercased()
+        if Calendar.current.isDateInToday(selectedDate) { return "HOJE" }
+        return HomeView.dayFmt.string(from: selectedDate).uppercased()
     }
 
     private var hoursSinceRefresh: Int {
@@ -104,9 +109,7 @@ struct HomeView: View {
         }
         .task(id: selectedDate) {
             guard !selectedDate.isToday else { return }
-            let fmt = DateFormatter()
-            fmt.dateFormat = "yyyy-MM-dd"
-            let dayStr = fmt.string(from: selectedDate)
+            let dayStr = HomeView.isoFmt.string(from: selectedDate)
             let results = await metrics.daily(fromDay: dayStr, toDay: dayStr)
             selectedDayMetric = results.first
         }
