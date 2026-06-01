@@ -9,6 +9,9 @@ packages:
     path: Packages/WhoopProtocol
   WhoopStore:
     path: Packages/WhoopStore
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    exactVersion: 1.17.6
 targets:
   OpenWhoop:
     type: application
@@ -61,6 +64,7 @@ targets:
       - target: OpenWhoop
       - package: WhoopProtocol
       - package: WhoopStore
+      - package: SnapshotTesting
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

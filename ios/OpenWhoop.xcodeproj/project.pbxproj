@@ -28,6 +28,7 @@
 		4774003608EE5F6036D5B15D /* CollectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7114579A6C3239F8D274A28C /* CollectorTests.swift */; };
 		479D7270CC4AF0637DFB2813 /* Commands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E5DAA91035F408080CFC21 /* Commands.swift */; };
 		48572F077F0176808810C6E0 /* StrainCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4736291637370F319ABFBB /* StrainCard.swift */; };
+		4FA8AB08AA0CB0E01C9DE8A3 /* DevicePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E155BB162444DD651C3441FC /* DevicePicker.swift */; };
 		50FFAAC03F4DBBDA4ED3C69C /* RawCaptureWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3787FBFF19F5DD12E68BDF78 /* RawCaptureWindow.swift */; };
 		519D104AA1AD1AC055E30F13 /* LiveStrainAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C32EAC964372F681BD44BFA /* LiveStrainAccumulator.swift */; };
 		552713075BEAF103D0EAA3E0 /* ProfileUnitsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FF5445B470B49B66A87AA8 /* ProfileUnitsTests.swift */; };
@@ -70,15 +71,16 @@
 		A69C4BF2C5E544BE41F95833 /* BatteryAlertMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6C1C68F0E368757451C7A7C /* BatteryAlertMonitor.swift */; };
 		AF443CBA4649D515242D0022 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E296739AEC7207E22E927F54 /* TodayView.swift */; };
 		B0D5970AB9F1EDD5E5A5421C /* MetricKindTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 467FAE1C19C106BEA03E5A91 /* MetricKindTests.swift */; };
+		B0E2C676CD24A72599E2E91F /* BLEManager+BackfillChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 605E4CA527C8B66AAF32F33F /* BLEManager+BackfillChannel.swift */; };
 		B0F62C3AD720B583DAFE425B /* FrameRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B75CDF1AB5028AEFA5603F85 /* FrameRouter.swift */; };
 		B4222199EAC298512B4D27A9 /* PrunePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5603A8DBC99A4D65FD4B5942 /* PrunePolicy.swift */; };
 		B515B476E464537802F1EE78 /* SleepCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1F7681954F566B353D9EAF /* SleepCard.swift */; };
 		B8E226E0031C96DCFBEE55E0 /* WhoopStore in Frameworks */ = {isa = PBXBuildFile; productRef = 7F17BA44BE4790AF4E3D4BCD /* WhoopStore */; };
 		B97C51B79A544CF9887CF0E3 /* HypnogramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35CA1FCF12F85FB15B276988 /* HypnogramView.swift */; };
 		BB21CE4F0644EDFB923959A1 /* LiveViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E992BD715BD1D00A9F9CE84 /* LiveViewModel.swift */; };
-		587C8639DBE64529947EFD7F /* DevicePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A05C9BADD1452F8A3AB097 /* DevicePicker.swift */; };
 		C06051D2E51B246FD49CD0F8 /* ClockCorrelationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21EBD75BC6D5D9C4B62046B8 /* ClockCorrelationTests.swift */; };
 		C409618B3D363AEC0681C759 /* WorkoutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D8DACE8F296C4D847C9B973 /* WorkoutsView.swift */; };
+		C70ABD476C493E8DA5C274D6 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 93D4589DF9DBD0E710C1A994 /* SnapshotTesting */; };
 		C7A0D5E293CE72E19274021B /* FrameRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 527A8B40C8F0DE39827B0C22 /* FrameRouterTests.swift */; };
 		CE908EBC20C54E0F6CC6FF27 /* WhoopProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = 97AD3A666E1077BEBCD37F7C /* WhoopProtocol */; };
 		D15E1AE5C83FDB6E298D2918 /* StandardHeartRateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEEAD4B40CB7280EC0A3C5A5 /* StandardHeartRateTests.swift */; };
@@ -116,7 +118,6 @@
 		030CA572E758C4FC85B2672D /* TrainingStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingStateTests.swift; sourceTree = "<group>"; };
 		0C32EAC964372F681BD44BFA /* LiveStrainAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveStrainAccumulator.swift; sourceTree = "<group>"; };
 		0E992BD715BD1D00A9F9CE84 /* LiveViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveViewModel.swift; sourceTree = "<group>"; };
-		89A05C9BADD1452F8A3AB097 /* DevicePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePicker.swift; sourceTree = "<group>"; };
 		0F339BB4723060490EFB3E91 /* MetricDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricDetailView.swift; sourceTree = "<group>"; };
 		0F9B0B0DACDD695B3408F746 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		15A73696ADD25869A3C62DD5 /* Backfiller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backfiller.swift; sourceTree = "<group>"; };
@@ -150,6 +151,7 @@
 		56762EB9C2029C8AA72D4B12 /* HealthKitExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitExporterTests.swift; sourceTree = "<group>"; };
 		5A9611F9C742F28E03FF790D /* Sparkline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sparkline.swift; sourceTree = "<group>"; };
 		5FF761E164ADD05A158479DF /* StalenessPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StalenessPolicy.swift; sourceTree = "<group>"; };
+		605E4CA527C8B66AAF32F33F /* BLEManager+BackfillChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BLEManager+BackfillChannel.swift"; sourceTree = "<group>"; };
 		65FF5445B470B49B66A87AA8 /* ProfileUnitsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileUnitsTests.swift; sourceTree = "<group>"; };
 		6950B8B5F07009FD4D7CDABF /* AlarmCommandsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmCommandsTests.swift; sourceTree = "<group>"; };
 		6A0A3F08E112F3EB79909FDF /* BatteryAlertsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryAlertsTests.swift; sourceTree = "<group>"; };
@@ -165,11 +167,11 @@
 		799EF61A6DC474F2B9CC9289 /* HealthKitExporterViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitExporterViewModel.swift; sourceTree = "<group>"; };
 		7A2FA65A8D1005734F34490D /* RecoveryNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryNotifier.swift; sourceTree = "<group>"; };
 		7A676CC2F5878842C3069C9D /* ClockPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockPolicy.swift; sourceTree = "<group>"; };
-		7BAB82BBE339E67C41E861B8 /* OpenWhoop.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenWhoop.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7BAB82BBE339E67C41E861B8 /* OpenWhoop.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OpenWhoop.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DB0CC6001CA6E3BFD50E121 /* ZoneRingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneRingView.swift; sourceTree = "<group>"; };
 		7EA7DCDC6BF1A5E9E83DB66B /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		8926E50C72C78BE0029FFDBC /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
-		89D310FC4F597F29B17141D2 /* WhoopStore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhoopStore; path = ../Packages/WhoopStore; sourceTree = SOURCE_ROOT; };
+		89D310FC4F597F29B17141D2 /* WhoopStore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhoopStore; path = Packages/WhoopStore; sourceTree = SOURCE_ROOT; };
 		89E3CC0FA5039FCDA7F69A81 /* Uploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Uploader.swift; sourceTree = "<group>"; };
 		8CED30F9A903891540B94552 /* ServerSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSync.swift; sourceTree = "<group>"; };
 		8EAD19B6352F9F40AD784F88 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsView.swift; sourceTree = "<group>"; };
@@ -180,7 +182,7 @@
 		9B36A3A8BC49B1146370FC7E /* OpenWhoop.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenWhoop.entitlements; sourceTree = "<group>"; };
 		9D74C248CA656598A3293600 /* Secrets.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.example.xcconfig; sourceTree = "<group>"; };
 		A6C1C68F0E368757451C7A7C /* BatteryAlertMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryAlertMonitor.swift; sourceTree = "<group>"; };
-		A95532F45AB20D15C655D09E /* WhoopProtocol */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhoopProtocol; path = ../Packages/WhoopProtocol; sourceTree = SOURCE_ROOT; };
+		A95532F45AB20D15C655D09E /* WhoopProtocol */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhoopProtocol; path = Packages/WhoopProtocol; sourceTree = SOURCE_ROOT; };
 		AE26785FEBDAAB735AC8B91E /* WorkoutDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDetailView.swift; sourceTree = "<group>"; };
 		B1F579B96146265DBC580BD7 /* ScreenHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenHeader.swift; sourceTree = "<group>"; };
 		B75CDF1AB5028AEFA5603F85 /* FrameRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameRouter.swift; sourceTree = "<group>"; };
@@ -196,6 +198,7 @@
 		D932BB1E190F7CCA4B3F616D /* StorePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorePaths.swift; sourceTree = "<group>"; };
 		DD1F7681954F566B353D9EAF /* SleepCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepCard.swift; sourceTree = "<group>"; };
 		DDAD957F246940FC88994981 /* SevenNightChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SevenNightChart.swift; sourceTree = "<group>"; };
+		E155BB162444DD651C3441FC /* DevicePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePicker.swift; sourceTree = "<group>"; };
 		E296739AEC7207E22E927F54 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		E3603EA7004D8573ECECE029 /* BackfillPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillPolicyTests.swift; sourceTree = "<group>"; };
 		E433533FBFFFF34F22F6ADDE /* OpenWhoopTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OpenWhoopTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -226,6 +229,7 @@
 			files = (
 				A60179CF199E3F0E8BEFD1F5 /* WhoopProtocol in Frameworks */,
 				B8E226E0031C96DCFBEE55E0 /* WhoopStore in Frameworks */,
+				C70ABD476C493E8DA5C274D6 /* SnapshotTesting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,6 +278,7 @@
 			children = (
 				F702F2AD8F02E6ED92616B93 /* BackfillPolicy.swift */,
 				E6CD6822D16818FF00FA44EF /* BLEManager.swift */,
+				605E4CA527C8B66AAF32F33F /* BLEManager+BackfillChannel.swift */,
 				72E5DAA91035F408080CFC21 /* Commands.swift */,
 				B75CDF1AB5028AEFA5603F85 /* FrameRouter.swift */,
 				E55E09ADD3854060767D9C50 /* LiveState.swift */,
@@ -288,9 +293,9 @@
 		6C07FA26DB0FEAD6A63B75B1 /* Live */ = {
 			isa = PBXGroup;
 			children = (
+				E155BB162444DD651C3441FC /* DevicePicker.swift */,
 				6D38901AC428CF95F1D06C2A /* LiveView.swift */,
 				0E992BD715BD1D00A9F9CE84 /* LiveViewModel.swift */,
-				89A05C9BADD1452F8A3AB097 /* DevicePicker.swift */,
 			);
 			path = Live;
 			sourceTree = "<group>";
@@ -321,7 +326,7 @@
 				A95532F45AB20D15C655D09E /* WhoopProtocol */,
 				89D310FC4F597F29B17141D2 /* WhoopStore */,
 			);
-			name = Packages;
+			path = Packages;
 			sourceTree = "<group>";
 		};
 		802BED033D8D97C7D2EBF45D /* Settings */ = {
@@ -537,6 +542,7 @@
 			packageProductDependencies = (
 				95E73F25B3159A0548917F5C /* WhoopProtocol */,
 				7F17BA44BE4790AF4E3D4BCD /* WhoopStore */,
+				93D4589DF9DBD0E710C1A994 /* SnapshotTesting */,
 			);
 			productName = OpenWhoopTests;
 			productReference = E433533FBFFFF34F22F6ADDE /* OpenWhoopTests.xctest */;
@@ -571,6 +577,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 506026263EF8C46D9AE5806E /* Build configuration list for PBXProject "OpenWhoop" */;
 			developmentRegion = en;
@@ -582,8 +590,9 @@
 			mainGroup = D3279F3F587D90580E6567C0;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				34701BC183D98860F55DE8D2 /* XCLocalSwiftPackageReference "../Packages/WhoopProtocol" */,
-				476E21A281211469AE94068C /* XCLocalSwiftPackageReference "../Packages/WhoopStore" */,
+				5518F86A5E59035D1BF2C6B9 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
+				ABDBA13C963CDD58DFA9D939 /* XCLocalSwiftPackageReference "Packages/WhoopProtocol" */,
+				77ECA1CF08F3366F2160AC10 /* XCLocalSwiftPackageReference "Packages/WhoopStore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1B2529B4BEF2310336D36C43 /* Products */;
@@ -616,6 +625,7 @@
 			files = (
 				19F86E3224F3CEDBF19A7849 /* AlarmView.swift in Sources */,
 				95CC3BE46D6BC577B28C517A /* AppConfig.swift in Sources */,
+				B0E2C676CD24A72599E2E91F /* BLEManager+BackfillChannel.swift in Sources */,
 				3BB5A938A0CDEFB21E8AAF24 /* BLEManager.swift in Sources */,
 				900185951C44B1AF706769A7 /* BackfillPolicy.swift in Sources */,
 				3CEDD66A4CABDB1E4524BD17 /* Backfiller.swift in Sources */,
@@ -628,6 +638,7 @@
 				82075625CDCA756D8A939150 /* DayDetailView.swift in Sources */,
 				6A4FE21D1F194E83F23D1AEA /* DesignGallery.swift in Sources */,
 				7CBD8D239A935E6983F0243E /* DesignTokens.swift in Sources */,
+				4FA8AB08AA0CB0E01C9DE8A3 /* DevicePicker.swift in Sources */,
 				B0F62C3AD720B583DAFE425B /* FrameRouter.swift in Sources */,
 				F033B7EFC48061A7C6B081E7 /* HealthKitExporter.swift in Sources */,
 				803A8ADDB32C464267B2312F /* HealthKitExporterViewModel.swift in Sources */,
@@ -637,7 +648,6 @@
 				519D104AA1AD1AC055E30F13 /* LiveStrainAccumulator.swift in Sources */,
 				724FAA91C924ED749324307D /* LiveView.swift in Sources */,
 				BB21CE4F0644EDFB923959A1 /* LiveViewModel.swift in Sources */,
-				587C8639DBE64529947EFD7F /* DevicePicker.swift in Sources */,
 				83506C8E34557D899C109CC8 /* LocalMetricsComputer.swift in Sources */,
 				F6B1A647C46B71035EC71C53 /* MetricCard.swift in Sources */,
 				64573C36061B71CE04EF3002 /* MetricChart.swift in Sources */,
@@ -847,7 +857,6 @@
 				CODE_SIGN_ENTITLEMENTS = OpenWhoop/OpenWhoop.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 26594BLKQ8;
 				INFOPLIST_FILE = OpenWhoop/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -885,7 +894,6 @@
 				CODE_SIGN_ENTITLEMENTS = OpenWhoop/OpenWhoop.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 26594BLKQ8;
 				INFOPLIST_FILE = OpenWhoop/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -948,15 +956,26 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		34701BC183D98860F55DE8D2 /* XCLocalSwiftPackageReference "../Packages/WhoopProtocol" */ = {
+		77ECA1CF08F3366F2160AC10 /* XCLocalSwiftPackageReference "Packages/WhoopStore" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Packages/WhoopProtocol;
+			relativePath = Packages/WhoopStore;
 		};
-		476E21A281211469AE94068C /* XCLocalSwiftPackageReference "../Packages/WhoopStore" */ = {
+		ABDBA13C963CDD58DFA9D939 /* XCLocalSwiftPackageReference "Packages/WhoopProtocol" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Packages/WhoopStore;
+			relativePath = Packages/WhoopProtocol;
 		};
 /* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5518F86A5E59035D1BF2C6B9 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing";
+			requirement = {
+				kind = exactVersion;
+				version = 1.17.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		315537C91281660138EC2E8A /* WhoopStore */ = {
@@ -966,6 +985,11 @@
 		7F17BA44BE4790AF4E3D4BCD /* WhoopStore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = WhoopStore;
+		};
+		93D4589DF9DBD0E710C1A994 /* SnapshotTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5518F86A5E59035D1BF2C6B9 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
+			productName = SnapshotTesting;
 		};
 		95E73F25B3159A0548917F5C /* WhoopProtocol */ = {
 			isa = XCSwiftPackageProductDependency;
