@@ -985,6 +985,9 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
         case BLEManager.dataNotifyChar,
              BLEManager.cmdNotifyChar,
              BLEManager.eventNotifyChar:
+            // RAW diagnostic — log every notification regardless of reassembly.
+            let charHex = characteristic.uuid.uuidString.prefix(8)
+            BLEManager.logger.notice("RAW[\(charHex, privacy: .public)] \(bytes.count, privacy: .public)B: \(bytes.prefix(16).map{String(format:"%02X",$0)}.joined(), privacy: .public)")
             // Reassemble (no-op for already-complete frames) then route each complete frame.
             for frame in reassembler.feed(bytes) {
                 router.handle(frame: frame)                       // UI (always)
@@ -992,9 +995,7 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
                 let cmdOff = isMav ? 10 : 6
                 // Log every COMMAND_RESPONSE arriving on cmdNotifyChar for diagnostic purposes.
                 let ptype = frame.count > (isMav ? 8 : 4) ? frame[isMav ? 8 : 4] : 0
-                if ptype == 36 {  // COMMAND_RESPONSE
-                    BLEManager.logger.notice("CMD_RESP: cmd=\(frame.count > cmdOff ? frame[cmdOff] : 0, privacy: .public) len=\(frame.count, privacy: .public)")
-                }
+                BLEManager.logger.notice("FRAME ptype=\(ptype, privacy: .public) isMav=\(isMav, privacy: .public) cmd=\(frame.count > cmdOff ? frame[cmdOff] : 0, privacy: .public) len=\(frame.count, privacy: .public)")
                 if frame.count > cmdOff, frame[cmdOff] == WhoopCommand.getDataRange.rawValue,
                    let newest = BLEManager.dataRangeNewestUnix(from: frame) {
                     strapNewestTs = newest                        // feeds the liveness watchdog
