@@ -115,8 +115,17 @@ _SKIN_TEMP_BASELINE_LIMIT = 3_000_000
 #: module so it works regardless of the process CWD inside the container.
 _TS_LOOKUP_PATH = os.path.join(os.path.dirname(__file__), "recovery_to_strain.json")
 
-#: Module-level cache for the parsed recovery→strain table (loaded once).
-_LOOKUP_TABLE: list[dict] | None = None
+#: Recovery→strain lookup table — loaded once at import time to avoid the
+#: check-then-set race under concurrent async callers (CR-04).
+try:
+    with open(_TS_LOOKUP_PATH, "r", encoding="utf-8") as _fh:
+        _data = json.load(_fh)
+    _LOOKUP_TABLE: list[dict] = _data if isinstance(_data, list) else []
+except (OSError, ValueError) as _exc:
+    import logging as _logging_import
+    _logging_import.getLogger(__name__).warning(
+        "ALG-11: failed to load %s (%s); training_state disabled", _TS_LOOKUP_PATH, _exc)
+    _LOOKUP_TABLE = []
 
 #: Sleep-need bounds (ALG-12). WHOOP's published "sleep need" never collapses to a
 #: nap nor balloons past ~11 h; clamp keeps the personalised need physiological.
@@ -130,28 +139,6 @@ _SLEEP_DEBT_RAW_CAP = 120.0
 _SLEEP_DEBT_FACTOR = 0.5
 #: Minimum valid nights of history before a personalised need is meaningful.
 _MIN_SLEEP_NIGHTS = 3
-
-
-def _load_ts_lookup() -> list[dict]:
-    """Load (and cache) the ALG-11 recovery→strain lookup table.
-
-    The table is a list of objects ``{"recovery": int 0..100, "lower_rec_strain",
-    "rec_strain", "upper_rec_strain"}``. Read failures (missing/corrupt file) are
-    NON-fatal (T-13-03-02): we log a warning and return ``[]`` so callers degrade
-    to ``None`` rather than raising in the ingest pipeline.
-    """
-    global _LOOKUP_TABLE
-    if _LOOKUP_TABLE is not None:
-        return _LOOKUP_TABLE
-    try:
-        with open(_TS_LOOKUP_PATH, "r", encoding="utf-8") as fh:
-            data = json.load(fh)
-        _LOOKUP_TABLE = data if isinstance(data, list) else []
-    except (OSError, ValueError) as exc:  # OSError: I/O; ValueError: bad JSON
-        _log.warning("ALG-11: failed to load %s (%s); training_state disabled",
-                     _TS_LOOKUP_PATH, exc)
-        _LOOKUP_TABLE = []
-    return _LOOKUP_TABLE
 
 
 def training_state_from_lookup(
@@ -175,7 +162,7 @@ def training_state_from_lookup(
     """
     if recovery_score is None or strain is None:
         return None
-    table = _load_ts_lookup()
+    table = _LOOKUP_TABLE
     if not table:
         return None
 
