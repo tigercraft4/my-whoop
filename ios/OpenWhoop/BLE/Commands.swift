@@ -202,9 +202,16 @@ public enum WhoopCommand: UInt8, CaseIterable {
         // body = [role=0x00][token0=0x00][token1=0x00][token2=0x00][type][seq][cmd][payload...]
         let body: [UInt8] = [0x00, 0x00, 0x00, 0x00, Self.commandType, seq, rawValue] + payload
         let length = UInt16(body.count)
+        // Trailer = CRC32 of body[4:] (= ptype+seq+cmd+payload), stored as u32 LE.
+        // VERIFIED from PacketLogger 2026-06-01: CRC32([ptype][seq][cmd][payload]) matches trailer
+        // in 3/3 frames (GET_HELLO ddfc978b, SET_CLOCK 4e2aefd7, HAPTICS b510a716).
+        // The WHOOP 5.0 silently discards frames with wrong trailer → zero trailer = no response.
+        let inner = Array(body[4...])  // [ptype, seq, cmd, payload...]
+        let crc = crc32(inner)         // public func from WhoopProtocol/Framing.swift
         return [0xAA, 0x01,
                 UInt8(length & 0xFF), UInt8(length >> 8)]
                + body
-               + [0x00, 0x00, 0x00, 0x00]
+               + [UInt8(crc & 0xFF), UInt8((crc >> 8) & 0xFF),
+                  UInt8((crc >> 16) & 0xFF), UInt8((crc >> 24) & 0xFF)]
     }
 }
