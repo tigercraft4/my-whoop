@@ -3,9 +3,9 @@ import WhoopStore
 
 // MARK: - SleepCard
 // WHOOP-style sleep card for the Sleep tab.
-// Shows HOURS OF SLEEP and SLEEP PERFORMANCE from CachedSleepSession/DailyMetric,
+// Shows HOURS OF SLEEP, SLEEP PERFORMANCE, and SLEEP NEEDED from DailyMetric,
 // followed by the HypnogramView stage bar when stagesJSON is available.
-// All fields show "—" when session is nil.
+// All fields show "—" when data is nil.
 
 struct SleepCard: View {
 
@@ -28,15 +28,30 @@ struct SleepCard: View {
     }
 
     private var sleepPerformanceLabel: String {
-        // Prefer DailyMetric efficiency (more accurate — includes sleep need)
-        if let e = daily?.efficiency, e > 0 {
-            return "\(Int((e * 100).rounded()))%"
-        }
-        // Fallback: session efficiency
-        if let e = session?.efficiency, e > 0 {
-            return "\(Int((e * 100).rounded()))%"
+        // D-04: Read sleepPerformance (ALG-10, composite 0–100) — NOT efficiency (raw 0.0–1.0)
+        if let score = daily?.sleepPerformance, score > 0 {
+            return "\(Int(score.rounded()))%"
         }
         return "—"
+    }
+
+    private var sleepNeededLabel: String {
+        // D-01: Show sleepNeededMin (ALG-12) as 3rd stat column
+        if let m = daily?.sleepNeededMin, m > 0 {
+            return formatMinutes(m)
+        }
+        return "—"
+    }
+
+    // MARK: - Helpers
+
+    private func formatMinutes(_ totalMin: Double) -> String {
+        guard totalMin > 0 else { return "—" }
+        let hours = Int(totalMin) / 60
+        let mins  = Int(totalMin) % 60
+        if hours > 0 && mins > 0 { return "\(hours)h \(mins)m" }
+        if hours > 0              { return "\(hours)h" }
+        return "\(mins)m"
     }
 
     // MARK: - Body
@@ -50,13 +65,17 @@ struct SleepCard: View {
                 .foregroundStyle(WH.Color.textSecondary)
                 .kerning(1.5)
 
-            // Stats row: Hours of Sleep | Sleep Performance
+            // Stats row: Hours of Sleep | Sleep Performance | Sleep Needed
             HStack(spacing: 0) {
                 statColumn(label: "HOURS OF SLEEP", value: hoursSleepLabel)
                 Divider()
                     .frame(height: 40)
                     .background(WH.Color.separator)
                 statColumn(label: "SLEEP PERFORMANCE", value: sleepPerformanceLabel)
+                Divider()
+                    .frame(height: 40)
+                    .background(WH.Color.separator)
+                statColumn(label: "SLEEP NEEDED", value: sleepNeededLabel)
             }
 
             Divider()
@@ -115,7 +134,8 @@ struct SleepCard: View {
     let daily = DailyMetric(day: "2026-05-31", totalSleepMin: 452,
                              efficiency: 0.87, deepMin: 88, remMin: 70, lightMin: 192,
                              disturbances: 2, restingHr: 54, avgHrv: 61,
-                             recovery: 0.78, strain: nil, exerciseCount: nil)
+                             recovery: 0.78, strain: nil, exerciseCount: nil,
+                             sleepPerformance: 82.0, sleepNeededMin: 450.0)
     SleepCard(session: nil, daily: daily)
         .padding()
         .background(WH.Color.background)
