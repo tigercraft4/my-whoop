@@ -19,9 +19,9 @@ Own your WHOOP 5.0 biometric data: read it from your own device over BLE, store 
 - PROTO-11/12/13/14 — validação biométrica (hardware-dependente, quando disponível)
 - Repo cleanup — reorganizar pastas/estrutura do repositório, sem mudanças de arquitectura
 
-## Current State (post-v3.0)
+## Current State (v4.0 — Phase 14 complete)
 
-All three milestones shipped. The app is functionally complete. Remaining items are hardware-validation backlog (999.1, 999.2) that require physical Android device or dedicated WHOOP capture sessions.
+v4.0 in progress. Phase 14 (Critical Bug Fixes — Data Layer) complete 2026-06-01. All 3 data-layer bugs fixed: SleepCard now shows SLEEP NEEDED column (sleepNeededMin ALG-12), both cards read sleepPerformance instead of efficiency, and migration v10 has behaviour test coverage. Next: Phase 15 (Ghidra IPA Deep-Dive).
 
 **Shipped:**
 - iOS app with 5-tab WHOOP-style UI (Today, Sleep, Strain, Trends, Device)
@@ -162,4 +162,4 @@ All three milestones shipped. The app is functionally complete. Remaining items 
 - Open: hardware-dependent backlog (999.1 Android, 999.2 hardware validation)
 
 ---
-*Last updated: 2026-06-01 after v3.0 milestone*
+*Last updated: 2026-06-01 — Phase 14 complete (v4.0 milestone in progress)*
