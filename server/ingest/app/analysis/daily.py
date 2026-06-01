@@ -567,7 +567,7 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
     # ALG-12 personalised need (or None → internal 420-min fallback when there is
     # insufficient history).
     _sleep_perf_score: float | None = None
-    if sleep_summary.get("total_sleep_min") is not None:
+    if (sleep_summary.get("total_sleep_min") or 0.0) > 0:
         _sleep_perf_score = _sleep.sleep_performance_score(
             total_sleep_min=sleep_summary.get("total_sleep_min") or 0.0,
             efficiency=sleep_summary.get("efficiency") or 0.0,
