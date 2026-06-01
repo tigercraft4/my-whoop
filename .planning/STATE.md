@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — UI Redesign + Bug Fix
 status: executing
-last_updated: "2026-06-01T22:18:49.858Z"
+last_updated: "2026-06-01T22:24:18.701Z"
 last_activity: 2026-06-01
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 3
-  total_plans: 19
+  total_plans: 21
   completed_plans: 14
-  percent: 38
+  percent: 33
 ---
 
 # State — WHOOP 5.0
@@ -50,6 +50,7 @@ Last activity: 2026-06-01
 ### Roadmap Evolution
 
 - Phase 18.1 inserted after Phase 18: Layout Restructure 1:1 — 3 rings em linha, header data nav, secções Home completas, tab bar Início/Saúde/Comunidade/Mais (URGENT)
+- Phase 18.1.1 inserted after Phase 18.1: WHOOP API Historical Dump — OAuth2 pull de Recovery/Sleep/Strain/WHOOP Age antes do premium acabar. URGENTE. (URGENT)
 
 ### Key Decisions (v2.0 / v3.0 / v4.0)
 
