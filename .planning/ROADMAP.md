@@ -136,7 +136,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 11. HealthKit Export | v2.0 | 4/4 | Complete    | 2026-05-31 |
 | 12. UI Parity | v3.0 | 3/3 | Complete | 2026-06-01 |
-| 13. Backend Parity | v3.0 | 0/? | Not started | - |
+| 13. Backend Parity | v3.0 | 0/4 | Not started | - |
 
 ### Phase 12: UI Parity
 **Goal**: Corrigir todos os labels e métricas identificados via IPA analysis (WHOOP 5.37.0) para atingir paridade visual com a app oficial
@@ -158,7 +158,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 - `MetricKind`: SLEEP PERFORMANCE como métrica de tendência (não sleepDuration)
 - Skin temp: separar valor absoluto de "FROM BASELINE" (desvio)
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans executed
 - [x] 12-01-PLAN.md — SleepView labels (SLEEP PERFORMANCE / HOURS OF SLEEP / SLEEP LATENCY / SKIN TEMP) + AWAKE confirm
 - [x] 12-02-PLAN.md — StrainCard Training State badge from recovery_to_strain.json
 - [x] 12-03-PLAN.md — MetricKind.sleepPerformance + dailyCases, Today/DayDetail RHR & SKIN TEMP labels
@@ -172,15 +172,21 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
   1. `sleep.py`: Sleep Performance = score ponderado (não raw efficiency) — fórmula: duração + eficiência + staging adequado + consistência; range 0–100
   2. `daily.py`: Training State calculado a partir de Recovery + Day Strain: OPTIMAL (Recovery 67–100, Strain moderado), RESTORATIVE (Recovery baixo, Strain baixo), OVERREACHING (Strain alto vs Recovery), IMPOSSIBLE (Recovery < 33 + Strain alto)
   3. `daily.py`: Sleep Needed = Baseline (média 7d) + Strain Debt (função do strain do dia anterior) + Sleep Debt (défice acumulado) − Recent Naps
-  4. `strain.py`: Calorias estimadas (RMR via Mifflin–St Jeor + TEE via strain) e expostas no endpoint `/v1/today`
+  4. `calories.py`: Calorias estimadas (RMR via Mifflin–St Jeor + exercício) e expostas no endpoint `/v1/today`
   5. iOS Today view mostra CALORIES e Training State a partir dos valores computados pelo servidor
 
 **Como o WHOOP analiza (baseado em IPA class names + openwhoop-algos):**
 - **Sleep Performance**: não é `efficiency = time_asleep / time_in_bed`. É um score composto que penaliza fragmentação, premia staging adequado (REM + Deep > 20%), e normaliza por duração. Classes: `SleepPerformanceCalculator`, `SleepStagingQualityMetric`
 - **Training State**: função bidimensional de (Recovery Score, Day Strain). 4 zonas no plano Recovery-Strain. Classes: `TrainingStateCalculator`, `TrainingZoneClassifier`
 - **Sleep Needed**: `baseline_sleep + strain_sleep_debt - nap_credit`. Baseline = média rolling 7d. Strain debt aumenta com Day Strain > 14. Classes: `SleepNeededCalculator`, `SleepDebtTracker`
-- **Calorias**: RMR (Mifflin–St Jeor com perfil corporal) + TEE proporcional ao strain acumulado. Classes: `CalorieCalculator`, `BasalMetabolicRateModel`
+- **Calorias**: RMR (Mifflin–St Jeor com perfil corporal) + calorias de exercício já computadas (Keytel). Classes: `CalorieCalculator`, `BasalMetabolicRateModel`
 - **Haptics Gen5**: `RunAppDrivenHapticsCommandPacket` → DRV2605 waveform effects (até 8 por chamada). Sem patternId simples — envia sequências de efeitos pré-definidos. Requer PacketLogger capture para reverse-engineer os bytes exactos.
+
+**Plans:** 4 plans
+- [ ] 13-01-PLAN.md — REQUIREMENTS.md ALG-10–13 + DB schema (4 colunas) + read.py + store.py
+- [ ] 13-02-PLAN.md — sleep_performance_score() em sleep.py + integração em daily.py (ALG-10)
+- [ ] 13-03-PLAN.md — training_state_from_lookup() + sleep_needed() em daily.py (ALG-11, ALG-12)
+- [ ] 13-04-PLAN.md — rmr_kcal_per_day() + total_calories em daily.py + iOS stack completo (ALG-13)
 
 ---
 
