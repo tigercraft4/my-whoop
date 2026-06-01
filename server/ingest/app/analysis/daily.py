@@ -64,8 +64,10 @@ contract explicit and the persisted session times unambiguous we coerce every ro
 from __future__ import annotations
 
 import datetime as _dt
+import json
 import logging
 import math
+import os
 import statistics
 from typing import Any
 
@@ -107,6 +109,135 @@ _STREAM_LIMIT = 200_000
 #: _STREAM_LIMIT (~2.3 days) is far too small for this window; a dedicated constant
 #: matches the pattern set by _HRMAX_HISTORY_LIMIT and covers the full window.
 _SKIN_TEMP_BASELINE_LIMIT = 3_000_000
+
+#: Path to the bundled recovery→strain lookup (ALG-11). Resolved relative to this
+#: module so it works regardless of the process CWD inside the container.
+_TS_LOOKUP_PATH = os.path.join(os.path.dirname(__file__), "recovery_to_strain.json")
+
+#: Module-level cache for the parsed recovery→strain table (loaded once).
+_LOOKUP_TABLE: list[dict] | None = None
+
+#: Sleep-need bounds (ALG-12). WHOOP's published "sleep need" never collapses to a
+#: nap nor balloons past ~11 h; clamp keeps the personalised need physiological.
+_SLEEP_NEED_MIN = 300.0
+_SLEEP_NEED_MAX = 660.0
+#: Strain reference above which a debt accrues (WHOOP's mid-scale), and its cap.
+_STRAIN_REF = 14.0
+_STRAIN_DEBT_CAP = 60.0
+#: Sleep-debt is half of the (capped) shortfall vs the baseline.
+_SLEEP_DEBT_RAW_CAP = 120.0
+_SLEEP_DEBT_FACTOR = 0.5
+#: Minimum valid nights of history before a personalised need is meaningful.
+_MIN_SLEEP_NIGHTS = 3
+
+
+def _load_ts_lookup() -> list[dict]:
+    """Load (and cache) the ALG-11 recovery→strain lookup table.
+
+    The table is a list of objects ``{"recovery": int 0..100, "lower_rec_strain",
+    "rec_strain", "upper_rec_strain"}``. Read failures (missing/corrupt file) are
+    NON-fatal (T-13-03-02): we log a warning and return ``[]`` so callers degrade
+    to ``None`` rather than raising in the ingest pipeline.
+    """
+    global _LOOKUP_TABLE
+    if _LOOKUP_TABLE is not None:
+        return _LOOKUP_TABLE
+    try:
+        with open(_TS_LOOKUP_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        _LOOKUP_TABLE = data if isinstance(data, list) else []
+    except (OSError, ValueError) as exc:  # OSError: I/O; ValueError: bad JSON
+        _log.warning("ALG-11: failed to load %s (%s); training_state disabled",
+                     _TS_LOOKUP_PATH, exc)
+        _LOOKUP_TABLE = []
+    return _LOOKUP_TABLE
+
+
+def training_state_from_lookup(
+    recovery_score: float | None,
+    strain: float | None,
+) -> str | None:
+    """ALG-11 — map (recovery, strain) to a Training State label. APPROXIMATE.
+
+    Returns one of ``"RESTORATIVE"`` / ``"OPTIMAL"`` / ``"OVERREACHING"``, or
+    ``None`` when either input is ``None`` (or the lookup table is unavailable).
+    NEVER returns ``"IMPOSSIBLE"`` — the lookup defines an optimal strain BAND per
+    recovery level; strain below the band is RESTORATIVE, above is OVERREACHING,
+    inside (inclusive) is OPTIMAL.
+
+    Parameters
+    ----------
+    recovery_score :
+        Recovery on a 0..100 scale (clamped). ``None`` → ``None``.
+    strain :
+        Today's day strain (~0..21). ``None`` → ``None``.
+    """
+    if recovery_score is None or strain is None:
+        return None
+    table = _load_ts_lookup()
+    if not table:
+        return None
+
+    idx = int(round(max(0.0, min(100.0, float(recovery_score)))))
+    # Find the row for this recovery level; fall back to the last row if absent.
+    row = next((r for r in table if r.get("recovery") == idx), None)
+    if row is None:
+        row = table[-1]
+
+    lower = row.get("lower_rec_strain")
+    upper = row.get("upper_rec_strain")
+    if lower is None or upper is None:
+        return None
+
+    if strain < lower:
+        return "RESTORATIVE"
+    if strain > upper:
+        return "OVERREACHING"
+    return "OPTIMAL"
+
+
+def sleep_needed(
+    prior_sleep_min: list[float],
+    strain_yesterday: float | None,
+    sleep_yesterday: float | None,
+) -> float | None:
+    """ALG-12 — personalised sleep need (minutes) from a rolling baseline. APPROXIMATE.
+
+    Returns ``None`` when fewer than ``_MIN_SLEEP_NIGHTS`` valid (> 0) nights of
+    history are available (cold-start). Otherwise:
+
+        baseline    = mean(valid prior nights)
+        strain_debt = clamp((strain_yesterday - 14) * 3, 0, 60)
+        sleep_debt  = min(max(0, baseline - sleep_yesterday), 120) * 0.5
+        need        = clamp(baseline + strain_debt + sleep_debt, 300, 660)
+
+    Parameters
+    ----------
+    prior_sleep_min :
+        Total-sleep-minutes for the prior nights (any order). Non-positive entries
+        are dropped before the count/mean.
+    strain_yesterday :
+        Yesterday's day strain; ``None`` → no strain debt.
+    sleep_yesterday :
+        Yesterday's total sleep (min); ``None`` → no sleep debt.
+    """
+    valid = [float(v) for v in prior_sleep_min if v is not None and v > 0]
+    if len(valid) < _MIN_SLEEP_NIGHTS:
+        return None
+
+    baseline = statistics.mean(valid)
+
+    strain_debt = 0.0
+    if strain_yesterday is not None and strain_yesterday > _STRAIN_REF:
+        strain_debt = min(_STRAIN_DEBT_CAP, (strain_yesterday - _STRAIN_REF) * 3.0)
+
+    sleep_debt = 0.0
+    if sleep_yesterday is not None:
+        raw_debt = max(0.0, baseline - sleep_yesterday)
+        sleep_debt = min(raw_debt, _SLEEP_DEBT_RAW_CAP) * _SLEEP_DEBT_FACTOR
+
+    need = baseline + strain_debt + sleep_debt
+    return round(max(_SLEEP_NEED_MIN, min(_SLEEP_NEED_MAX, need)), 1)
 
 
 def _day_bounds_utc(day: _dt.date) -> tuple[float, float]:
