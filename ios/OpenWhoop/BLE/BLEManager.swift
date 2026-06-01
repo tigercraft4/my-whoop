@@ -261,15 +261,16 @@ public final class BLEManager: NSObject, ObservableObject {
     ///   - writeType: BLE write type; defaults to `.withoutResponse` so all existing call
     ///     sites are unaffected. Pass `.withResponse` for acked commands (e.g. historicalDataResult).
     public func send(_ command: WhoopCommand, payload: [UInt8] = [0x00],
-                     writeType: CBCharacteristicWriteType = .withoutResponse) {
+                     writeType: CBCharacteristicWriteType = .withResponse) {
         guard let p = peripheral, let ch = cmdCharacteristic else {
             log("send(\(command.label)) ignored — not connected")
             return
         }
         seq = seq &+ 1
         // WHOOP 5.0 requires Maverick-wrapped writes for all commands (PROTO-05, resolved).
-        // golden corpus (frames_5_golden.json): all 27 writes to FD4B0002 are Maverick [AA][01][len][body][trailer].
-        // The 4.0 frame() format has 0% pass rate on 5.0 firmware (FINDINGS_5.md §7 PROTO-04).
+        // VERIFIED from PacketLogger 2026-06-01: ALL 228 writes from official app used ATT Write
+        // Request (0x12 = withResponse). ATT Write Command (0x52 = withoutResponse) is silently
+        // ignored by the WHOOP 5.0 BLE stack — commands sent without response never get processed.
         let frame = command.maverickFrame(seq: seq, payload: payload)
         p.writeValue(Data(frame), for: ch, type: writeType)
         log("→ \(command.label) payload=\(hex(payload))")
