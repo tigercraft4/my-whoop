@@ -56,7 +56,7 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 
 - [x] **Phase 14: Critical Bug Fixes (Data Layer)** — Wire computed metrics into views and clean corrupt HRV baseline (completed 2026-06-01)
 - [x] **Phase 15: Ghidra IPA Deep-Dive** — Map every official-app screen and decode Keytel coefficients; produce the UI source-of-truth (completed 2026-06-01)
-- [ ] **Phase 16: Repo Cleanup + Gen4 Sweep** — Reorganise folders and remove dead WHOOP 4.0 code without architecture changes
+- [x] **Phase 16: Repo Cleanup + Gen4 Sweep** — Reorganise folders and remove dead WHOOP 4.0 code without architecture changes (completed 2026-06-01)
 - [ ] **Phase 17: UI Redesign 1:1** — Replicate each screen against Ghidra findings with snapshot + simulator validation
 - [ ] **Phase 18: Hardware Validation (parallel-eligible)** — Verify SpO₂, skin temp and respiration against ground truth; does NOT gate v4.0 ship
 
@@ -157,7 +157,7 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 | 13. Backend Parity | v3.0 | 4/4 | Complete | 2026-06-01 |
 | 14. Critical Bug Fixes (Data Layer) | v4.0 | 2/2 | Complete    | 2026-06-01 |
 | 15. Ghidra IPA Deep-Dive | v4.0 | 3/3 | Complete    | 2026-06-01 |
-| 16. Repo Cleanup + Gen4 Sweep | v4.0 | 0/? | Not started | - |
+| 16. Repo Cleanup + Gen4 Sweep | v4.0 | 4/4 | Complete   | 2026-06-01 |
 | 17. UI Redesign 1:1 | v4.0 | 0/? | Not started | - |
 | 18. Hardware Validation (parallel-eligible) | v4.0 | 0/? | Not started | - |
 
