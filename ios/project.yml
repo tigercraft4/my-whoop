@@ -6,9 +6,9 @@ options:
   createIntermediateGroups: true
 packages:
   WhoopProtocol:
-    path: ../Packages/WhoopProtocol
+    path: Packages/WhoopProtocol
   WhoopStore:
-    path: ../Packages/WhoopStore
+    path: Packages/WhoopStore
 targets:
   OpenWhoop:
     type: application
