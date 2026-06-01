@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: — WHOOP Parity
-status: planning
-last_updated: "2026-06-01T19:04:58.663Z"
-last_activity: 2026-06-01
+status: Awaiting next milestone
+last_updated: "2026-06-01T19:08:57.079Z"
+last_activity: 2026-06-01 — Milestone v3.0 completed and archived
 progress:
   total_phases: 4
   completed_phases: 2
@@ -32,14 +32,10 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 ## Current Position
 
-Phase: 999.1 of 4 (follow up — phase 1 android device items (backlog))
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-01
-
-Progress: [██████████] 100%
-
----
+Phase: Milestone v3.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-01 — Milestone v3.0 completed and archived
 
 ## Accumulated Context
 
@@ -96,6 +92,24 @@ Items deferred from Phase 12 (hardware-dependent):
 
 Root cause: All gaps require physical hardware not available in sandbox.
 
+Items acknowledged and deferred at v3.0 milestone close on 2026-06-01:
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug_session | buzz-nao-funciona | root_cause_found (stale — haptics VERIFICADOS 2026-06-01) |
+| uat_gap | Phase 02 / 02-HUMAN-UAT.md | partial (hardware-dependent) |
+| uat_gap | Phase 05 / 05-HUMAN-UAT.md — 3 scenarios | partial (hardware-dependent) |
+| uat_gap | Phase 07 / 07-HUMAN-UAT.md — 4 scenarios | partial (hardware-dependent) |
+| uat_gap | Phase 13 / 13-HUMAN-UAT.md — 4 scenarios | partial (hardware-dependent) |
+| verification_gap | Phase 01 / 01-VERIFICATION.md | gaps_found (Android — Fase 999.1) |
+| verification_gap | Phase 02 / 02-VERIFICATION.md | human_needed (hardware-dependent) |
+| verification_gap | Phase 05 / 05-VERIFICATION.md | human_needed (hardware-dependent) |
+| verification_gap | Phase 07 / 07-VERIFICATION.md | human_needed (hardware-dependent) |
+| verification_gap | Phase 13 / 13-VERIFICATION.md | human_needed (hardware-dependent) |
+| todo | ios-packetlogger-haptics-capture.md | stale (haptics VERIFICADOS 2026-06-01) |
+
+Known deferred items at v3.0 close: 11 (see Deferred Items above)
+
 ---
 
 ## Session Continuity
@@ -114,3 +128,7 @@ Resume file: .planning/phases/999.1-follow-up-phase-1-android-device-items-backl
 | Phase | Plan | Duration | Notes |
 |-------|------|----------|-------|
 | Phase 13 P04 | 25 | 2 tasks | 9 files |
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

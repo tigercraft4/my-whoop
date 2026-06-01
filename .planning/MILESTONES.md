@@ -1,5 +1,17 @@
 # Milestones — WHOOP 5.0
 
+## v3.0 WHOOP Parity (Shipped: 2026-06-01)
+
+**Phases completed:** 3 phases, 7 plans, 2 tasks
+
+**Key accomplishments:**
+
+- Four WHOOP-parity label fixes in SleepView.swift: SLEEP PERFORMANCE, HOURS OF SLEEP, SLEEP LATENCY, SKIN TEMP with °C from baseline unit; D-04 (AWAKE 4th stage) confirmed already satisfied.
+- One-liner:
+- One-liner:
+
+---
+
 ---
 
 ## v1.0 — WHOOP 5.0 Protocol + iOS App
