@@ -894,23 +894,38 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
     /// Confirmed payload format: [0x01] + ASCII name (from capture_all-V3.pklg).
     private func setFFValues() {
         BLEManager.logger.notice("BF: SET_FF_VALUE for \(self.ffNames.count, privacy: .public) flags")
-        if ffNames.isEmpty {
-            // No names received — use the confirmed flags from the golden corpus.
-            for name in ["enable_r22_pack", "enable_r22_v2_p", "enable_r22_v3_p", "enable_r22_v4_p"] {
-                let payload: [UInt8] = [0x01] + Array(name.utf8)
-                send(.setFFValue, payload: payload)
-            }
-        } else {
-            for name in ffNames {
-                let payload: [UInt8] = [0x01] + Array(name.utf8)
-                send(.setFFValue, payload: payload)
-            }
+        // Payload format VERIFIED from PacketLogger 2026-06-01 (official WHOOP app):
+        // [0x01][name: 63 bytes null-padded][version: 1 byte] = 65 bytes total
+        // Most features use version=0x32(50); enable_r22_v4_packets and
+        // enable_passive_strap_fit_gen5 use version=0x31(49).
+        let featureVersions: [String: UInt8] = [
+            "enable_r22_v4_packets": 0x31,
+            "enable_passive_strap_fit_gen5": 0x31,
+        ]
+        func ffPayload(for name: String) -> [UInt8] {
+            var payload: [UInt8] = [0x01]
+            let nameBytes = Array(name.utf8.prefix(63))
+            payload.append(contentsOf: nameBytes)
+            payload.append(contentsOf: [UInt8](repeating: 0x00, count: 63 - nameBytes.count))
+            payload.append(featureVersions[name] ?? 0x32)
+            return payload  // 65 bytes
+        }
+        let names: [String] = ffNames.isEmpty ? [
+            // Full 15 feature names VERIFIED from PacketLogger capture 2026-06-01:
+            "enable_r22_packets", "enable_r22_v2_packets", "enable_r22_v3_packets",
+            "enable_r22_v4_packets", "enable_r22_v5_packets", "enable_r22_v6_packets",
+            "enable_r22_v8_packets", "make_hrfm_visible", "disable_pip_r26_packets",
+            "wear_detect_bias", "hr_ch_switching", "ir_hw_switching",
+            "enable_passive_strap_fit_gen5", "enable_sig11_during_sleep", "dorset_inhibit_wpt",
+        ] : ffNames
+        for name in names {
+            send(.setFFValue, payload: ffPayload(for: name))
         }
         ffExchangeTimeout?.cancel()
         ffExchangeTimeout = nil
         ffExchangePending = false
         requestSync(.connect)
-        BLEManager.logger.notice("BF: FF exchange complete — requestSync(.connect) triggered")
+        BLEManager.logger.notice("BF: FF exchange complete (\(names.count, privacy: .public) flags) — requestSync(.connect) triggered")
     }
 
     /// Newest plausible-unix marker in a GET_DATA_RANGE COMMAND_RESPONSE = the strap's newest stored
@@ -969,20 +984,32 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
                 if frame.count > cmdOff {
                     let respCmd = frame[cmdOff]
                     if respCmd == WhoopCommand.startFFKeyExchange.rawValue && ffExchangePending {
-                        // Strap responded: payload[2] holds the number of FF entries.
+                        // Response body (Maverick): [cmd=0x75][?][status][flag][numFF][0x00]
+                        // Verified from PacketLogger 2026-06-01: bytes=[75 07 01 01 0F 00] → numFF at payloadOff+3
                         let payloadOff = isMav ? 11 : 7
-                        let numFF = frame.count > payloadOff + 2 ? Int(frame[payloadOff + 2]) : 4
-                        ffRoundsRemaining = min(numFF, 8)   // cap defensively
+                        let numFF = frame.count > payloadOff + 3 ? Int(frame[payloadOff + 3]) : 15
+                        ffRoundsRemaining = max(numFF, 0)
                         ffNames = []
                         BLEManager.logger.notice("BF: FF exchange started, \(self.ffRoundsRemaining, privacy: .public) entries")
-                        sendNextFFRound()
+                        if ffRoundsRemaining > 0 {
+                            sendNextFFRound()
+                        } else {
+                            setFFValues()  // numFF=0 means device already has FF state; skip pull, send SET
+                        }
                     } else if respCmd == WhoopCommand.sendNextFF.rawValue && ffRoundsRemaining > 0 {
-                        // Extract FF name from response payload (ASCII string after first byte).
-                        let nameOff = isMav ? 12 : 8
+                        // Response body: [cmd=0x76][idx][flag1][flag2][enabled][name_ascii][zeros]
+                        // Verified: name starts at frame[15] (nameOff=15), not frame[12].
+                        let nameOff = isMav ? 15 : 11
                         if frame.count > nameOff {
-                            let nameBytes = frame[nameOff ..< frame.count - 4]  // strip 4-byte trailer
-                            if let name = String(bytes: nameBytes, encoding: .utf8)?.trimmingCharacters(in: .controlCharacters) {
-                                ffNames.append(name)
+                            let endOff = frame.count - 4  // strip 4-byte CRC trailer
+                            if endOff > nameOff {
+                                let nameBytes = frame[nameOff ..< endOff]
+                                if let name = String(bytes: nameBytes, encoding: .utf8)?
+                                    .trimmingCharacters(in: .controlCharacters)
+                                    .trimmingCharacters(in: CharacterSet(charactersIn: "\0")),
+                                   !name.isEmpty {
+                                    ffNames.append(name)
+                                }
                             }
                         }
                         ffRoundsRemaining -= 1
