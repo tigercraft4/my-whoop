@@ -335,7 +335,10 @@ final class ServerSync {
         // LIMIT 1 on the server, so it returns the latest row even if it falls outside the
         // derivedWindowDays window (e.g. the user hasn't synced in over 60 days, or the server
         // computed a row for a date that is newer than the window edge).
-        if let todayMetric = await getTodayMetric() {
+        // WR-03: skip the redundant fetch when today's row is already in the /v1/daily result.
+        let todayStr = fmt.string(from: now)
+        if !days.contains(where: { $0.day == todayStr }),
+           let todayMetric = await getTodayMetric() {
             try? await store.upsertDailyMetrics([todayMetric], deviceId: deviceId)
         }
 
