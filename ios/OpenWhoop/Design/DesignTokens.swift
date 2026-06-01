@@ -3,38 +3,49 @@ import SwiftUI
 // MARK: - Design Tokens
 // Single source of truth for all visual constants used across the app.
 // A dark, high-contrast aesthetic for at-a-glance biometric readouts.
+// MARK: - Verified from WHOOP 5.37.0 Assets.car (Phase 17 UI-01)
+// Extracted via assetutil -I Payload/Whoop.app/Assets.car on 2026-06-01
 
 enum WH {
 
     // MARK: Colors
 
     enum Color {
-        /// Near-black app background
-        static let background      = SwiftUI.Color(hex: "#0B0B0F")
-        /// Slightly lifted card/surface
-        static let surface         = SwiftUI.Color(hex: "#16171C")
-        /// Second-level surface (elevated cards, modal backgrounds)
+        /// Near-black app background (backgroundBlack — approximate, not in Assets.car color set)
+        static let background      = SwiftUI.Color(hex: "#000000")
+        /// Slightly lifted card/surface (Grey Blue — #1A2227 from Assets.car)
+        static let surface         = SwiftUI.Color(hex: "#1A2227")
+        /// Second-level surface (elevated cards, modal backgrounds — approximate)
         static let surface2        = SwiftUI.Color(hex: "#1F2128")
         /// Primary text — full white
         static let textPrimary     = SwiftUI.Color(hex: "#FFFFFF")
-        /// Secondary / subdued text
+        /// Secondary / subdued text (White 50 at 50% opacity used for labels — approximate)
         static let textSecondary   = SwiftUI.Color(hex: "#8A8F98")
-        /// Hairline separators
+        /// Hairline separators — approximate
         static let separator       = SwiftUI.Color(hex: "#2A2C33")
 
-        // Recovery band
-        static let recoveryGreen   = SwiftUI.Color(hex: "#16EC06")
-        static let recoveryYellow  = SwiftUI.Color(hex: "#FFDE00")
-        static let recoveryRed     = SwiftUI.Color(hex: "#FF0026")
+        // Recovery band — verified from Assets.car "Recovery High/Medium/Low"
+        static let recoveryGreen   = SwiftUI.Color(hex: "#19EC06")  // Recovery High (was #16EC06)
+        static let recoveryYellow  = SwiftUI.Color(hex: "#FFDE00")  // Recovery Medium ✓ exact
+        static let recoveryRed     = SwiftUI.Color(hex: "#FF0026")  // Recovery Low ✓ exact
 
-        // Accents
-        static let strainBlue      = SwiftUI.Color(hex: "#0093E7")
+        // Accents — verified from Assets.car "Day Strain"
+        static let strainBlue      = SwiftUI.Color(hex: "#0093E7")  // Day Strain ✓ exact (low zone 0–9)
         /// Alias for strainBlue — used as the primary accent on the Strain ring and tab
         static let strainAccent    = strainBlue
+        /// Medium strain zone (10–17) — same hue, darker shade (approximate — not in Assets.car)
+        static let strainBlueMedium = SwiftUI.Color(hex: "#0077C2")  // approximate
+        /// High strain zone (18–21) — deeper blue (approximate — not in Assets.car)
+        static let strainBlueHigh  = SwiftUI.Color(hex: "#005A99")  // approximate
         /// HRV teal — distinct from recoveryGreen, pairs well on dark backgrounds
         static let teal            = SwiftUI.Color(hex: "#00C4B4")
-        /// Sleep/duration purple — matches sleep-stage feel
-        static let sleepPurple     = SwiftUI.Color(hex: "#7B61FF")
+        /// Sleep performance ring — verified from Assets.car "Sleep" (#7BA1BB, blue-grey)
+        static let sleepPurple     = SwiftUI.Color(hex: "#7BA1BB")  // was #7B61FF (purple → correct blue-grey)
+        /// Sleep need indicator — green (approximate — not in Assets.car as separate color)
+        static let sleepNeedGreen  = SwiftUI.Color(hex: "#19EC06")  // same as recoveryGreen — approximate
+
+        // Recovery gradient accent (darker green — approximate)
+        static let recoveryDarkerGreen = SwiftUI.Color(hex: "#0DB500")  // approximate
 
         // Ring track (faint)
         static let ringTrack       = SwiftUI.Color(white: 1, opacity: 0.08)
