@@ -190,6 +190,10 @@ public final class BLEManager: NSObject, ObservableObject {
             return
         }
         log("Scanning for service \(BLEManager.customService)…")
+        Task { @MainActor in
+            self.state.discoveredDevices = []
+            self.state.isScanning = true
+        }
         central.scanForPeripherals(
             withServices: [BLEManager.customService],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
@@ -637,8 +641,19 @@ extension BLEManager: @preconcurrency CBCentralManagerDelegate {
                                advertisementData: [String: Any],
                                rssi RSSI: NSNumber) {
         let name = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? "unknown"
-        log("Discovered \(name) (rssi \(RSSI)) — connecting")
+        log("Discovered \(name) (rssi \(RSSI.intValue))")
+        Task { @MainActor in
+            self.state.upsertDiscovered(peripheral, rssi: RSSI.intValue)
+        }
+    }
+
+    /// Connect to a specific peripheral chosen by the user from the device picker.
+    /// Stops scanning and initiates the CoreBluetooth connection (iOS will show the
+    /// bonding popup automatically if the peripheral requires pairing).
+    public func connectDevice(_ peripheral: CBPeripheral) {
         central.stopScan()
+        Task { @MainActor in self.state.isScanning = false }
+        log("Connecting to \(peripheral.name ?? peripheral.identifier.uuidString)")
         self.peripheral = peripheral
         peripheral.delegate = self
         central.connect(peripheral, options: nil)
@@ -647,6 +662,7 @@ extension BLEManager: @preconcurrency CBCentralManagerDelegate {
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         restoredPeripheral = nil
         state.connected = true
+        Task { @MainActor in self.state.isScanning = false }
         log("Connected — discovering services")
         peripheral.discoverServices([
             BLEManager.customService, BLEManager.gen4Service, BLEManager.heartRateService, BLEManager.batteryService,

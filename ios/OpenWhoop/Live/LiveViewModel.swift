@@ -56,6 +56,7 @@ public final class LiveViewModel: ObservableObject {
 
     public func connect()  { ble.connect() }
     public func disconnect() { ble.disconnect() }
+    public func connectDevice(_ device: DiscoveredDevice) { ble.connectDevice(device.peripheral) }
     /// Force a historical offload immediately, bypassing the rate limiter.
     public func forceBackfill() {
         UserDefaults.standard.removeObject(forKey: "backfillLastAt")

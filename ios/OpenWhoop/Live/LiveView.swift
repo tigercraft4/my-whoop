@@ -35,6 +35,7 @@ private struct LiveContentView: View {
     var metrics: MetricsRepository
 
     @State private var showingSettings = false
+    @State private var showingDevicePicker = false
 
     /// Research toggle, backed by the same UserDefaults key BLEManager.bootstrapStore() reads.
     /// Default false → decoded-only. bootstrapStore() reads this once when it builds the
@@ -107,6 +108,11 @@ private struct LiveContentView: View {
             // iOS 16: sheets don't reliably inherit environment objects — pass explicitly.
             SettingsView()
                 .environmentObject(metrics)
+        }
+        .sheet(isPresented: $showingDevicePicker) {
+            DevicePicker(isPresented: $showingDevicePicker)
+                .environmentObject(model)
+                .environmentObject(model.state)
         }
         .onAppear {
             if serverURL.isEmpty,
@@ -360,6 +366,7 @@ private struct LiveContentView: View {
                     consoleButton("Connect", icon: "antenna.radiowaves.left.and.right",
                                   accent: WH.Color.strainBlue, prominent: true) {
                         model.connect()
+                        showingDevicePicker = true
                     }
                     consoleButton("Disconnect", icon: "xmark.circle",
                                   accent: WH.Color.textSecondary, prominent: false) {

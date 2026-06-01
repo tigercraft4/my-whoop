@@ -1,5 +1,19 @@
 import Foundation
 import Combine
+import CoreBluetooth
+
+public struct DiscoveredDevice: Identifiable {
+    public let id: UUID
+    public let peripheral: CBPeripheral
+    public var rssi: Int
+    public var name: String { peripheral.name ?? "WHOOP" }
+
+    public init(peripheral: CBPeripheral, rssi: Int) {
+        self.id = peripheral.identifier
+        self.peripheral = peripheral
+        self.rssi = rssi
+    }
+}
 
 /// Observable snapshot of the live connection + biometric state, driven by FrameRouter
 /// (from decoded frames) and BLEManager (from CoreBluetooth callbacks).
@@ -8,6 +22,8 @@ import Combine
 public final class LiveState: ObservableObject {
     @Published public var connected: Bool = false
     @Published public var bonded: Bool = false
+    @Published public var isScanning: Bool = false
+    @Published public var discoveredDevices: [DiscoveredDevice] = []
     @Published public var heartRate: Int? = nil
     @Published public var rr: [Int] = []
     @Published public var batteryPct: Double? = nil
@@ -29,6 +45,14 @@ public final class LiveState: ObservableObject {
     public var onBatteryUpdate: ((Double) -> Void)?
 
     public init() {}
+
+    public func upsertDiscovered(_ peripheral: CBPeripheral, rssi: Int) {
+        if let i = discoveredDevices.firstIndex(where: { $0.id == peripheral.identifier }) {
+            discoveredDevices[i].rssi = rssi
+        } else {
+            discoveredDevices.append(DiscoveredDevice(peripheral: peripheral, rssi: rssi))
+        }
+    }
 
     /// Single funnel for battery readings — updates the published value AND notifies the hook,
     /// so both write sites (FrameRouter, BLEManager) drive the alert monitor identically.
