@@ -422,7 +422,7 @@ struct TodayView: View {
     }
 
     private func relativeTime(from date: Date) -> String {
-        let elapsed = Int(-date.timeIntervalSinceNow)
+        let elapsed = max(0, Int(-date.timeIntervalSinceNow))
         switch elapsed {
         case ..<5:   return "just now"
         case ..<60:  return "\(elapsed)s ago"
