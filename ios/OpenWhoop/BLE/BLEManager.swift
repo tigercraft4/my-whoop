@@ -1006,7 +1006,7 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
                 router.handle(frame: frame)                       // UI (always)
                 let isMav = frame.count > 1 && frame[1] == 0x01
                 let cmdOff = isMav ? 10 : 6
-                let ptype = frame.count > (isMav ? 8 : 4) ? frame[isMav ? 8 : 4] : 0
+                _ = frame.count > (isMav ? 8 : 4) ? frame[isMav ? 8 : 4] : 0  // ptype (unused after debug removal)
                 if frame.count > cmdOff, frame[cmdOff] == WhoopCommand.getDataRange.rawValue,
                    let newest = BLEManager.dataRangeNewestUnix(from: frame) {
                     strapNewestTs = newest                        // feeds the liveness watchdog

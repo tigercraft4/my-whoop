@@ -328,7 +328,7 @@ final class ServerSync {
         // /v1/daily over the window. This is the authoritative list of days WITH data.
         guard let days = await getDaily(from: fromDay, to: toDay) else { return }
         if !days.isEmpty {
-            try? await store.upsertDailyMetrics(days, deviceId: deviceId)
+            _ = try? await store.upsertDailyMetrics(days, deviceId: deviceId)
         }
 
         // Ensure the most-recent daily row is always present — /v1/today uses ORDER BY day DESC
@@ -339,14 +339,14 @@ final class ServerSync {
         let todayStr = fmt.string(from: now)
         if !days.contains(where: { $0.day == todayStr }),
            let todayMetric = await getTodayMetric() {
-            try? await store.upsertDailyMetrics([todayMetric], deviceId: deviceId)
+            _ = try? await store.upsertDailyMetrics([todayMetric], deviceId: deviceId)
         }
 
         // /v1/sleep is per-date; fetch ONLY the days that appear in /v1/daily (days with computed
         // metrics) rather than every calendar day in the window. Idempotent upserts.
         for metric in days {
             if let sessions = await getSleep(date: metric.day), !sessions.isEmpty {
-                try? await store.upsertSleepSessions(sessions, deviceId: deviceId)
+                _ = try? await store.upsertSleepSessions(sessions, deviceId: deviceId)
             }
         }
     }

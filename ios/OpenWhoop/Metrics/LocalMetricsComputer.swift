@@ -76,12 +76,15 @@ struct LocalMetricsComputer {
 
         let sortedDays = hrByDay.keys.sorted()
 
+        // Load lookup tables once — used in both passes.
+        let strainScaleLUT = loadStrainScaleLUT()
+        let recoveryToStrainTable = loadRecoveryToStrainTable()
+        let profile = ProfileStorage.load()
+
         // First pass: compute per-day resting HR, HRV, strain.
-        // We need these before computing recovery (which needs HRV history) and
-        // sleep-needed (which needs TST history).
-        var dailyHRV: [String: Double] = [:]      // day → overnight rMSSD
-        var dailyStrain: [String: Double] = [:]   // day → WHOOP-scaled strain
-        var dailyRestingHR: [String: Int] = [:]   // day → min bpm overnight
+        var dailyHRV: [String: Double] = [:]
+        var dailyStrain: [String: Double] = [:]
+        var dailyRestingHR: [String: Int] = [:]
 
         for day in sortedDays {
             guard let dayHR = hrByDay[day], !dayHR.isEmpty else { continue }
@@ -104,16 +107,10 @@ struct LocalMetricsComputer {
             }
 
             // Full-day strain (00:00–24:00 UTC).
-            let strain = computeStrain(dayHR: dayHR, dayStart: overnightStart)
-            dailyStrain[day] = strain
+            dailyStrain[day] = computeStrain(dayHR: dayHR, dayStart: overnightStart, lut: strainScaleLUT)
         }
 
-        // Load user profile for calorie computation.
-        let profile = ProfileStorage.load()
-
-        // Load bundled lookup tables.
-        let strainScaleLUT = loadStrainScaleLUT()
-        let recoveryToStrainTable = loadRecoveryToStrainTable()
+        // (tables and profile already loaded above)
 
         // Second pass: compute all derived metrics with full history available.
         var dailyMetrics: [DailyMetric] = []
@@ -122,7 +119,7 @@ struct LocalMetricsComputer {
 
         for (idx, day) in sortedDays.enumerated() {
             guard let dayHR = hrByDay[day], !dayHR.isEmpty else { continue }
-            let dayRR = rrByDay[day] ?? []
+            // (dayRR not needed in second pass — HRV already in dailyHRV from first pass)
 
             // --- Recovery from rolling HRV baseline (28 nights) ---
             let priorDays = sortedDays[0..<idx]
@@ -192,10 +189,10 @@ struct LocalMetricsComputer {
         }
 
         if !dailyMetrics.isEmpty {
-            try? await store.upsertDailyMetrics(dailyMetrics, deviceId: deviceId)
+            _ = try? await store.upsertDailyMetrics(dailyMetrics, deviceId: deviceId)
         }
         if !sleepSessions.isEmpty {
-            try? await store.upsertSleepSessions(sleepSessions, deviceId: deviceId)
+            _ = try? await store.upsertSleepSessions(sleepSessions, deviceId: deviceId)
         }
     }
 
@@ -211,7 +208,7 @@ struct LocalMetricsComputer {
         return max(150, 220 - age)
     }
 
-    private func computeStrain(dayHR: [HRSample], dayStart: TimeInterval) -> Double {
+    private func computeStrain(dayHR: [HRSample], dayStart: TimeInterval, lut: [(Double, Double)]) -> Double {
         let profile = ProfileStorage.load()
         let maxHR = Double(hrMax(profile: profile))
         let dayEnd = dayStart + 86_400
@@ -224,14 +221,14 @@ struct LocalMetricsComputer {
 
         var rawTRIMP: Double = 0
         for i in 1..<samples.count {
-            let dt = Double(samples[i].ts - samples[i-1].ts) / 60.0  // minutes
-            guard dt > 0, dt < 30 else { continue }                   // skip big gaps
+            let dt = Double(samples[i].ts - samples[i-1].ts) / 60.0
+            guard dt > 0, dt < 30 else { continue }
             let hrFrac = Double(samples[i].bpm) / maxHR
             let zone = zoneFor(hrFrac: hrFrac)
             rawTRIMP += dt * Self.zoneWeights[zone] * Self.rawConversion
         }
 
-        return scaleStrain(raw: rawTRIMP, lut: loadStrainScaleLUT())
+        return scaleStrain(raw: rawTRIMP, lut: lut)
     }
 
     private func zoneFor(hrFrac: Double) -> Int {
