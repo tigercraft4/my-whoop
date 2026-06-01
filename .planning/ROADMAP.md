@@ -170,10 +170,10 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 **Goal:** [Urgent work - to be planned]
 **Requirements**: TBD
 **Depends on:** Phase 18
-**Plans:** 0 plans
+**Plans:** 4/4 plans complete
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 18.1 to break down)
+- [x] TBD (run /gsd-plan-phase 18.1 to break down) (completed 2026-06-01)
 
 ### Phase 18.1.1: WHOOP API Historical Dump (INSERTED)
 
@@ -185,6 +185,16 @@ Plans:
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 18.1.1 to break down)
+
+### Phase 18.1.1.1: Algorithm RE: Recovery + Sleep Local Model (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 18.1.1
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 18.1.1.1 to break down)
 
 ### Phase 999.2: Hardware validation — v1.0 UNCERTAIN items (BACKLOG)
 
