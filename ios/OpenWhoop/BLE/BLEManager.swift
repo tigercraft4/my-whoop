@@ -403,12 +403,10 @@ public final class BLEManager: NSObject, ObservableObject {
         backfillFrameQueue.removeAll()
         log("Backfill: session ended — reason=\(reason)")
         BLEManager.logger.notice("BF: session ended reason=\(reason, privacy: .public)")
+        // OFFLINE-FIRST: server is backup only — no download after backfill.
+        // LocalMetricsComputer derives all metrics from local BLE data.
+        // Upload to server happens opportunistically as background backup.
         uploadOpportunistically()
-        // Read-path sync runs AFTER the offload, never concurrently with it — the offload and the
-        // pull share the WhoopStore actor, and a large first-run pull would starve the Backfiller's
-        // per-chunk insert→ack and trip the 20s offload watchdog. Safe to run now: backfilling=false.
-        restoreFromServerIfNeeded()  // once-per-launch: full history restore if the store is empty
-        pullFromServer()             // incremental pull: new rows since read-highwater
         if reason == "HISTORY_COMPLETE" {
             state.lastSyncedAt = Date().timeIntervalSince1970
             UserDefaults.standard.set(state.lastSyncedAt, forKey: "lastSyncedAt")
@@ -446,23 +444,17 @@ public final class BLEManager: NSObject, ObservableObject {
         Task { await uploader.drain() }
     }
 
-    /// Fire-and-forget server pull: GET new decoded streams + derived metrics since the read
-    /// highwater and upsert locally (History = union(phone-collected, server-computed)). Best-effort
-    /// — a pull failure never affects the BLE connection. No-op when serverSync is nil (unconfigured).
+    /// OFFLINE-FIRST: server pull is disabled — server is backup only.
+    /// Local SQLite (WhoopStore) is the single source of truth.
+    /// This stub is kept so call-sites compile; remove call-sites if no longer needed.
     private func pullFromServer() {
-        guard let serverSync else { return }
-        Task { await serverSync.pull() }
+        // No-op: server is backup only. Data flows phone→server, never server→phone.
     }
 
-    /// Attempt a once-per-launch cloud restore if the local store is empty (fresh reinstall). If
-    /// the store is non-empty `restoreIfEmpty()` returns false immediately (< 1ms). Best-effort —
-    /// a failure never affects the BLE connection. The `didAttemptRestore` flag prevents re-running
-    /// on subsequent reconnects within the same process lifetime; the emptiness check in
-    /// `restoreIfEmpty()` itself makes this doubly safe.
+    /// OFFLINE-FIRST: restore from server is disabled.
+    /// On fresh install, data comes from the WHOOP strap via BLE backfill, not from the server.
     private func restoreFromServerIfNeeded() {
-        guard !didAttemptRestore, let serverSync else { return }
-        didAttemptRestore = true
-        Task { await serverSync.restoreIfEmpty() }
+        // No-op: server is backup only.
     }
 
     /// Start (or restart) the periodic upload timer so the server stays current during a long
@@ -475,10 +467,8 @@ public final class BLEManager: NSObject, ObservableObject {
         t.schedule(deadline: .now() + .seconds(interval), repeating: .seconds(interval))
         t.setEventHandler { [weak self] in
             guard let self else { return }
+            // OFFLINE-FIRST: upload only — server receives data as backup, never sends back.
             self.uploadOpportunistically()
-            // Keep the local union current with server-computed metrics — but never while an offload
-            // is in flight (the pull would starve the Backfiller's insert→ack on the shared actor).
-            if !self.backfilling { self.pullFromServer() }
         }
         t.resume()
         uploadTimer = t

@@ -137,21 +137,19 @@ final class MetricsRepository: ObservableObject {
     /// Refresh metrics: compute locally from raw BLE streams (always), then pull from the server
     /// if configured (server values take priority via ON CONFLICT DO UPDATE), then reload cache.
     ///
-    /// Order of operations:
-    ///   1. computeLocalMetrics() — derive sleep/daily from hrSample + rrInterval (offline-first)
-    ///   2. serverSync?.pullDerived() — overwrite with server values when configured (optional)
-    ///   3. load() — reload published properties from the updated cache
+    /// Order of operations (OFFLINE-FIRST — server is backup only):
+    ///   1. computeLocalMetrics() — derive sleep/daily from hrSample + rrInterval
+    ///   2. load() — reload published properties from the updated cache
     ///
-    /// Safe when serverSync == nil (steps 1 + 3 always run). Never throws.
+    /// Server pull is intentionally removed: local SQLite is the single source of truth.
+    /// Upload to server happens separately via uploadOpportunistically() as background backup.
     func refresh() async {
         await ensureOpen()
         isRefreshing = true
         lastError = nil
-        // Step 1: offline-first local derivation from raw BLE streams.
+        // Offline-first: derive all metrics from local BLE data.
         await runLocalCompute()
-        // Step 2: server pull overwrites local estimates when the server is configured.
-        await serverSync?.pullDerived()
-        // Step 3: reload published properties from the updated cache.
+        // Reload published properties from the updated cache.
         await load()
         isRefreshing = false
         lastRefreshedAt = Date()
