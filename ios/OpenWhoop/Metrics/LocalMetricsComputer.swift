@@ -263,17 +263,28 @@ struct LocalMetricsComputer {
         return arr.compactMap { row in row.count >= 2 ? (row[0], row[1]) : nil }
     }
 
-    // MARK: - Recovery (simplified HRV baseline)
+    // MARK: - Recovery (calibrated HRV baseline)
+
+    /// Load calibrated coefficients from recovery_coefficients.json.
+    /// Falls back to (slope: 54.48, intercept: -0.27) — values from personal calibration.
+    private static let recoveryCoefficients: (slope: Double, intercept: Double) = {
+        guard let url = Bundle.main.url(forResource: "recovery_coefficients", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Double]
+        else { return (slope: 54.48, intercept: -0.27) }
+        return (slope: obj["hrv_slope"] ?? 54.48, intercept: obj["hrv_intercept"] ?? -0.27)
+    }()
 
     /// Recovery 0–100 from overnight rMSSD vs rolling baseline.
+    /// Coefficients calibrated via linear regression on personal WHOOP historical data.
     /// ≥ 3 prior nights required; returns nil otherwise.
     private func computeRecovery(currentHRV: Double?, hrvHistory: [Double]) -> Double? {
         guard let hrv = currentHRV, hrvHistory.count >= 2 else { return nil }
         let baseline = hrvHistory.reduce(0, +) / Double(hrvHistory.count)
         guard baseline > 0 else { return nil }
-        // Scale: hrv / baseline → [0, 1] range clamped to [33, 100]
         let ratio = hrv / baseline
-        let score = min(100.0, max(33.0, ratio * 66.0 + 33.0))
+        let c = Self.recoveryCoefficients
+        let score = min(100.0, max(0.0, c.slope * ratio + c.intercept))
         return score.rounded()
     }
 

@@ -177,14 +177,14 @@ Plans:
 
 ### Phase 18.1.1: WHOOP API Historical Dump (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
+**Goal:** Pull histórico completo da WHOOP antes do premium acabar e importar para iOS GRDB.
 **Requirements**: TBD
 **Depends on:** Phase 18.1
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 18.1.1 to break down)
+- [x] WHOOP-DUMP-01: CSV Export Import para iOS GRDB (completed 2026-06-02)
 
 ### Phase 18.1.1.1: Algorithm RE: Recovery + Sleep Local Model (INSERTED)
 

@@ -65,6 +65,7 @@
 		900185951C44B1AF706769A7 /* BackfillPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F702F2AD8F02E6ED92616B93 /* BackfillPolicy.swift */; };
 		924BECC3779D505CC7D60F69 /* testSleepCard_empty.1.png in Resources */ = {isa = PBXBuildFile; fileRef = 41EDDE53A896D0744D7C4535 /* testSleepCard_empty.1.png */; };
 		92D80FB66E49F143F2307001 /* Sparkline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9611F9C742F28E03FF790D /* Sparkline.swift */; };
+		94E682D3684778389866C4EF /* recovery_coefficients.json in Resources */ = {isa = PBXBuildFile; fileRef = DFD96667F310C43C86172AE6 /* recovery_coefficients.json */; };
 		95CC3BE46D6BC577B28C517A /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6437438DA334C51F012A8A6 /* AppConfig.swift */; };
 		96D6933A9B33095092E6C94E /* StuckStrapDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3AA55747B49F383C2EF8A7 /* StuckStrapDetector.swift */; };
 		96F5771A5436FBE30FF2FFE2 /* strain_raw_scale_lookup.json in Resources */ = {isa = PBXBuildFile; fileRef = B952D87E96740E5A20D89B5D /* strain_raw_scale_lookup.json */; };
@@ -225,6 +226,7 @@
 		D932BB1E190F7CCA4B3F616D /* StorePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorePaths.swift; sourceTree = "<group>"; };
 		DD1F7681954F566B353D9EAF /* SleepCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepCard.swift; sourceTree = "<group>"; };
 		DDAD957F246940FC88994981 /* SevenNightChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SevenNightChart.swift; sourceTree = "<group>"; };
+		DFD96667F310C43C86172AE6 /* recovery_coefficients.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = recovery_coefficients.json; sourceTree = "<group>"; };
 		E155BB162444DD651C3441FC /* DevicePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePicker.swift; sourceTree = "<group>"; };
 		E296739AEC7207E22E927F54 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		E3603EA7004D8573ECECE029 /* BackfillPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillPolicyTests.swift; sourceTree = "<group>"; };
@@ -309,6 +311,7 @@
 		28186BD9DACEF56B625CB290 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				DFD96667F310C43C86172AE6 /* recovery_coefficients.json */,
 				1CB25312FD9988470DF89F25 /* recovery_to_strain.json */,
 				B952D87E96740E5A20D89B5D /* strain_raw_scale_lookup.json */,
 			);
@@ -712,6 +715,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F0019E8F9A83D7D6D50A5E3D /* Assets.xcassets in Resources */,
+				94E682D3684778389866C4EF /* recovery_coefficients.json in Resources */,
 				99E6E2261B88B3A373A7023F /* recovery_to_strain.json in Resources */,
 				96F5771A5436FBE30FF2FFE2 /* strain_raw_scale_lookup.json in Resources */,
 			);

@@ -1,0 +1,8 @@
+{
+  "hrv_slope": 54.4833,
+  "hrv_intercept": -0.2683,
+  "r2": 0.4877,
+  "mae": 11.98,
+  "n_samples": 30,
+  "baseline_window_days": 28
+}
