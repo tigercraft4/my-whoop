@@ -1,6 +1,70 @@
 # WHOOP 5.0 BLE Protocol — Reverse-Engineering Findings
 
-_Last updated: 2026-05-31. Working dir: `~/Documents/my-whoop`. Target: the user's own WHOOP 5.0 (serial `[REDACTED]`, macOS BLE UUID `[REDACTED]`). Hardware revision `WG50_r52`. v1.0 shipped._
+_Last updated: 2026-06-01. Working dir: `~/Documents/my-whoop`. Target: the user's own WHOOP 5.0 (serial `[REDACTED]`, macOS BLE UUID `[REDACTED]`). Hardware revision `WG50_r52`. v1.0 shipped. Phase 15 Ghidra IPA analysis added 2026-06-01._
+
+---
+
+## Phase 15 — Ghidra IPA Deep-Dive Summary (2026-06-01)
+
+**Source:** WHOOP iOS IPA 5.37.0 (`Whoop` binary, AARCH64 LE, image base `0x100000000`)
+**Method:** Ghidra 11 static analysis via MCP; clean-room — structural/data findings only, no pseudocode or proprietary assets.
+**Date:** 2026-06-01
+
+### Artifacts produced
+
+| Artifact | Description |
+|----------|-------------|
+| `FINDINGS_5.md` (this file) | GHIDRA-HB-01 + GHIDRA-02 sections + UI screen map summary |
+| `docs/specs/v4-ui-map.md` | Complete screen map: all 7 WHOOP tabs with Component Hierarchy, Colors, Spacing, Labels |
+| `.planning/notes/bugfix-04-findings.md` | BUGFIX-04 passive findings from Ghidra analysis |
+
+---
+
+## GHIDRA-HB-01: Harris-Benedict Resting Coefficients — CONFIRMED
+
+**Address:** `0x1058a5a80` (64 bytes, 8 doubles LE)
+**Status:** CONFIRMED — all 8 values match `server/ingest/app/analysis/calories.py` exactly.
+
+| Offset | Coefficient | Ghidra Value | calories.py | Match |
+|--------|-------------|--------------|-------------|-------|
+| `0x1058a5a80` | men resting_weight | 13.397 | 13.397 | YES |
+| `0x1058a5a88` | men resting_height | 479.9 | 479.9 | YES |
+| `0x1058a5a90` | men resting_age | -5.677 | -5.677 | YES |
+| `0x1058a5a98` | men resting_alpha | 88.362 | 88.362 | YES |
+| `0x1058a5aa0` | women resting_weight | 9.247 | 9.247 | YES |
+| `0x1058a5aa8` | women resting_height | 309.8 | 309.8 | YES |
+| `0x1058a5ab0` | women resting_age | -4.330 | -4.330 | YES |
+| `0x1058a5ab8` | women resting_alpha | 447.593 | 447.593 | YES |
+
+**Note:** These are revised Harris-Benedict (Roza & Shock 1984) RESTING coefficients. The Keytel WORKOUT coefficients are at a separate address (see GHIDRA-02).
+
+---
+
+## GHIDRA-02: Keytel Workout Coefficients — CONFIRMED
+
+**Address:** `0x1058a5ac0` (72 bytes — 8 Keytel doubles + divisor constant 251.04)
+**Function:** `calculateWorkoutCalories` @ `0x10025c264`
+**Status:** CONFIRMED — all 9 values (including divisor) match `calories.py` exactly. No correction needed.
+
+| Offset | Coefficient | Ghidra Value | calories.py | Match |
+|--------|-------------|--------------|-------------|-------|
+| `0x1058a5ac0` | men workout_hr | 0.6309 | 0.6309 | YES |
+| `0x1058a5ac8` | men workout_alpha | -55.0969 | -55.0969 | YES |
+| `0x1058a5ad0` | men workout_weight | 0.1988 | 0.1988 | YES |
+| `0x1058a5ad8` | men workout_age | 0.2017 | 0.2017 | YES |
+| `0x1058a5ae0` | _WORKOUT_DIVISOR | 251.04 | 251.04 | YES |
+| `0x1058a5ae8` | women workout_hr | 0.4472 | 0.4472 | YES |
+| `0x1058a5af0` | women workout_alpha | -20.4022 | -20.4022 | YES |
+| `0x1058a5af8` | women workout_weight | -0.1263 | -0.1263 | YES |
+| `0x1058a5b00` | women workout_age | 0.0740 | 0.0740 | YES |
+
+**Keytel formula verified:** `EE(kJ/min) = alpha + hr_coef*HR + weight_coef*weight_kg + age_coef*age`, divisor 251.04 (= 60 s/min × 4.184 kJ/kcal) converts to kcal/s.
+
+**Note on simplified coefficients:** There is also a second set of rounded/simplified Keytel coefficients at `0x1058a5a40` (e.g., men_hr=0.6, men_alpha=-50.0) — these appear to be used in a separate simplified estimation path, not in the main `calculateWorkoutCalories`. The precise Keytel values in `calories.py` are derived from the primary array at `0x1058a5ac0`.
+
+**BUGFIX-04 reference:** See `.planning/notes/bugfix-04-findings.md` for additional bugs found during Ghidra analysis.
+
+---
 
 ## Goal
 
