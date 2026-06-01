@@ -165,6 +165,22 @@ extension WhoopStore {
                 t.add(column: "gz", .double)
             }
         }
+        migrator.registerMigration("v9") { db in
+            // Phase-13 backend-parity metrics cached from /v1/daily and /v1/today so the
+            // Today/History views can display them without a network round-trip. All four
+            // are nullable (never .notNull() without .defaults): they require sufficient
+            // server-side data (and a device profile for calories) to be non-null.
+            //   sleepPerformance  ALG-10  sleep performance score (0–100)
+            //   trainingState     ALG-11  RESTORATIVE / OPTIMAL / OVERREACHING
+            //   sleepNeededMin    ALG-12  personalised sleep need (minutes)
+            //   totalCaloriesKcal ALG-13  total daily calories (RMR + exercise)
+            try db.alter(table: "dailyMetric") { t in
+                t.add(column: "sleepPerformance", .double)
+                t.add(column: "trainingState", .text)
+                t.add(column: "sleepNeededMin", .double)
+                t.add(column: "totalCaloriesKcal", .double)
+            }
+        }
         return migrator
     }
 }

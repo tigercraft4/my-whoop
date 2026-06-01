@@ -21,9 +21,16 @@ struct StrainCard: View {
         daily?.strain.map { String(format: "%.1f", $0) } ?? "—"
     }
 
-    /// Training State computed from the lookup table.
-    /// Returns nil when recovery is nil OR the table fails to load.
+    /// Training State badge label, server-first (ALG-11).
+    /// Prefers DailyMetric.trainingState computed by the server (Phase 13); falls back to the
+    /// bundled lookup table client-side for rows predating Phase 13 (trainingState nil).
+    /// Returns nil when neither source can produce a label (recovery nil OR table fails to load).
     private var trainingStateLabel: String? {
+        // Server value wins when present (Phase-13 backend parity).
+        if let serverState = daily?.trainingState, !serverState.isEmpty {
+            return serverState
+        }
+        // Fallback: client-side lookup for pre-Phase-13 rows.
         guard let recoveryFraction = daily?.recovery,
               let strain = daily?.strain else { return nil }
         // DailyMetric.recovery is stored as 0–1 fraction; lookup expects 0–100.

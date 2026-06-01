@@ -44,15 +44,24 @@ public struct DailyMetric: Equatable, Codable {
     public let spo2Pct: Double?        // mean SpO2 (%) during sleep
     public let skinTempDevC: Double?   // skin-temperature deviation (°C) from baseline
     public let respRateBpm: Double?    // mean respiration rate (breaths/min) during sleep
+    // Phase-13 backend-parity signals (v9 columns). All nullable; computed server-side.
+    public let sleepPerformance: Double?   // ALG-10: sleep performance score (0–100)
+    public let trainingState: String?      // ALG-11: RESTORATIVE / OPTIMAL / OVERREACHING
+    public let sleepNeededMin: Double?     // ALG-12: personalised sleep need (minutes)
+    public let totalCaloriesKcal: Double?  // ALG-13: total daily calories (RMR + exercise)
     public init(day: String, totalSleepMin: Double?, efficiency: Double?, deepMin: Double?,
                 remMin: Double?, lightMin: Double?, disturbances: Int?, restingHr: Int?,
                 avgHrv: Double?, recovery: Double?, strain: Double?, exerciseCount: Int?,
-                spo2Pct: Double? = nil, skinTempDevC: Double? = nil, respRateBpm: Double? = nil) {
+                spo2Pct: Double? = nil, skinTempDevC: Double? = nil, respRateBpm: Double? = nil,
+                sleepPerformance: Double? = nil, trainingState: String? = nil,
+                sleepNeededMin: Double? = nil, totalCaloriesKcal: Double? = nil) {
         self.day = day; self.totalSleepMin = totalSleepMin; self.efficiency = efficiency
         self.deepMin = deepMin; self.remMin = remMin; self.lightMin = lightMin
         self.disturbances = disturbances; self.restingHr = restingHr; self.avgHrv = avgHrv
         self.recovery = recovery; self.strain = strain; self.exerciseCount = exerciseCount
         self.spo2Pct = spo2Pct; self.skinTempDevC = skinTempDevC; self.respRateBpm = respRateBpm
+        self.sleepPerformance = sleepPerformance; self.trainingState = trainingState
+        self.sleepNeededMin = sleepNeededMin; self.totalCaloriesKcal = totalCaloriesKcal
     }
 }
 
@@ -94,8 +103,9 @@ extension WhoopStore {
                     INSERT INTO dailyMetric
                         (deviceId, day, totalSleepMin, efficiency, deepMin, remMin, lightMin,
                          disturbances, restingHr, avgHrv, recovery, strain, exerciseCount,
-                         spo2Pct, skinTempDevC, respRateBpm)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         spo2Pct, skinTempDevC, respRateBpm,
+                         sleepPerformance, trainingState, sleepNeededMin, totalCaloriesKcal)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(deviceId, day) DO UPDATE SET
                         totalSleepMin = excluded.totalSleepMin,
                         efficiency = excluded.efficiency,
@@ -110,11 +120,17 @@ extension WhoopStore {
                         exerciseCount = excluded.exerciseCount,
                         spo2Pct = excluded.spo2Pct,
                         skinTempDevC = excluded.skinTempDevC,
-                        respRateBpm = excluded.respRateBpm
+                        respRateBpm = excluded.respRateBpm,
+                        sleepPerformance = excluded.sleepPerformance,
+                        trainingState = excluded.trainingState,
+                        sleepNeededMin = excluded.sleepNeededMin,
+                        totalCaloriesKcal = excluded.totalCaloriesKcal
                     """, arguments: [deviceId, d.day, d.totalSleepMin, d.efficiency, d.deepMin,
                                      d.remMin, d.lightMin, d.disturbances, d.restingHr, d.avgHrv,
                                      d.recovery, d.strain, d.exerciseCount,
-                                     d.spo2Pct, d.skinTempDevC, d.respRateBpm])
+                                     d.spo2Pct, d.skinTempDevC, d.respRateBpm,
+                                     d.sleepPerformance, d.trainingState, d.sleepNeededMin,
+                                     d.totalCaloriesKcal])
                 n += db.changesCount
             }
             return n
@@ -145,7 +161,9 @@ extension WhoopStore {
             try Row.fetchAll(db, sql: """
                 SELECT day, totalSleepMin, efficiency, deepMin, remMin, lightMin, disturbances,
                        restingHr, avgHrv, recovery, strain, exerciseCount,
-                       spo2Pct, skinTempDevC, respRateBpm FROM dailyMetric
+                       spo2Pct, skinTempDevC, respRateBpm,
+                       sleepPerformance, trainingState, sleepNeededMin, totalCaloriesKcal
+                FROM dailyMetric
                 WHERE deviceId = ? AND day >= ? AND day <= ?
                 ORDER BY day ASC
                 """, arguments: [deviceId, from, to])
@@ -157,7 +175,11 @@ extension WhoopStore {
                                 avgHrv: $0["avgHrv"], recovery: $0["recovery"],
                                 strain: $0["strain"], exerciseCount: $0["exerciseCount"],
                                 spo2Pct: $0["spo2Pct"], skinTempDevC: $0["skinTempDevC"],
-                                respRateBpm: $0["respRateBpm"])
+                                respRateBpm: $0["respRateBpm"],
+                                sleepPerformance: $0["sleepPerformance"],
+                                trainingState: $0["trainingState"],
+                                sleepNeededMin: $0["sleepNeededMin"],
+                                totalCaloriesKcal: $0["totalCaloriesKcal"])
                 }
         }
     }

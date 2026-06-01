@@ -375,7 +375,11 @@ final class ServerSync {
                                exerciseCount: int(r, "exercise_count") ?? int(r, "exerciseCount"),
                                spo2Pct: dbl(r, "spo2_pct") ?? dbl(r, "spo2Pct"),
                                skinTempDevC: dbl(r, "skin_temp_dev_c") ?? dbl(r, "skinTempDevC"),
-                               respRateBpm: dbl(r, "resp_rate_bpm") ?? dbl(r, "respRateBpm"))
+                               respRateBpm: dbl(r, "resp_rate_bpm") ?? dbl(r, "respRateBpm"),
+                               sleepPerformance: dbl(r, "sleep_performance") ?? dbl(r, "sleepPerformance"),
+                               trainingState: r["training_state"] as? String ?? r["trainingState"] as? String,
+                               sleepNeededMin: dbl(r, "sleep_needed_min") ?? dbl(r, "sleepNeededMin"),
+                               totalCaloriesKcal: dbl(r, "total_calories_kcal") ?? dbl(r, "totalCaloriesKcal"))
         }
     }
 
@@ -408,7 +412,11 @@ final class ServerSync {
                            exerciseCount: int(r, "exercise_count") ?? int(r, "exerciseCount"),
                            spo2Pct: dbl(r, "spo2_pct") ?? dbl(r, "spo2Pct"),
                            skinTempDevC: dbl(r, "skin_temp_dev_c") ?? dbl(r, "skinTempDevC"),
-                           respRateBpm: dbl(r, "resp_rate_bpm") ?? dbl(r, "respRateBpm"))
+                           respRateBpm: dbl(r, "resp_rate_bpm") ?? dbl(r, "respRateBpm"),
+                           sleepPerformance: dbl(r, "sleep_performance") ?? dbl(r, "sleepPerformance"),
+                           trainingState: r["training_state"] as? String ?? r["trainingState"] as? String,
+                           sleepNeededMin: dbl(r, "sleep_needed_min") ?? dbl(r, "sleepNeededMin"),
+                           totalCaloriesKcal: dbl(r, "total_calories_kcal") ?? dbl(r, "totalCaloriesKcal"))
     }
 
     private func getSleep(date: String) async -> [CachedSleepSession]? {

@@ -99,6 +99,10 @@ struct TodayView: View {
                 // HRV + RHR cards (half width each)
                 hrvAndRhrRow
 
+                // CALORIES card — shown only when the server computed total daily calories
+                // (requires a device profile for the RMR basis; ALG-13).
+                caloriesCard
+
                 if let err = metrics.lastError {
                     errorBanner(err)
                 }
@@ -229,6 +233,17 @@ struct TodayView: View {
                           value: value,
                           unit: hrv != nil ? "ms" : nil,
                           accentColor: accent)
+    }
+
+    // MARK: - Calories card (ALG-13; conditional on server-computed total)
+
+    @ViewBuilder private var caloriesCard: some View {
+        if let kcal = metrics.today?.totalCaloriesKcal {
+            MetricCard(title: "CALORIES",
+                       value: String(format: "%.0f", kcal),
+                       unit: "kcal",
+                       accentColor: WH.Color.strainAccent)
+        }
     }
 
     private var rhrCard: some View {

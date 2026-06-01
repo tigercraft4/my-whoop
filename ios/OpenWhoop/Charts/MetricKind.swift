@@ -164,7 +164,9 @@ enum MetricKind: String, Identifiable {
             guard let m = metric.totalSleepMin, m > 0 else { return nil }
             return m / 60.0   // minutes → hours
         case .sleepPerformance:
-            return metric.efficiency.map { $0 * 100 }  // 0–1 fraction → 0–100 percent
+            // ALG-10: prefer the server-computed sleep-performance score (0–100); fall back to
+            // efficiency × 100 for rows predating Phase 13 (sleepPerformance nil) for retrocompat.
+            return metric.sleepPerformance ?? metric.efficiency.map { $0 * 100 }
         case .spo2:
             return metric.spo2Pct      // nil when PROTO-11 stream not verified
         case .skinTemp:
