@@ -2,6 +2,15 @@ import Foundation
 import GRDB
 import WhoopProtocol
 
+/// Hardware generation of the connected WHOOP device.
+/// Inferred from the hardware revision string (Device Information Service, 0x2A27).
+/// `.gen5` = WHOOP 5.0 (hardware revision contains "WG50" prefix).
+/// `.gen4` = WHOOP 4.0 or unknown (fallback for any non-WG50 revision).
+public enum DeviceGeneration: String, Codable, Sendable {
+    case gen4
+    case gen5
+}
+
 /// OpenWhoop persistence library — decoded streams are durable; raw frames are a
 /// transient, compressed, prunable outbox. Built on GRDB/SQLite.
 public enum WhoopStoreInfo {
