@@ -288,7 +288,10 @@ func registerPostHooks() {
     postHooks["historical_data"] = { fb, frame, length, schema in
         guard let length = length else { return }
         let spec = schema.packet(forType: Int(frame[4]))
-        let version = Int(frame[5])
+        // 4.0 frames start with SOF 0xAA → version at frame[5] (seq doubles as version).
+        // Maverick (5.0) stripped bodies start with role byte (≠ 0xAA) → version at frame[6]
+        // (frame[5] is the regular seq counter; frame[6] = sub-type / version = 128 for V128).
+        let version = (frame.count > 0 && frame[0] == 0xAA) ? Int(frame[5]) : Int(frame[6])
         fb.parsed["hist_version"] = .int(version)
         guard let entry = spec.flatMap({ schema.resolveVersion($0.versions, version) }) else {
             fb.region(7, length, "HISTORICAL_DATA v\(version) (unmapped layout)", "unknown")
