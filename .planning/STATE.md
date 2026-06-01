@@ -52,17 +52,22 @@ Progress: [██████████] 100%
 | 2 | Phase 8 (JADX) runs in parallel with Phase 6 | Independent — no data dependency |
 | 3 | HealthKit goes last (Phase 11) | Needs real store data AND stable view architecture |
 | 4 | SpO₂ HealthKit export gated on PROTO-11 VERIFIED | Cannot export unvalidated biometric offsets |
-| 5 | Algorithm pipeline is server-side only | Recovery/strain/sleep require multi-night baselines |
-| 6 | Training State iOS side uses bundled lookup table | Server computes recovery; iOS derives zone from recovery_to_strain.json |
-| 7 | Haptics Gen5 deferred to hardware session | DRV2605 payload requires PacketLogger capture — buzz-nao-funciona.md has root cause |
+| 5 | Algorithm pipeline é local (offline-first) | Session 2026-06-01: ALG-10..13 + Recovery + Strain portados para LocalMetricsComputer Swift |
+| 6 | Training State iOS side usa bundled lookup table | recovery_to_strain.json bundled; computado localmente |
+| 7 | Haptics Gen5 VERIFICADO via PacketLogger 2026-06-01 | Payload real: [0x01, 0x2F, 0x98, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00] — confirmado por HAPTICS_FIRED evento 60 |
+| 8 | Maverick CRC32 trailer obrigatório | WHOOP 5.0 descarta silenciosamente frames com trailer errado. CRC32(body[4:]) LE. |
+| 9 | Maverick token determinístico por payload_len | lookup table: pl=1→01E671, pl=9→01E0D1, pl=65→01F3B1, etc. |
+| 10 | endData offset é Maverick não Gen4 | frame[21:29] não frame[17:25] — bug corrigido em 2026-06-01 (trim sempre=60 → cursor nunca avançava) |
+| 11 | Servidor é backup only | pullFromServer() e restoreFromServerIfNeeded() desactivados; LocalMetricsComputer é única fonte de verdade |
 
-### Blockers / Concerns
+### Blockers / Concerns (actualizados 2026-06-01)
 
-- **BF-P1:** `connectHandshakeDone` invariant — any new `.withResponse` command must not bypass guard at BLEManager.swift line 804
+- **BF-P1:** RESOLVIDO — handshake movido para `didUpdateNotificationStateFor` (FD4B0003 confirmado antes dos comandos)
 - **HK-P1:** HealthKit entitlement + plist keys must be added BEFORE importing HealthKit framework
 - **HK-P2:** Unit conversions are not optional — SpO₂ must be 0.0–1.0 (not 0–100) for HealthKit
-- **PROTO-11/12/14:** Biometric stream correctness cannot be confirmed without working backfill + calibrated reference device
-- **Haptics:** Gen5 uses `RunAppDrivenHapticsCommandPacket` with DRV2605 waveform effects — command `0203000000` confirmed NOT working on WHOOP 5.0 (see .planning/debug/buzz-nao-funciona.md)
+- **PROTO-11/12/14:** Backfill agora funciona (sync confirmado com 16000+ frames type=47). Validação de biométricos ainda pendente.
+- **Haptics:** RESOLVIDO — payload verificado via PacketLogger 2026-06-01. Alarme às 9h disparou buzz, capturado evento 60+100.
+- **Sync-Repeat:** RESOLVIDO — endData offset corrigido (frame[21:29]). Trim cursor agora avança corrrectamente.
 
 ### Pending Todos
 
@@ -96,7 +101,7 @@ Root cause: All gaps require physical hardware not available in sandbox.
 
 ## Session Continuity
 
-Last session: 2026-06-01T11:03:20.333Z
+Last session: 2026-06-01T18:50:00.000Z
 Stopped at: Completed 13-04-PLAN.md
 Resume file: None
 

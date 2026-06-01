@@ -88,3 +88,20 @@ root_cause: "A app dispara o comando de haptics legacy do 4.0 (79=RUN_HAPTICS_PA
 fix: ""
 verification: ""
 files_changed: []
+
+---
+## Update 2026-06-01 — RESOLVIDO
+
+Payload VERIFICADO via PacketLogger iOS (capturanova01062026.pklg).
+O alarme das 9h disparou buzz durante a sessão de captura.
+
+**Payload real (13 bytes):** `[0x01, 0x2F, 0x98, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00]`
+- patternId = 0x2F (47) = padrão de alarme
+- intensity/param = 0x98 (152)
+
+**Confirmação:** HAPTICS_FIRED (event 60, h=0x09A0) imediatamente após write.
+HAPTICS_TERMINATED (event 100) ao fim de ~1.2s.
+
+**Ficheiros alterados:**
+- `ios/OpenWhoop/BLE/BLEManager.swift` — testAlarmBuzz() actualizado com payload verificado
+- `ios/OpenWhoop/BLE/Commands.swift` — runHapticPatternMaverick documentado como VERIFIED
