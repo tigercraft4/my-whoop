@@ -115,7 +115,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Milestone Goal:** Atingir paridade total com a app WHOOP — UI labels correctos, métricas em falta, algoritmos de backend equivalentes aos do WHOOP, e haptics funcionais.
 
-- [ ] **Phase 12: UI Parity** — Corrigir labels e adicionar métricas em falta identificadas via IPA analysis (3 plans)
+- [x] **Phase 12: UI Parity** — Corrigir labels e adicionar métricas em falta identificadas via IPA analysis (3 plans) — completed 2026-06-01
 - [ ] **Phase 13: Backend Parity** — Algoritmos equivalentes ao WHOOP: Sleep Performance, Training State, Sleep Needed, Calorias
 
 ---
@@ -136,7 +136,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 11. HealthKit Export | v2.0 | 4/4 | Complete    | 2026-05-31 |
 | 12. UI Parity | v3.0 | 3/3 | Complete | 2026-06-01 |
-| 13. Backend Parity | v3.0 | 0/4 | Not started | - |
+| 13. Backend Parity | v3.0 | 0/4 | Planned | - |
 
 ### Phase 12: UI Parity
 **Goal**: Corrigir todos os labels e métricas identificados via IPA analysis (WHOOP 5.37.0) para atingir paridade visual com a app oficial
