@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — UI Redesign + Bug Fix
 status: executing
-last_updated: "2026-06-01T22:45:50.883Z"
-last_activity: 2026-06-01 -- Phase 18.1 execution started
+last_updated: "2026-06-02T00:30:00.000Z"
+last_activity: 2026-06-02 -- Phase 18.1.1.1 complete — Recovery calibration (R²=0.49, MAE=12.0 pts)
 progress:
   total_phases: 10
-  completed_phases: 4
-  total_plans: 23
-  completed_plans: 18
-  percent: 40
+  completed_phases: 6
+  total_plans: 25
+  completed_plans: 20
+  percent: 60
 ---
 
 # State — WHOOP 5.0
@@ -26,16 +26,16 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Phase 18.1 — layout-restructure-1-1
+**Current focus:** Fase 18.1.1.1 COMPLETA — próxima: fase 18 (hardware validation) ou 999.3 (cloud API)
 
 ---
 
 ## Current Position
 
-Phase: 18.1 (layout-restructure-1-1) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 18.1
-Last activity: 2026-06-01 -- Phase 18.1 execution started
+Phase: 18.1.1.1 (algorithm-re-recovery-sleep-local-model) — COMPLETE
+Plan: 1 of 1
+Status: Fase completa — Recovery calibrado (R²=0.49, MAE=12 pts)
+Last activity: 2026-06-02 -- Phase 18.1.1.1 execution complete
 
 **v4.0 phase map:**
 
@@ -135,8 +135,8 @@ Known deferred items at v3.0 close: 11 (see Deferred Items above)
 ## Session Continuity
 
 Last session: 2026-06-01T22:45:50.872Z
-Stopped at: Phase 18.1.1 context gathered — ready for plan+execute
-Resume file: .planning/phases/18.1.1-whoop-api-historical-dump/18.1.1-CONTEXT.md
+Stopped at: Phase 18.1.1.1 complete — Recovery calibrated (2026-06-02)
+Resume file: .planning/phases/18.1.1.1-algorithm-re-recovery-sleep-local-model/18.1.1.1-01-SUMMARY.md
 
 ## Decisions
 

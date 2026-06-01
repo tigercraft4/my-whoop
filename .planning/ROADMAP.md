@@ -188,13 +188,13 @@ Plans:
 
 ### Phase 18.1.1.1: Algorithm RE: Recovery + Sleep Local Model (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
+**Goal:** Calibrar o modelo local de Recovery por regressão linear (HRV ratio → score 0-100) usando dados históricos WHOOP reais. MAE reduzido de 46.4 para 12.0 pts (melhoria 74%).
 **Requirements**: TBD
 **Depends on:** Phase 18.1.1
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 18.1.1.1 to break down)
+- [x] ALG-RE-01: Calibração Recovery — regressão linear HRV+RHR → WHOOP score (completed 2026-06-02)
 
 ### Phase 999.2: Hardware validation — v1.0 UNCERTAIN items (BACKLOG)
 
