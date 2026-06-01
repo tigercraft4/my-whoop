@@ -1,373 +1,249 @@
-# Feature Landscape — WHOOP 5.0 iOS v2.0
+# Feature Research — v4.0 UI Redesign + Bug Fix
 
-**Domain:** Recovery/sleep/strain dashboard, WHOOP-style UI, local-first wearable app
-**Researched:** 2026-05-31
-**Scope:** Milestone v2.0 — UI redesign + algorithms + HealthKit (does NOT re-scope BLE RE)
-**Overall confidence:** HIGH (based on reading existing codebase, server algo files, test suites, and PROJECT.md)
-
----
-
-## Summary
-
-The v1.0 codebase already has a working tab structure (Today/Sleep/Trends/Workouts/Device), a server-side algorithm stack (recovery, sleep staging, strain), and a SwiftUI design system. What v2.0 adds is: (1) validating those views with real backfilled data, (2) making the Recovery card the visual centrepiece with a proper ring + colour band, (3) completing sleep staging with the hypnogram already wired in the UI, (4) connecting strain to the Workouts tab, and (5) exporting to HealthKit.
-
-The WHOOP app's information architecture is already correctly approximated in the existing app. The gap is data, not structure: the backfill pipeline bug means the views render empty. Fix the pipeline first; everything else flows from having real data.
+**Domain:** iOS WHOOP 5.0 client — 1:1 UI redesign via Ghidra IPA analysis + critical bug fixes
+**Researched:** 2026-06-01
+**Confidence:** HIGH (full codebase read + Ghidra IPA notes + git log of recent bug fixes)
 
 ---
 
-## Information Architecture
+## Context: What Was Already Shipped (v3.0 baseline)
 
-### WHOOP app tabs (reference, from public documentation and app store screenshots)
+Before identifying what is missing, the post-v3.0 state must be established. The app is functionally complete for the core pipeline; v4.0 is a fidelity and correctness milestone, not a feature-addition milestone.
 
-The official WHOOP app uses a bottom tab bar with five destinations:
-
-| Tab | Purpose |
-|-----|---------|
-| Overview / Home | Today's recovery ring, HRV, RHR, sleep performance summary, day strain |
-| Sleep | Last night's hypnogram, stage breakdown (REM/Deep/Light/Awake), bed/wake time, sleep need vs got |
-| Strain | Day strain score (0–21), workout list, HR zone breakdown |
-| Coach | Recommendations, sleep target, strain targets |
-| Profile / Device | Account, device connection, settings |
-
-### Current app tabs (v1.0 baseline)
-
-| Tab | Maps to | Status |
-|-----|---------|--------|
-| Today | WHOOP Overview | Exists; views empty (data gap) |
-| Sleep | WHOOP Sleep | Exists; hypnogram wired; data gap |
-| Trends | No direct WHOOP equivalent | Exists; 7D/30D/90D charts |
-| Workouts | WHOOP Strain (activity list) | Exists; auto-detection from server |
-| Device | WHOOP Profile/Device | Exists; live HR + BLE controls |
-
-The tab structure is already correct for the goals of this project. There is no need to rename or re-order tabs. "Coach" (WHOOP's AI recommendation tab) is explicitly out of scope.
+**Already implemented and working:**
+- 5-tab SwiftUI app: Today (Recovery), Sleep, Strain, Trends, Device
+- RecoveryCard: ZoneRingView ring (green/yellow/red), HRV, RHR, sleep stat columns
+- SleepCard: HOURS OF SLEEP + SLEEP PERFORMANCE columns, HypnogramView (4-lane)
+- StrainCard: ZoneRingView ring (0–21), Training State badge (RESTORATIVE / OPTIMAL / OVERREACHING)
+- SleepView: stage breakdown (Deep/REM/Light), in-sleep signals grid (RHR, HRV, Resp, SpO2, Skin Temp), 7-night chart, Smart Alarm card
+- TrendsView: 7D/30D/90D picker, chart cards per MetricKind, raw HR card, day list
+- StrainView: StrainCard hero + workout list rows with strain badge
+- ALG-10: Sleep Performance (weighted 45% duration, 25% efficiency, 20% staging, 10% consistency)
+- ALG-11: Training State (recovery_to_strain.json lookup, client-side fallback)
+- ALG-12: Sleep Needed (baseline 7d + strain_debt + sleep_debt, clamp 300–660 min)
+- ALG-13: Calories (Mifflin–St Jeor RMR + Keytel exercise; sex-specific)
+- LocalMetricsComputer: offline-first, sole source of truth
+- Backfill pipeline: 16000+ historical frames decoded, endData offset corrected (Maverick frame[21:29])
+- HRV offset bug fixed: unverified RR offsets removed from V128
+- HealthKit export: HR, HRV, sleep stages
 
 ---
 
-## Screen-by-Screen Breakdown
+## Feature Landscape
 
-### Today (Overview tab)
+### Table Stakes (Must Replicate from Official WHOOP 5.37.0 App)
 
-**What it shows in the WHOOP app:**
-- Hero recovery ring: percentage 0–100, colour-coded green (≥67%) / yellow (34–66%) / red (≤33%)
-- HRV (overnight RMSSD, ms)
-- Resting Heart Rate (overnight minimum, bpm)
-- Sleep Performance (% of sleep need met — WHOOP's proprietary metric)
-- Day strain score (0–21, running total)
-- Live HR if strap is connected
+These are the elements identified through Ghidra IPA analysis (`binary: Whoop.app/Whoop`, 477 055 functions, ARM64 Swift) and the existing code audit. Missing any produces a visible gap versus the official app.
 
-**What the current app shows:**
-- Recovery ring (percent, colour) — wired to server metric `recovery` (0–1 fraction)
-- Strain card with "/ 21" scale — wired to server `strain`
-- Sleep card: duration + efficiency — wired to `totalSleepMin` + `efficiency`
-- HRV card (ms) and Resting HR card (bpm) — half-width row
-- Live HR + battery chips when connected
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Recovery ring colour thresholds: green ≥67%, yellow 33–66%, red <33% | IPA-verified: `greenRecoveryScore`, `yellowRecoveryScore`, `redRecoveryScore` symbols + `recoveryColorForRecoveryScore:` | LOW | Already implemented in `WH.Color.recoveryColor(forPercent:)`. Thresholds match. No change needed. |
+| Sleep Performance label: "SLEEP PERFORMANCE" (not "Efficiency") | IPA-verified: `kFilterSleepPerformanceTitle`, `sleepPerformanceAbove70Percent` symbols confirm label text | LOW | Already uses "SLEEP PERFORMANCE" label. No change needed. |
+| Sleep Performance display in SleepCard | SleepCard shows it but sources `efficiency` (0–1 fraction) as proxy. ALG-10 computes a separate `sleepPerformance` score stored in `DailyMetric.sleepPerformance`; SleepCard does not yet read it | MEDIUM | SleepCard must prefer `daily.sleepPerformance` (ALG-10 result, 0–100) over raw efficiency. RecoveryCard stats column "SLEEP" should also use ALG-10. |
+| Sleep Needed displayed in Sleep tab | Ghidra: `sleepNeedLabel`, `sleepNeedTimeLabel` — UI-only, value is server-side. We compute it (ALG-12 in `LocalMetricsComputer`) but `sleepNeededMin` is **never displayed anywhere in the current UI** | MEDIUM | Add "SLEEP NEEDED" stat to SleepCard or SleepView. Currently computed but silently discarded in the UI layer. |
+| Calories (WHOOP-style Keytel workout + RMR) | IPA-verified: `CalorieCalculations::calculateWorkoutCaloriesWithPhysiologicalBaseline_` @ 0x10025c264 (Keytel, 251.04 divisor, sex-specific). Our ALG-13 matches. | LOW | Already displayed in TodayView caloriesCard. Display gated on `metrics.today?.totalCaloriesKcal`. No change needed. |
+| Training State badge with correct colour semantics | IPA-verified: `helpPaneTrainingStateLabel`. Our StrainCard colours: RESTORATIVE→blue, OPTIMAL→green, OVERREACHING→red. Official mapping needs Ghidra confirmation for exact colour hex | LOW | Colour semantics already coded. Verify exact hex against official app screenshots. |
+| Calories card: show sex-specific formula branch result | ALG-13 already has sex-specific path (male/female/nonbinary), but profile `sex` field must be populated in Settings for the result to differ | LOW | Ensure SettingsView sex picker is visible, defaults are handled, and the nil-profile case shows a prompt rather than silently using 0 |
+| HRV sourcing: overnight RMSSD from sleep window only | The Ghidra IPA does not reveal the exact window but WHOOP's known practice is overnight. Current code uses `avgHrv` from `DailyMetric` which comes from LocalMetricsComputer's RR window. | LOW | Verify LocalMetricsComputer's RMSSD window aligns with the sleep session window. No UI change needed. |
+| Recovery card "SLEEP" stat shows sleep performance, not raw efficiency | RecoveryCard `sleepLabel` computes `"\(Int($0 * 100))%"` from `daily.efficiency`. When ALG-10 `sleepPerformance` is available, it should be preferred | LOW | One-line fix: prefer `daily.sleepPerformance` in `RecoveryCard.sleepLabel` |
+| "No data" / placeholder states use consistent "—" | Currently consistent across cards | LOW | Verify all metric tiles use "—" (not "N/A" or nil-crash) |
 
-**Gap vs WHOOP:** Sleep performance ("you got X% of your sleep need") is not implemented — the sleep need calculation requires a personal target which WHOOP sets through a proprietary algorithm. Using efficiency as proxy is the correct local-first alternative.
-
-**v2.0 action:** Validate all cards with real backfilled data (requires backfill fix). No structural change needed.
-
----
-
-### Sleep tab
-
-**What it shows in the WHOOP app:**
-- Sleep efficiency % (headline)
-- Total time asleep (hours + minutes)
-- Bed time → wake time
-- Hypnogram: 4-lane (Awake/REM/Light/Deep) timeline chart across the night
-- Stage totals: Deep Xh Xm, REM Xh Xm, Light Xh Xm
-- Sleep stats: Time in bed, Disturbances, Sleep latency
-- In-sleep signals: Resting HR, HRV, Respiratory rate, SpO₂, Skin temp deviation
-- 7-night sleep/wake bar chart (bed time + wake time)
-- Sleep need and sleep debt (WHOOP proprietary — not implemented here)
-- Smart alarm integration
-
-**What the current app shows:**
-- Sleep efficiency % hero + total duration — wired
-- Bed/wake time subtitle — wired
-- Hypnogram (HypnogramView): 4-lane (Awake/REM/Light/Deep) with colour legend — wired to `stagesJSON` from server
-- Stage breakdown: Deep/REM/Light minute cards — wired to `daily.deepMin / remMin / lightMin`
-- Sleep stats row: Time in Bed, Disturbances, Latency — wired
-- In-sleep signals grid: RHR, HRV, Resp Rate, SpO₂, Skin Temp Dev — wired (most show "—" pending data)
-- 7-night sleep/wake chart (SevenNightChart) — wired
-- Smart alarm card (AlarmView sheet) — exists
-
-**Gap vs WHOOP:** `stagesJSON` is only populated when the server's sleep staging algorithm runs successfully. Until backfill is fixed and the staging pipeline runs on real data, the hypnogram renders "No stage data". The structure is complete.
-
-**v2.0 action:** Fix backfill → server sleep staging produces `stagesJSON` → hypnogram shows real data. Validate SpO₂ and skin temp streams (PROTO-11/12) to fill remaining "—" values.
-
----
-
-### Trends tab
-
-**What it shows in the current app:**
-- Range picker: 7D / 30D / 90D
-- Chart cards for: Recovery (%), HRV (ms), Resting HR (bpm), Day Strain (/21), Sleep duration (hr)
-- Raw HR card (last 24h / 7d stream, 1Hz downsampled)
-- Day list: date, recovery colour dot + %, strain value
-- Tapping a chart or day → DayDetailView sheet
-
-**WHOOP equivalent:** The WHOOP app does not have an equivalent "Trends" tab — trends are accessed via the individual metric screens. This tab is a differentiator unique to this app (more data density than WHOOP's UI).
-
-**v2.0 action:** No structural change. Validate with real data.
-
----
-
-### Workouts tab
-
-**What it shows in the current app:**
-- Auto-detected workout bouts from `/v1/workouts` (last 30 days)
-- Per-workout row: date, time, duration, avg HR, strain badge, calories
-- Tapping → WorkoutDetailView (full HR chart, zone breakdown, strain)
-
-**WHOOP equivalent:** WHOOP's Strain tab shows day strain, then lists activities with sport detection and manual logging. This app auto-detects from HR + IMU; no manual sport logging.
-
-**v2.0 action:** Validate that workout auto-detection works with real backfilled HR + IMU data.
-
----
-
-### Device tab (Live)
-
-**What it shows:** Live HR, battery %, BLE connection state, reconnect controls. Not a WHOOP-equivalent screen; internal tooling.
-
-**v2.0 action:** No change needed.
-
----
-
-## Algorithm Inputs/Outputs
-
-### Recovery Score (server-side: `app/analysis/recovery.py`)
-
-**Method:** z-score + logistic composite (not WHOOP-identical; transparent proxy)
-
-**Inputs:**
-| Input | Weight | Direction | Source |
-|-------|--------|-----------|--------|
-| HRV (RMSSD, ms) — overnight | W=0.60 (dominant) | higher HRV vs personal baseline → higher recovery | Overnight RR intervals |
-| Resting HR (bpm) | W=0.20 | lower RHR vs baseline → higher recovery | Overnight HR minimum |
-| Respiratory rate (raw ADC) | W=0.05 | lower resp vs baseline → higher recovery | Resp stream (scale-invariant z) |
-| Sleep performance (efficiency proxy) | W=0.15 | higher efficiency → higher recovery | Sleep session efficiency 0–1 |
-
-**Baseline:** Personal rolling baseline (Winsorized EWMA), cold-start gated. Status: "calibrating" (<4 nights) → returns None; "provisional" (4–13 nights) → returns score; "trusted" (≥14 nights) → full score.
-
-**Output:** Float 0–100. Bands: red ≤33%, yellow 34–66%, green ≥67% (matches WHOOP colour scheme).
-
-**Population anchor:** Z=0 (at personal baseline) → ~58% (WHOOP's published average recovery).
-
-**Note on WHOOP's actual formula:** WHOOP uses HRV (RMSSD), RHR, respiratory rate, and sleep performance as inputs — the same four signals in the same direction. The exact weighting and model architecture are proprietary. This implementation is a transparent, citable approximation using z-score + logistic, not a reverse-engineered copy.
-
----
-
-### Sleep Staging (server-side: `app/analysis/sleep.py` + `sleep_features.py`)
-
-**Method:** Multi-signal 4-class classifier on 30-second epochs
-
-**Pipeline:**
-1. **Sleep/wake detection** — accelerometer stillness spine (te Lindert 2013 + Cole-Kripke cross-check + HR gate). Window: 20:00 previous day → 12:00 next day.
-2. **Feature extraction per 30s epoch** — HR, Walch DoG HR-variability, neurokit2 HRV features (RMSSD/SDNN/HF/LF-HF), respiration rate, RR variability, clock proxy.
-3. **Stage classification** — transparent classifier (`sleep_features.classify_epochs`); designed as a model seam (can swap in ML model later).
-4. **Smoothing + physiology re-imposition** — no REM in first ~15 min; deep concentrated in first third; isolated 30s stage flips killed.
-
-**Inputs:**
-| Stream | Required | Notes |
-|--------|----------|-------|
-| `hr` (bpm, 1Hz) | Yes | Sleep/wake + staging |
-| `rr` (rr_ms) | Yes | HRV features |
-| `gravity` (x/y/z, g) | Yes | Stillness detection |
-| `resp` (raw ADC) | Optional | Resp rate feature |
-| `skin_temp` (raw ADC) | Optional | Accepted, currently ignored |
-
-**Output:** `SleepSession` with `stages: list[StageSegment]` where each segment has `{start, end, stage}` with stage ∈ {wake, light, deep, rem}. Summary metrics: TST, efficiency (TST/TIB), deep_min, rem_min, light_min, disturbances, latency, WASO.
-
-**Honest ceiling:** EEG-free 4-class staging peaks at ~65–73% epoch agreement (Walch et al. 2019). Light/deep separation is the weakest link. Output is labelled "approximate".
-
-**Current blocker:** IMU data (gravity stream) is HYPOTHESIS status (PROTO-14, TOGGLE_IMU_MODE capture needed). Without gravity, the sleep/wake spine degrades to HR-only detection — still works but less accurate.
-
----
-
-### Strain Score (server-side: `app/analysis/strain.py`)
-
-**Method:** Edwards TRIMP with Heart Rate Reserve (not WHOOP-identical; published method)
-
-**Inputs:**
-| Input | Source |
-|-------|--------|
-| HR time series (1Hz) | Historical HR stream |
-| Max HR | Observed peak, or Tanaka formula (208 − 0.7×age), or 220−age |
-| Resting HR | From recovery pipeline |
-
-**HR zones (Edwards 1993, HRR-based):**
-| Zone | % HRR | Weight |
-|------|--------|--------|
-| 0 (recovery) | <50% | 0 |
-| 1 | 50–59% | 1 |
-| 2 | 60–69% | 2 |
-| 3 | 70–79% | 3 |
-| 4 | 80–89% | 4 |
-| 5 (max) | ≥90% | 5 |
-
-**Output:** Float 0–21 (log-mapped from TRIMP). Scale matches WHOOP's 0–21 range. A full-day resting load is ~5–8; a hard workout can reach 18–21.
-
----
-
-### Local Offline Fallback (iOS-side: `LocalMetricsComputer.swift`)
-
-When the server is unconfigured or unreachable, the iOS app derives estimates directly from the BLE streams in WhoopStore:
-
-- **Resting HR:** minimum bpm in the 00:00–09:00 UTC window
-- **HRV (RMSSD):** root mean square of successive RR differences, overnight window
-- **Sleep detection:** 5-minute slot classifier (HR ≤75 bpm AND gravity variance ≤0.05 g²); minimum 3h session; gaps ≤10 min bridged
-- **Limitation:** `stagesJSON` is always nil in offline mode (no classifier runs on device). Recovery is always nil offline (needs personal baseline).
-
----
-
-### HealthKit Export
-
-**Targets (HK-01 to HK-04):**
-| Export | HKSampleType | Status |
-|--------|-------------|--------|
-| HR samples | `HKQuantityType(.heartRate)` | Planned |
-| HRV (RMSSD) | `HKQuantityType(.heartRateVariabilitySDNN)` | Planned — note: HealthKit only exposes SDNN; RMSSD is the internal metric |
-| SpO₂ | `HKQuantityType(.oxygenSaturation)` | Planned, pending PROTO-11 VERIFIED |
-| Sleep sessions | `HKCategoryType(.sleepAnalysis)` | Planned — stages map to HK sleep categories |
-
-**Key implementation notes:**
-- HealthKit write requires `NSHealthUpdateUsageDescription` in Info.plist and explicit capability in Xcode
-- SpO₂ export should be gated behind PROTO-11 VERIFIED status to avoid exporting unvalidated data into Health
-- Sleep stages map as: deep → `.asleepDeep`, rem → `.asleepREM`, light → `.asleepCore`, wake → `.awake`
-- Deduplication: use `HKQueryOptions` source predicate to avoid re-exporting samples already in HealthKit
-
----
-
-## Table Stakes
-
-Features a WHOOP owner expects — missing any makes the app feel broken.
-
-| Feature | Why Expected | Complexity | Current State |
-|---------|--------------|------------|---------------|
-| Recovery ring with colour band | The headline number; WHOOP's identity | Low | Exists in UI; needs real data |
-| HRV (overnight RMSSD) | Core WHOOP metric | Low | Computed by server; needs backfill |
-| Resting HR (overnight) | Core WHOOP metric | Low | Computed by server; needs backfill |
-| Sleep duration + efficiency | Baseline sleep quality | Low | Wired; needs backfill |
-| Hypnogram (4 stages) | Users have seen it in WHOOP; expect it | Medium | UI wired; needs staging algo data |
-| Strain score 0–21 | Day load metric | Medium | Server computes; needs backfill |
-| Historical trends (7D/30D) | "Am I improving?" | Low | Charts exist; needs data |
-| Live HR when connected | Real-time feedback | Low | Working (VERIFIED v1.0) |
-| Battery indicator | Device UX | Low | Working (VERIFIED v1.0) |
-| HealthKit export (HR + sleep) | Users expect Apple ecosystem integration | Medium | Not yet built |
-
----
-
-## Differentiators
-
-Features that go beyond what WHOOP shows — not expected, but valued.
+### Differentiators (Beyond WHOOP's Official Feature Set)
 
 | Feature | Value Proposition | Complexity | Notes |
-|---------|------------------|------------|-------|
-| Raw HR stream chart (1Hz) | WHOOP hides sub-minute HR; we show it | Low | Already in Trends tab |
-| Offline-first with local fallback | Works without server/internet | Medium | LocalMetricsComputer already built |
-| Sleep stage timestamps (JSON) | Exportable raw staging data | Low | stagesJSON already stored |
-| 90-day trends | WHOOP app shows ~30 days in practice | Low | Already in Trends tab |
-| Day list with recovery + strain per day | Dense data view | Low | Already in Trends tab |
-| SpO₂ overnight (if PROTO-11 verified) | WHOOP shows it; we'd show our own decode | High | Pending BLE verification |
-| Skin temp deviation (if PROTO-12 verified) | WHOOP 5.0 specific | High | Pending BLE verification |
-| Respiratory rate | Shown in WHOOP sleep screen | Medium | Wired in UI; needs server pipeline |
-| Workout auto-detection (no manual logging) | Lower friction than WHOOP's manual sport entry | Medium | Server /v1/workouts exists |
-| Smart alarm (HealthKit wake) | WHOOP's Coach tab feature | Medium | AlarmView already built |
+|---------|-------------------|------------|-------|
+| Sleep Needed visualisation in Sleep tab | WHOOP shows "sleep need" only in the Coach tab (AI-powered). We compute it locally (ALG-12) — displaying it in the Sleep tab makes it visible without a subscription | MEDIUM | Add a "SLEEP NEEDED" row below HOURS OF SLEEP / SLEEP PERFORMANCE in SleepCard. Source: `daily.sleepNeededMin` |
+| Offline-first ALG-10..13 pipeline | WHOOP's Sleep Performance, Sleep Needed, Training State are server-side (IPA-confirmed). Our LocalMetricsComputer does them on-device | Already shipped | No change needed, just document as differentiator |
+| LocalMetricsComputer as sole source of truth | No cloud dependency for any metric | Already shipped | Consider exposing "computed locally" badge in settings to educate user |
+| Raw 1 Hz HR stream chart | WHOOP hides sub-minute granularity | Already shipped | Maintain |
+| 90-day trends | WHOOP practical limit is closer to 30 days in UI | Already shipped | Maintain |
+
+### Anti-Features (Explicitly Do Not Build)
+
+| Feature | Why Avoid | Alternative |
+|---------|-----------|-------------|
+| WHOOP Coach tab (AI coaching, sleep targets) | Cloud-only AI; algorithms proprietary and server-side; legal ambiguity | Show Sleep Needed (ALG-12) as a simple stat — no recommendations engine |
+| Copy WHOOP UI assets, colour palette hex values, animations | Copyright infringement. Legal constraint documented in PROJECT.md | Implement from scratch in SwiftUI using our own DesignTokens. Use Ghidra only for information architecture, not for pixel-exact hex values of WHOOP's brand colours |
+| AFib detection from R-R intervals | Medical device territory; our R-R stream is unvalidated (PROTO-11/12 flags) | Do not add. Export R-R data to HealthKit only. |
+| Sleep "debt" coaching messages | Requires calibrated target + baseline not yet stable enough | Display raw numbers (sleep got vs sleep needed) without coaching text |
+| Manual workout logging / sport type selection | Scope creep; WHOOP's activity taxonomy is large | Auto-detect only; no sport labels |
+| Multi-user or account sync | Personal device tool; antithetical to local-first design | Single device/single user |
+| WHOOP cloud API calls | TOS violation; breaks local-first guarantee | BLE-only; server is our own Dockge instance |
 
 ---
 
-## Anti-Features (What NOT to Build)
+## Bug Patterns in iOS BLE Fitness Apps
 
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| WHOOP's exact Recovery/Strain formula | Proprietary, cloud-only, T&C minefield; also a moving target | Use our transparent z-score + logistic (already implemented); label it "estimated" |
-| Sleep "Need" score (WHOOP sleep debt metric) | Requires proprietary target-setting model | Use efficiency as proxy; label it clearly |
-| "Coach" AI recommendations tab | Would require a coaching model; WHOOP's is cloud-only | Defer indefinitely; out of scope for v2.0 |
-| Hormonal Insights / WHOOP Age / Pace of Aging | Cloud-only computed on signals we already have | Decode the inputs (HRV, temp); let users derive later |
-| Blood Pressure estimation | Requires cuff calibration; medical device territory | Never ship ungated; WHOOP requires 3 cuff reads to bootstrap |
-| AFib detection | Regulated medical device feature | Do not implement; export ECG waveform as research artifact only |
-| Copying WHOOP UI assets / artwork / animations | Copyright infringement; legal constraint | Implement from scratch in SwiftUI; same information hierarchy, different design |
-| Cloud API integration (WHOOP's cloud) | TOS-violating; antithetical to local-first design | BLE-only; no cloud API calls |
-| Firmware modification / persistent writes | High brick risk on user's hardware | Read-only + transient toggles only |
-| Manual workout logging / sport labels | Scope creep; needs a sport taxonomy | Auto-detect from HR + IMU; no labels needed |
-| Multi-user / account system | Personal device tool | Single device, local-first; no accounts |
+This section catalogues the bugs already encountered (and fixed) in this project, plus the remaining known bugs that v4.0 must address. Root causes and patterns are noted for the roadmap.
+
+### Category A: BLE Protocol Offset Bugs (Confirmed, Partially Fixed)
+
+**Pattern:** Frame offset constants from Gen4 documentation carried over silently into the Maverick (Gen5) decoder. The WHOOP 5.0 changes the byte layout of historical frames; using wrong offsets produces either: (a) silent wrong values, (b) cursor never advancing (infinite re-read of same frames), or (c) NaN/Inf values crashing downstream math.
+
+**Bugs fixed in recent commits:**
+- `endData` offset: Gen4 used `frame[17:25]`, Maverick requires `frame[21:29]` — fixed in `fix(backfill): correct endData offset` (3c22b9e)
+- `numFF` offset: `payloadOff+2` gave 1 instead of 15 features — fixed
+- `SET_CLOCK` 8 bytes instead of 9 — fixed
+- Gravity NaN/Inf skipping: `fix(backfill): skip gravity samples with NaN/Inf` (17896ce)
+
+**Bug still open (UI placeholder issue):**
+- `DailyMetric.sleepNeededMin` is computed by LocalMetricsComputer but never rendered in any SwiftUI view. The field exists in the store, the algorithm runs, the value is discarded at the UI boundary. This is not a data bug but a display gap — the column header in SleepCard/SleepView is missing.
+
+### Category B: HRV / R-R Offset Errors
+
+**Pattern:** The standard BLE Heart Rate Measurement characteristic (0x2A37) encodes R-R intervals in units of 1/1024 seconds. Misreading as milliseconds directly produces a ~2.4× overestimate. Our `StandardHeartRate.parse()` applies the correct `× 1000 / 1024` conversion.
+
+**Second layer:** The V128 WHOOP 5.0 historical frame format includes HRV-related offsets that were initially assumed to match the Gen4 layout. After analysis of actual frame data (commit e65fa31), unverified R-R offsets from V128 were purged — the HRV values in the store were potentially corrupt for those frames.
+
+**Residual risk:** Recovery score relies heavily on HRV (60% weight in LocalMetricsComputer). If HRV baseline was computed from corrupted V128 RR data before e65fa31, the rolling 28-night baseline may contain tainted values. Baseline will self-correct over time (EWMA), but a one-time purge of suspect daily metrics may be warranted.
+
+**Action for v4.0:** Add a database migration that flags or purges `avgHrv` values from `DailyMetric` rows that predate commit e65fa31 (or mark them as `confidence = "provisional"`). This prevents corrupt HRV from distorting the personal baseline.
+
+### Category C: Backfill Stuck / Cursor Not Advancing
+
+**Pattern:** The backfill cursor is a high-water mark: `endData` from the last received historical frame is stored and used as the `from_ts` in the next `SEND_HISTORICAL_DATA` request. If `endData` is computed from the wrong offset (Category A), `trim = 60` is a constant (or some small wrong value) and the cursor never advances — each connection re-offloads the same 60-second window.
+
+**Fixed:** endData offset corrected. Safe-trim invariant now enforced.
+
+**Residual risk (open):** The `LocalMetricsComputer.triggerOnDisconnect` path was added (commit 4d6b225) to ensure computation runs when BLE disconnects mid-backfill. This was a race where the computer was never triggered if the strap disconnected before the backfill completion event. The fix is in place but needs end-to-end validation with a 14-day backfill session (IOS items 03/04 in backlog).
+
+### Category D: UI Placeholder / Missing Data Rendering
+
+**Pattern:** A metric is computed and stored in the database, but the SwiftUI view reads a different field or a nil-check short-circuits the display, leaving the user seeing "—" even when data exists.
+
+**Currently identified placeholder issues:**
+
+| Metric | Computed? | Stored? | Displayed? | Root Cause |
+|--------|-----------|---------|------------|------------|
+| Sleep Needed (ALG-12) | YES (LocalMetricsComputer) | YES (`DailyMetric.sleepNeededMin`) | NO | No SwiftUI view reads `sleepNeededMin` |
+| Sleep Performance (ALG-10) | YES | YES (`DailyMetric.sleepPerformance`) | PARTIAL | `SleepCard` and `RecoveryCard` read `efficiency` instead of `sleepPerformance` |
+| Training State | YES | YES (`DailyMetric.trainingState`) | YES (StrainCard badge) | Working correctly |
+| Total Calories (ALG-13) | YES (conditional on profile) | YES (`DailyMetric.totalCaloriesKcal`) | CONDITIONAL | Requires profile to be set; correct but brittle when profile nil |
+
+### Category E: Gen4 Remnants in WHOOP 5.0 Codebase
+
+**Pattern:** The codebase was forked from a WHOOP 4.0 project. Several constants, comments, and code paths still reference Gen4 semantics. Most are benign (comments), but some are active codepaths:
+
+**Active Gen4 code still in the 5.0 path:**
+- `BLEManager` subscribes to `gen4Service` (61080001) and `gen4DataNotifChar` (61080005) in addition to Maverick UUIDs. This was intentional: historical DATA frames (type-47) from `SEND_HISTORICAL_DATA` arrive on 61080005. This is not a bug — it is correct behaviour confirmed by protocol analysis. It does however look like dead code to a new reader and should be documented in-code.
+- `Commands.swift` retains `runHapticsPattern` (cmd 79, "4.0 legacy") alongside the Maverick haptics command (cmd 19). The legacy command is kept for test compatibility. The DeviceView debug section exposes both. This is intentional but should be labelled more clearly in UI.
+- `StandardHeartRate.swift` line 23: R-R conversion `1/1024 s → ms` — this is correct for the BLE standard. The comment is accurate. Not a bug.
+
+**Note from 2026-06-01 note (`analisa-codigo-verifica-4-0.md`):** The user flagged a general concern that "things still wrong from 4.0" may exist. The audit above did not find any active functional bugs introduced by Gen4 legacy code — the ones found are already fixed or are intentional dual-path support. The v4.0 milestone should include a documented sweep confirming there are no silent Gen4 assumptions remaining.
+
+### Category F: Ghidra-Identified UI Gaps (UI Screens Not Yet Implemented)
+
+From the Ghidra IPA analysis of WHOOP 5.37.0:
+
+**Confirmed server-side (not implementable from RE, but known to exist in official app):**
+- `sleepPerformanceAbove70Percent` — a UI string used when sleep performance exceeds 70%. The official app shows a threshold message ("above 70%") rather than just a number. Our implementation shows a numeric percentage which is more informative, but the threshold copy is a cosmetic gap.
+- `updateSleepNeed` in `CoachViewController` — the Sleep Need display is in the Coach tab in the official app, not the Sleep tab. We already decided to show it in Sleep tab (which is better UX).
+
+**Confirmed client-side (in IPA, could be replicated):**
+- `CalorieCalculations::calculateWorkoutCaloriesWithPhysiologicalBaseline_` — Keytel formula with exact sex-specific coefficients in memory at 0x1058a5a80. The 8 doubles are: raw bytes `2506819543cb2a40 6666666666fe7d40 ...`. Decoding these would confirm the exact Keytel coefficients vs. our implementation. This is a MEDIUM complexity research task (decode f64 LE) with HIGH value for algorithm fidelity.
+
+**Not yet confirmed (requires deeper Ghidra search when 477k function analysis completes):**
+- Biometric decode offsets for SpO2 (PROTO-11), skin temperature (PROTO-12), respiratory rate (PROTO-13) in V128 frames — Ghidra analysis timed out on these searches. When the binary finishes indexing, search for `oxygenSaturation`, `skinTemperature`, `respirationRate` to find the frame offsets used by the official app.
+- R20/R21/R22/R25/R26 packet parsing constants — useful for confirming our protocol schema matches the official decode path.
 
 ---
 
-## Feature Dependencies (Phase Ordering)
+## Feature Dependencies
 
 ```
-1. Backfill fix (BF-01/02)
-        |
-        v
-2. Real data in WhoopStore
-        |
-        +——> 3a. Server sleep staging runs → stagesJSON populated → Hypnogram shows
-        |
-        +——> 3b. Server recovery score runs → Recovery ring shows real %
-        |
-        +——> 3c. Server strain score runs → Strain card shows real value
-        |
-        v
-4. Validate biometric streams with real data (IOS-03/04/05)
-        |
-        +——> 5a. PROTO-11 (SpO₂) VERIFIED → SpO₂ card + HealthKit SpO₂ export
-        |
-        +——> 5b. PROTO-12 (skin temp) VERIFIED → Skin Temp Dev card
-        |
-        +——> 5c. PROTO-14 (IMU/gravity) VERIFIED → Sleep staging accuracy improves
-        |
-        v
-6. HealthKit export (HR, HRV, sleep sessions)
-        |
-        v
-7. SpO₂ HealthKit export (gated on PROTO-11 VERIFIED)
-```
+[Ghidra coefficient decode]
+    └──enables──> [Exact Keytel coefficient validation] (ALG-13 fidelity)
 
-Backfill fix is the critical path gate. Everything downstream is blocked until the historical pipeline reliably pushes data to the server.
+[DB migration: purge corrupt HRV baseline]
+    └──required before──> [Recovery score baseline trust]
+
+[DailyMetric.sleepPerformance wired to SleepCard/RecoveryCard]
+    └──requires──> [ALG-10 already computed] (already shipped)
+    └──then enables──> [Accurate "SLEEP" column in RecoveryCard]
+
+[DailyMetric.sleepNeededMin display in SleepView]
+    └──requires──> [ALG-12 already computed] (already shipped)
+
+[Gen4 sweep / code audit]
+    └──independent──> [Can run in parallel with UI fixes]
+
+[Repository reorganisation]
+    └──independent──> [No architecture change; rename/move only]
+```
 
 ---
 
-## MVP Recommendation for v2.0
+## MVP Definition for v4.0
 
-**Must ship (blocks "complete product" claim):**
-1. Backfill pipeline fix — gates all data-dependent features
-2. Recovery ring with real % — the headline experience
-3. Hypnogram with real staging data — the visual centrepiece of the Sleep tab
-4. HealthKit export: HR samples + sleep sessions — ecosystem integration users expect
-5. Validate IOS-03/04/05 — confirms the whole stack works end-to-end
+### Must Ship
 
-**Ship if PROTO streams verify:**
-6. SpO₂ display + HealthKit export (gated on PROTO-11)
-7. Skin temp deviation display (gated on PROTO-12)
+- [ ] **SleepCard fix:** read `daily.sleepPerformance` (ALG-10 result) instead of `efficiency` for the SLEEP PERFORMANCE column — prevents showing wrong number
+- [ ] **RecoveryCard fix:** "SLEEP" stat column reads `daily.sleepPerformance` when available — same data source correction
+- [ ] **Sleep Needed display:** add "SLEEP NEEDED" metric tile to SleepView/SleepCard reading `daily.sleepNeededMin` — ALG-12 is computed but silently discarded
+- [ ] **DB migration:** flag/purge `avgHrv` in DailyMetric rows predating the V128 RR fix (e65fa31, 2026-06-01) — prevents corrupt HRV distorting 28-night recovery baseline
+- [ ] **Gen4 remnant sweep:** audit all files with "4.0" or "Gen4" references; document intentional vs. accidental; clean up comments so future readers understand dual-path is intentional
 
-**Defer to v2.1 or later:**
-- Respiratory rate (server pipeline exists; needs calibration validation)
-- IMU-improved sleep staging (needs TOGGLE_IMU_MODE capture, PROTO-14)
-- Workout calorie refinement (calorie formula depends on user weight/age input not yet collected)
+### Add After Core Fixes
+
+- [ ] **Ghidra coefficient decode:** parse 8 × f64 LE at 0x1058a5a80 — confirm Keytel sex-specific coefficients match our `calories.py` implementation. If they differ, correct ALG-13.
+- [ ] **Calories: nil-profile UX:** show an inline "Set profile for calorie estimate" prompt when `profile.weightKg == nil`, rather than hiding the Calories card entirely
+- [ ] **`sleepPerformanceAbove70Percent` copy:** add threshold message ("above 70%") when sleep performance exceeds 70 — cosmetic but 1:1 with official app behaviour
+
+### Future (Hardware-Dependent)
+
+- [ ] **PROTO-11/12 decode offsets:** when Ghidra analysis completes, extract SpO2/skin temp frame offsets from official app decoder path — verify against PROTO-11/12 HYPOTHESIS values
+- [ ] **IOS-03/04 end-to-end validation:** Today + Sleep views with real WHOOP data (requires dedicated session without official app)
+
+---
+
+## Feature Prioritisation Matrix
+
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| SleepCard: read sleepPerformance (ALG-10) | HIGH — fixes wrong number shown | LOW (one property read) | P1 |
+| RecoveryCard: read sleepPerformance | HIGH | LOW (one property read) | P1 |
+| Sleep Needed display in SleepView | HIGH — hides computed result from user | LOW (add one MetricCard) | P1 |
+| DB migration: purge corrupt HRV | HIGH — recovery score accuracy | MEDIUM (migration + test) | P1 |
+| Gen4 remnant sweep | MEDIUM — code quality | LOW (comments + docs) | P2 |
+| Keytel coefficient decode via Ghidra | MEDIUM — algorithm fidelity | MEDIUM (f64 decode + compare) | P2 |
+| Nil-profile UX for Calories card | MEDIUM — first-run experience | LOW (conditional Text) | P2 |
+| sleepPerformanceAbove70Percent copy | LOW — cosmetic fidelity | LOW | P3 |
+| PROTO-11/12 offset verification | HIGH — unblocks SpO2/skin temp | HIGH (hardware-dependent) | P3 (hardware gate) |
+
+---
+
+## Competitor Feature Analysis
+
+| Feature | Official WHOOP 5.37.0 | Our Implementation (v3.0) |
+|---------|----------------------|--------------------------|
+| Recovery score | Server-side (IPA confirmed) | LocalMetricsComputer (offline-first) |
+| Sleep Performance | Server-side; shown in Coach tab | ALG-10 local; shown in Today + Trends |
+| Sleep Needed | Server-side; Coach tab | ALG-12 local; COMPUTED BUT NOT DISPLAYED |
+| Training State | Client lookup table | Identical lookup table (recovery_to_strain.json) |
+| Calories | Client-side Keytel + Harris-Benedict (IPA confirmed) | Matches: ALG-13 Keytel + Mifflin–St Jeor |
+| SpO2 | Shows in Sleep tab | "—" (PROTO-11 unverified) |
+| Skin Temp deviation | Shows in Sleep tab | "—" (PROTO-12 unverified) |
+| Respiratory rate | Shows in Sleep tab | Wired; placeholder pending data |
+| Hypnogram | 4-lane chart in Sleep tab | Identical structure (HypnogramView) |
+| 7-night chart | Yes | Yes (SevenNightChart) |
+| Smart Alarm | Coach tab + Sleep tab | Sleep tab (AlarmView) |
+| Raw HR chart | Not exposed | Yes (Trends tab, differentiator) |
+| Trends 7D/30D/90D | No equivalent single screen | Yes (differentiator) |
 
 ---
 
 ## Sources
 
-| Source | Type | Confidence |
-|--------|------|------------|
-| `ios/OpenWhoop/App/RootTabView.swift` | Codebase (v1.0) | HIGH |
-| `ios/OpenWhoop/Tabs/TodayView.swift` | Codebase (v1.0) | HIGH |
-| `ios/OpenWhoop/Tabs/SleepView.swift` | Codebase (v1.0) | HIGH |
-| `ios/OpenWhoop/Tabs/TrendsView.swift` | Codebase (v1.0) | HIGH |
-| `ios/OpenWhoop/Tabs/WorkoutsView.swift` | Codebase (v1.0) | HIGH |
-| `ios/OpenWhoop/Tabs/HypnogramView.swift` | Codebase (v1.0) | HIGH |
-| `ios/OpenWhoop/Charts/MetricKind.swift` | Codebase (v1.0) | HIGH |
-| `ios/OpenWhoop/Metrics/LocalMetricsComputer.swift` | Codebase (v1.0) | HIGH |
-| `server/ingest/app/analysis/recovery.py` | Server algo (v1.0) | HIGH |
-| `server/ingest/app/analysis/sleep.py` | Server algo (v1.0) | HIGH |
-| `server/ingest/app/analysis/strain.py` | Server algo (v1.0) | HIGH |
-| `server/ingest/tests/test_recovery.py` | Test suite (v1.0) | HIGH |
-| `server/ingest/tests/test_sleep.py` | Test suite (v1.0) | HIGH |
-| `server/ingest/tests/test_strain.py` | Test suite (v1.0) | HIGH |
-| `.planning/PROJECT.md` | Project context | HIGH |
-| `FINDINGS_5.md` | BLE protocol reference | HIGH |
-| `.planning/research/FEATURES.md` (v1.0 version) | Previous research | MEDIUM |
-| WHOOP app store description / public marketing | External reference | MEDIUM (feature existence only; UI details approximate) |
+| Source | Confidence |
+|--------|------------|
+| Ghidra IPA analysis: `Whoop.app/Whoop` 5.37.0 ARM64 (`.planning/notes/ghidra-ios-algorithm-findings.md`) | HIGH |
+| Ghidra phase scope notes (`.planning/notes/ghidra-ios-phases-scope.md`) | HIGH |
+| Full Swift source audit: all `.swift` files in `ios/OpenWhoop/` | HIGH |
+| Git log: recent commits e65fa31, 4d6b225, 17896ce, 4c17952, 3c22b9e | HIGH |
+| `.planning/PROJECT.md` v4.0 milestone definition | HIGH |
+| `.planning/notes/2026-06-01-ble-sync-discoveries.md` | HIGH |
+| `.planning/notes/2026-06-01-analisa-codigo-verifica-4-0.md` (user intent note) | MEDIUM |
+
+---
+*Feature research for: WHOOP 5.0 iOS client — v4.0 UI Redesign + Bug Fix*
+*Researched: 2026-06-01*

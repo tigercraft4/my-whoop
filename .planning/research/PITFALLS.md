@@ -1,453 +1,779 @@
-# Domain Pitfalls — OpenWhoop v2.0
+# Pitfalls Research — OpenWhoop v4.0
 
-**Domain:** BLE wearable + HealthKit + algorithm integration + SwiftUI redesign
-**Researched:** 2026-05-31
-**Confidence:** HIGH on BLE/backfill (grounded in actual code + v1.0 lessons); MEDIUM on HealthKit
-and SwiftUI restructure (Apple docs + Context7 verified); MEDIUM on JADX (legal analysis).
+**Domain:** Ghidra Swift binary RE + SwiftUI 1:1 proprietary redesign + BLE/HRV bug fixes + mixed Swift/Python repo cleanup
+**Researched:** 2026-06-01
+**Confidence:** HIGH on BLE offset bugs (grounded in retrospective + actual code); HIGH on Ghidra Swift ARM64 RE (well-documented domain with consistent failure modes); MEDIUM on SwiftUI proprietary UI replication (project-specific); HIGH on repo reorganisation (well-understood pitfalls for mixed-language repos).
 
-> This file covers v2.0 integration pitfalls only. For v1.0 protocol RE pitfalls see the
-> version of this file tagged at v1.0 (covers framing, capture, epoch correlation, etc.).
-
----
-
-## Summary
-
-Five distinct integration surfaces each carry independent failure modes. Risk ranking:
-
-1. **Backfill / CoreBluetooth** — already broken in production; the ack-timing invariant is
-   fragile and Maverick framing adds invisible off-by-one risk. Any new `.withResponse` write
-   anywhere in the codebase can storm the handshake.
-2. **HealthKit** — zero entitlement, zero plist keys, zero HealthKit code exists yet. Authorization
-   denial is silent and permanent; the entire entitlement/plist/capability stack must be built
-   from scratch before the first API call.
-3. **Algorithm integration** — server-computed scores are displayed without staleness indication;
-   offline degradation is not handled in the UI layer yet.
-4. **SwiftUI tab restructure** — `RootTabView` has no selection binding and no state persistence;
-   adding tabs while preserving existing navigation is fragile.
-5. **JADX reference** — layout XML reveals structure but not data semantics; legal constraints
-   apply to what can be reproduced.
+> This file covers v4.0 pitfalls only. v2.0 and v3.0 pitfalls (HealthKit, algorithm integration,
+> backfill, JADX, SwiftUI restructure) are documented in the version of this file tagged at those
+> milestones. Pitfalls already addressed in prior milestones are not repeated here unless a new
+> variant applies.
 
 ---
 
-## HealthKit Pitfalls
+## Area 1 — Ghidra: Reverse-Engineering Obfuscated Swift Binaries (ARM64)
 
-### HK-P1: Missing entitlement and plist keys will crash or silently no-op before the first line of HealthKit code runs
+### G-P1: Swift name mangling makes symbol lookup unreliable — demangled names are hypotheses, not facts
 
-**What goes wrong:** `HKHealthStore().requestAuthorization(toShare:read:)` cannot be called until
-two prerequisites exist: (1) the HealthKit capability is enabled in the Xcode target (which
-auto-generates an `.entitlements` file with `com.apple.developer.healthkit = true`), and (2)
-`NSHealthShareUsageDescription` and `NSHealthUpdateUsageDescription` string keys exist in
-`Info.plist`. Without the entitlement the binary is rejected at App Store submission. Without the
-plist keys iOS raises a runtime exception before the authorization sheet appears.
+**What goes wrong:**
+Swift compiles to mangled symbols (`_$s12SomeFoo...`). Ghidra's Swift demangler is incomplete for
+complex generic types, closures, and protocol witness tables. A class named
+`SleepPerformanceCalculator` in Ghidra may actually be `_SleepPerformanceCalculator_private` or an
+anonymous helper. When you search for a class name and find a result, you may have found an
+unrelated symbol with a similar mangled prefix.
 
-**Current state:** `Info.plist` has no HealthKit usage description keys. No `.entitlements` file
-exists in the project. Both must be created before any HealthKit symbol is even imported.
+v3.0 precedent: IPA analysis confirmed class names like `SleepPerformanceCalculator` and
+`TrainingStateCalculator` directly drove ALG-10..13 implementation. That success was possible
+because WHOOP does **not** obfuscate class names (they appear in Objective-C runtime metadata
+and Swift reflection). If v4.0 analysis targets more obfuscated code paths (UI layout logic,
+proprietary algorithm coefficients), mangled names will be less reliable.
 
-**Prevention:**
-- Add the HealthKit capability in Xcode target settings first (auto-generates `.entitlements`).
-- Add both usage description keys to `Info.plist` with user-facing Portuguese text.
-- Add `UIBackgroundModes` entry `health-research` only if using `HKLiveWorkoutBuilder` — not
-  needed for v2.0 (write-only export; the `bluetooth-central` mode already keeps the app alive).
+**Why it happens:**
+Ghidra's Swift support is still maturing. Closures are compiled as anonymous types; generic
+specialisations produce long mangled suffixes. A match on the human-readable demangled name
+does not guarantee the function is what you think it is.
 
-### HK-P2: Authorization denial is silent and permanent — the app always receives "success"
+**How to avoid:**
+- Verify every function by cross-referencing: (a) demangled name, (b) caller context (what
+  calls this function), (c) decompiled body structure (does it read the fields you expect?).
+- Use `class-dump` or `swift-demangle` on the raw binary before opening Ghidra — build a
+  reference name list independently, then match in Ghidra rather than relying solely on
+  Ghidra's built-in demangler.
+- When a class name cannot be verified by all three criteria, tag the finding as HYPOTHESIS
+  in FINDINGS_5.md (same discipline as protocol fields).
 
-**What goes wrong:** The user taps "Don't Allow" on the HealthKit authorization sheet. Apple's
-privacy design always calls the completion handler with `success = true` regardless of the actual
-choice. All subsequent `save()` calls also return no error, but nothing is written to the Health
-store. The app's logs look clean; Health shows nothing.
+**Warning signs:**
+- Ghidra shows a function body with zero cross-references — likely a dead code artefact or
+  demangler error, not the real implementation.
+- A demangled name contains `_private` suffix or long numeric suffix — likely a specialisation
+  of a different function.
+- The 477k-function corpus means false positive matches by name substring are frequent. Any
+  search returning > 5 results for a UI class name warrants manual disambiguation.
 
-**Consequences:** Data appears to export fine in all diagnostic surfaces; the user has no
-feedback that export is broken.
-
-**Prevention:**
-- After requesting authorization call `HKHealthStore().authorizationStatus(for:)` for each
-  quantity type. Surface a non-intrusive banner ("Acesso ao HealthKit negado — abrir Definições?")
-  when `.sharingDenied` is returned.
-- Never assume the authorization sheet will appear a second time — iOS only shows it once per
-  type per app install. `requestAuthorization` after the first time is a no-op that calls
-  completion immediately with `success = true`.
-
-### HK-P3: HKQuantityType unit mismatches — the WhoopStore schema and HealthKit use different units
-
-**What goes wrong:** Heart rate in HealthKit uses `HKUnit.count().unitDivided(by: .minute())`, not
-raw `Int` BPM. HRV uses `HKUnit.secondUnit(with: .milli)` for RMSSD/SDNN (milliseconds). SpO₂
-uses `HKUnit.percent()` with values in the range `0.0–1.0`, not `0–100`. Sleep sessions use
-`HKCategoryType` (not `HKQuantityType`) and require explicit stage metadata.
-
-**Current store format:** `hrSample` rows store `bpm: Int`. `rrInterval` rows store millisecond
-integers (per WHOOP protocol). SpO₂ is stored as a percentage integer. All need a conversion
-layer at the HealthKit boundary — do not mutate the WhoopStore schema to match HealthKit units.
-
-**Prevention:**
-- Create a dedicated `HealthKitExporter` class (not inline in `BLEManager` or `Backfiller`) that
-  converts at the boundary: `Double(bpm)` with `count/min`, `Double(rr_ms) / 1000.0` with `s`,
-  `Double(spo2_pct) / 100.0` with `%`.
-- For sleep sessions use `HKCategoryValueSleepAnalysis` with `.asleepCore`, `.asleepREM`,
-  `.asleepDeep`, `.awake`. These values were added in iOS 16 — confirm before targeting lower.
-  This project targets iOS 16+, so use the new stage enum directly.
-
-### HK-P4: Write conflicts with Apple Watch and third-party apps create duplicate samples
-
-**What goes wrong:** Apple Watch writes HR every 5 s; OpenWhoop writes HR from the WHOOP strap
-every 1–2 s (from the historical offload). Both appear in Health with no deduplication. The user
-sees two HR sources, doubled data density, and skewed HRV averages.
-
-**Prevention:**
-- Accept duplicates in v2.0 as a known limitation. Tag all written samples with the app's
-  `HKSource` (bundle ID) so power users can filter by source.
-- Batch-write HR samples from the historical offload rather than writing in real time — this
-  reduces contention frequency and lets Health coalesce display.
-- Full pre-write deduplication (query existing samples in the window before inserting) is a
-  v3 concern; it requires `HKSampleQuery` round-trips that complicate the already-loaded
-  `onBackfillComplete` path.
-
-### HK-P5: HKCategoryType sleep sessions must not overlap — the store has no overlap protection
-
-**What goes wrong:** If two `HKCategoryType.sleepAnalysis` samples overlap in time, HealthKit
-accepts both without error but the Health app displays erratic hypnogram artifacts and incorrect
-total sleep figures. `LocalMetricsComputer` currently computes sleep sessions from raw BLE
-streams with no overlap check against existing HealthKit data.
-
-**Prevention:**
-- Before writing a sleep session, query existing `HKCategoryType.sleepAnalysis` samples in the
-  `[startTs, endTs]` window from this app's source. Skip or trim the new sample if overlap exists.
-- The simpler v2.0 approach: delete all existing samples from this bundle ID in the session
-  window, then insert fresh — safe because the source is keyed to this app's bundle ID only.
+**Phase to address:** Ghidra deep-dive phase (Phase 1 of v4.0).
 
 ---
 
-## Algorithm Integration Pitfalls
+### G-P2: ARM64 Swift calling conventions differ from C — Ghidra's default decompilation is wrong for Swift
 
-### ALG-P1: Stale algorithm results displayed as current without a staleness indicator
+**What goes wrong:**
+Ghidra decompiles ARM64 as generic C. Swift on ARM64 uses:
+- `x20` as the Swift self register (not `x0` as in C);
+- indirect return via `x8` for large structs (not on the stack as C might show);
+- `@convention(swift)` functions pass error via an extra pointer argument in `x21`;
+- `@MainActor` functions dispatch through the Swift runtime, adding an indirection layer.
 
-**What goes wrong:** `MetricsRepository.today` is set once per backfill completion and retained
-until the next `refresh()`. If the server is unreachable, `today` shows yesterday's Recovery
-score with today's date string. The current `TodayView` reads `coordinator.metrics.today` with no
-age check and no "last updated" label.
+When Ghidra decompiles a Swift `@MainActor` method, it often shows a signature with extra
+spurious pointer arguments that are actually actor isolation bookkeeping, not real parameters.
 
-**Current state:** `MetricsRepository` already publishes `lastRefreshedAt: Date?`. The field
-exists but is not plumbed through to any view.
+**Why it happens:**
+Ghidra's decompiler is architected around C/C++ calling conventions. Swift's ABI deviations are
+significant enough that automatically-generated pseudocode is unreliable for argument counting
+and type identification.
 
-**Prevention:**
-- Wire `lastRefreshedAt` to a subtitle on the Recovery card: "Actualizado há 2h".
-- Define a staleness threshold (e.g. 4 hours). If `Date() - lastRefreshedAt > threshold` and
-  connectivity is available, auto-trigger `refresh()` in the background from `.task`.
-- Do not use `today?.day` (a date string) as a freshness proxy — a row can exist for today with
-  values that were computed yesterday if the compute ran before midnight.
+**How to avoid:**
+- Use Ghidra's decompiler output as a **structural hint** only (what calls what, what branch
+  conditions exist, what constants are loaded). Never trust the argument list or type
+  annotations at face value.
+- For UI layout classes: focus on identifying string constants (SwiftUI modifier names,
+  colour literal hex values, spacing constants loaded as immediates) rather than trying to
+  reconstruct the function signature.
+- Use the `bridge_mcp_ghidra.py` MCP bridge to batch-query function lists and cross-reference
+  results across many functions, reducing the manual burden per function.
 
-### ALG-P2: Offline-first compute and server-priority upsert produce a mixed-source display
+**Warning signs:**
+- Decompiled function shows 6+ pointer arguments for what appears to be a simple accessor —
+  almost certainly a Swift ABI artefact.
+- `param_1->field_0x10` patterns in decompiled output for a function believed to be a
+  `@Published` property — the offset arithmetic is real but the field names are invented by Ghidra.
 
-**What goes wrong:** `refresh()` runs `computeLocalMetrics()` first (writes offline-derived values
-to the DB), then `serverSync?.pullDerived()` (overwrites via `ON CONFLICT DO UPDATE`). If the
-server returns `200` with an empty body (no rows computed yet for the newly-uploaded data), the
-upsert is a no-op and offline values survive — which is correct. But if the server returns partial
-data (some days computed, others not), the UI shows a mix of server-computed and locally-derived
-values without any distinction.
-
-**Prevention:**
-- Add a `source` column (`"local"` | `"server"`) to `DailyMetric` (or at minimum to
-  `CachedSleepSession`) in the next GRDB migration. Show a small indicator ("Estimado" vs
-  "Calculado") in the card subtitle. This documents intent in the data layer, making future
-  debugging unambiguous.
-
-### ALG-P3: Server pipeline latency causes empty metric views immediately after first backfill
-
-**What goes wrong:** On first launch the store is empty. The backfill uploads 14 days of data;
-the server's `compute_day` pipeline takes 5–30 seconds per day. `pullDerived()` returns `[]`.
-The UI shows "Sem dados" despite a full local store, because step 1 (`computeLocalMetrics`)
-derived values that were then not surfaced by `load()` until step 3 ran.
-
-**Prevention:**
-- Verify that `refresh()` surfaces locally-derived metrics after step 1 without waiting for
-  step 2 to complete. Currently `isRefreshing` stays `true` through all three steps — consider
-  publishing a separate `isServerRefreshing` flag so the UI can render local data (step 1
-  result) and show a spinner only for the server pull (step 2).
-
-### ALG-P4: Algorithm version discontinuity appears as a data error in trend charts
-
-**What goes wrong:** `openwhoop-algos` is updated on the server with an improved Recovery
-algorithm. Old rows in `dailyMetric` retain old values. New rows get new values. The trend chart
-shows a discontinuity at the upgrade date that is indistinguishable from a data collection gap.
-
-**Prevention:**
-- Tag each `DailyMetric` row with an `algo_version` string returned from the server response.
-- When a version bump is detected, optionally trigger a server-side batch recompute for the
-  historical window. This is a server operation; the client only needs to display the version
-  and request the recompute.
+**Phase to address:** Ghidra deep-dive phase; document in FINDINGS_5.md with explicit
+HYPOTHESIS tags on any UI field derived from decompiled struct offsets.
 
 ---
 
-## Backfill / CoreBluetooth Pitfalls
+### G-P3: Treating Ghidra findings as ground truth without cross-validation locks in wrong UI specs
 
-### BF-P1: `connectHandshakeDone` is the single most critical invariant — any new `.withResponse` write threatens it
+**What goes wrong:**
+A colour constant found in Ghidra decompilation (`0xFF1A1A2E` as a load immediate) is treated as
+the confirmed WHOOP background colour. The SwiftUI redesign is built around it. Later PacketLogger
+or screenshot comparison reveals the actual background is `0xFF0D0D1A` — a different constant from
+a different function. Every card in the app has the wrong background.
 
-**What goes wrong:** `didWriteValueFor` fires on every `.withResponse` write: the bond write,
-every `SEND_HISTORICAL_DATA`, every `HISTORY_END` ack. Without the `connectHandshakeDone` guard
-each re-entry would re-blast `GET_HELLO`/`SET_CLOCK` at the strap mid-offload and stop it from
-streaming type-47 frames. This was the confirmed iOS-side root cause of the backfill stall
-(BLEManager.swift line 803).
+This is the Ghidra equivalent of the haptics payload assumption failure in v2.0 (assumed
+`[2, 3, 0, 0, 0]`, actually 13-byte DRV2605 payload — only caught by PacketLogger).
 
-**Risk for v2.0:** New features — HealthKit export triggering a `SET_CLOCK` refresh, an alarm
-feature calling `.withResponse`, a new protocol command — all produce `didWriteValueFor`
-callbacks. If any code path bypasses or prematurely resets `connectHandshakeDone`, the handshake
-storms the strap again.
+**Why it happens:**
+Large ARM64 binaries load many constants; without knowing which function is actually called at
+runtime for a given UI element, a constant found in a plausibly-named function may belong to a
+dead code path or a different screen.
 
-**Prevention:**
-- Never reset `connectHandshakeDone` except in `didDisconnectPeripheral`.
-- Any new `.withResponse` command added anywhere in the codebase requires a code review
-  specifically checking: (a) does it fire `didWriteValueFor`? (b) does the `guard
-  !connectHandshakeDone else { return }` at line 804 short-circuit it correctly?
-- The `ackHistoricalChunk` path already passes through this guard safely — verify any new path
-  does the same before merging.
+**How to avoid:**
+- For visual constants (colours, font sizes, spacing): validate against the official WHOOP app
+  running on-device via Xcode's View Debugger (attach to the WHOOP app process, inspect the
+  live view hierarchy). This gives ground-truth values, not decompiled approximations.
+- For algorithmic constants (formula coefficients, threshold values): cross-validate against
+  observed biometric outputs. If the formula produces a Recovery score that diverges from the
+  official app's score for the same input data, the constant is wrong.
+- Tag every Ghidra-derived constant as HYPOTHESIS until confirmed by at least one of:
+  (a) live View Debugger inspection, (b) consistent output match, (c) PacketLogger trace.
 
-### BF-P2: Maverick frame offset errors corrupt chunk classification silently
+**Warning signs:**
+- A constant appears in multiple unrelated functions — you likely found a shared constant pool
+  entry, not a UI-specific value.
+- The decompiled function body has no cross-references from UI code (no call site in a known
+  SwiftUI view class) — the constant may be from a non-UI subsystem.
 
-**What goes wrong:** Maverick-wrapped frames have `packet_type` at `frame[8]` (not `frame[4]`
-for Gen4). `isOffloadFrame()` already handles this via `isMaverick` detection. But any new code
-that reads packet fields with hardcoded offsets (e.g. inside `classifyHistoricalMeta`) will
-silently misclassify frames. A `HISTORY_END` misidentified as `.other` means the chunk is never
-committed and the strap never receives the ack — the offload stalls without any error log.
-
-**Prevention:**
-- All frame-parsing must go through `parseFrame()`. Never read raw byte offsets outside
-  `parseFrame()` and `isOffloadFrame()`.
-- When debugging a stalled backfill: add a temporary log of the raw `meta` value from
-  `classifyHistoricalMeta` for every frame in `Backfiller.ingest()`. A long run of `.other`
-  for frames that should be `.end` reveals an offset bug immediately.
-
-### BF-P3: Watchdog timeout shortened during debugging cuts sessions mid-drain
-
-**What goes wrong:** `backfillIdleTimeoutSeconds = 60`. The WHOOP 5.0's continuous type-43 raw
-flood (`REALTIME_RAW_DATA`) consumes BLE airtime and causes multi-second lulls between genuine
-offload frames. If the watchdog is shortened (natural impulse when debugging a "stuck" backfill),
-it fires mid-offload. `chunk` is cleared without acking. The `strap_trim` cursor does not
-advance; the next offload resends the same chunk; the offload makes no progress.
-
-**Prevention:**
-- Do not shorten the watchdog below 60 s during debugging — use the `BF: frame #N type=X`
-  counter log to judge progress instead.
-- The `isOffloadFrame()` filter already excludes type-43 from re-arming the watchdog. Any
-  new frame type added must explicitly be classified as offload or live — no default inclusion.
-
-### BF-P4: Both `gen4DataNotifChar` and `dataNotifyChar` carry offload frames — routing must cover both
-
-**What goes wrong:** Historical type-47 frames arrive on `gen4DataNotifChar` (61080005), not only
-on `dataNotifyChar` (FD4B0005). The current `didUpdateValueFor` handles both. A refactor that
-consolidates the routing code into only one characteristic handler silently drops all frames
-arriving on the other.
-
-**Prevention:**
-- The `backfilling` flag and `routeBackfillFrame()` call must appear in handlers for both
-  `gen4DataNotifChar` and `dataNotifyChar`. A unit test that injects frames on both mock
-  characteristics during a backfill session and asserts correct frame counts is the only reliable
-  regression guard.
-
-### BF-P5: Frame queue drain task re-entrancy across `await` suspension points
-
-**What goes wrong:** `backfillFrameQueue` is mutated synchronously in `routeBackfillFrame()`
-(on `@MainActor`) and drained in `Task { @MainActor in ... }`. The `backfillDraining` guard
-prevents double-drain. But if an `await` is inserted between `removeFirst()` and
-`backfiller?.ingest(f)` in a future edit, re-entrancy becomes possible — Swift's `@MainActor`
-serialisation does NOT protect across `await` suspension points.
-
-**Prevention:**
-- Keep the drain loop's body as a single `await backfiller?.ingest(f)` with no additional
-  `await` calls interleaved. Never `await` upload or server-pull inside the drain loop.
-- The current implementation already respects this ordering (upload/pull are deferred to
-  `exitBackfilling`). Any edit that adds an `await` inside the drain while loop requires
-  explicit concurrency review.
-
-### BF-P6: Duplicate detection must be verified for every new biometric stream
-
-**What goes wrong:** The backfill re-offloads the full 14-day strap store every 15 minutes.
-If any new biometric stream added in v2.0 (SpO₂, skin temp, respiration) uses a plain `INSERT`
-path rather than `ON CONFLICT (device_id, ts) DO UPDATE` or `DO NOTHING`, every periodic
-backfill multiplies the row count. Duplicate rows corrupt HRV averages and sleep duration
-calculations.
-
-**Prevention:**
-- Verify every new stream's insert path in the GRDB migration uses upsert semantics.
-- Add a post-backfill assertion in debug builds that counts rows before and after and logs
-  a warning if the count grew by more than the expected new records.
+**Phase to address:** Ghidra deep-dive phase (constant extraction); UI implementation phase
+(validation gate before each screen is marked VERIFIED).
 
 ---
 
-## SwiftUI Restructure Pitfalls
+### G-P4: 477k functions — unbounded exploration without a map wastes sessions
 
-### UI-P1: `RootTabView` has no selection binding — adding tabs resets state and blocks deep links
+**What goes wrong:**
+The Ghidra MCP bridge exposes `list_methods(offset, limit)`. With 477,000 functions, a naive
+exploration ("let's look at all UI-related functions") produces hundreds of findings with no
+priority order. The session ends with a large list of HYPOTHESIS entries and no VERIFIED ones.
 
-**What goes wrong:** The current `RootTabView` uses `TabView { ... }` with no `selection`
-binding and no `@SceneStorage`. Adding or reordering tabs changes the default selected index.
-A user backgrounded on the Sleep tab wakes to TodayView with no indication anything changed.
-Programmatic navigation (e.g. deep-link to a specific tab from a morning recovery notification)
-is impossible without a selection binding.
+**Why it happens:**
+Swift iOS apps do not have a clean module boundary visible to Ghidra. UI code, algorithm code,
+networking code, and third-party libraries are all compiled into the same binary.
 
-**Prevention:**
-- Add `@SceneStorage("selectedTab") private var selectedTab: Tab = .today` and bind it:
-  `TabView(selection: $selectedTab)`. Do this as the first step of the tab restructure,
-  before any tab is added or reordered, so existing tab indices are stable during the
-  transition.
-- Define tab positions as a typed `enum Tab: String, CaseIterable` (use `String` raw value
-  for `@SceneStorage` and future Handoff compatibility) rather than `Int` so a reorder does
-  not silently map a persisted integer to the wrong tab.
+**How to avoid:**
+- Build a target list **before** opening Ghidra. From v3.0 IPA analysis, the following class
+  prefixes were identified: `WHOOP` prefix (UI), `Recovery*`, `Sleep*`, `Strain*`, `Training*`.
+  Use these as the starting namespace filter via `list_classes` with prefix matching.
+- Prioritise functions with known cross-references to `SwiftUI` framework stubs (identified by
+  `_$s7SwiftUI` prefix in callee list) — these are actual view body functions.
+- Timebox each Ghidra session to one screen or one algorithm. Write findings to FINDINGS_5.md
+  before moving to the next target. Never leave a session with uncommitted findings.
+- Use the existing `bridge_mcp_ghidra.py` MCP tool with `decompile_function` for targeted
+  per-function deep dives, not bulk exploration.
 
-### UI-P2: Double `NavigationStack` when the new tab architecture meets the existing Device tab
+**Warning signs:**
+- A single session produces > 20 HYPOTHESIS entries with 0 VERIFIED — the scope was too broad.
+- The same class name appears > 3 times with different suffixes — you're seeing generic
+  specialisations; focus on the unspecialised base version.
 
-**What goes wrong:** The current Device tab already wraps `LiveView()` in a `NavigationStack`.
-If the new WHOOP-style root also applies a `NavigationStack` at the `TabView` level (a pattern
-sometimes used for deep linking), the Device tab ends up with two stacked `NavigationStack`
-instances. This causes duplicate back buttons, broken `.toolbar` placement, and navigation
-title conflicts. SwiftUI does not warn about this; it silently misbehaves.
-
-**Prevention:**
-- Each tab must own its own `NavigationStack`. The root `TabView` must NOT wrap all tabs in a
-  single outer `NavigationStack`. The current `NavigationStack { LiveView() }` pattern on the
-  Device tab is correct — apply it consistently to all other tabs that require navigation.
-
-### UI-P3: New `@EnvironmentObject` injected lazily in `.onAppear` is nil on first render
-
-**What goes wrong:** `AppRootCoordinator.init()` wires `MetricsRepository` and `LiveViewModel`
-synchronously before SwiftUI evaluates `body`. If a new service (e.g. `HealthKitExporter`) for
-v2.0 is injected lazily in `.onAppear`, it is `nil` during the first render frame. SwiftUI
-crashes with "No ObservableObject of type X found" at the first `@EnvironmentObject` access.
-
-**Current state:** The comment in `OpenWhoopApp.swift` lines 22–34 explicitly documents that
-all env objects must be wired in `AppRootCoordinator.init()` before `body` is evaluated.
-
-**Prevention:**
-- Create every new `@EnvironmentObject`-injectable service inside `AppRootCoordinator.init()`,
-  not in `.onAppear`. Follow the existing pattern exactly. If a service requires async
-  initialisation, use the lazy-open pattern already established in `MetricsRepository`.
-
-### UI-P4: Local `@State` caches in views diverge from `MetricsRepository` published state
-
-**What goes wrong:** A view adds `@State var recovery: Int?` to avoid an `@EnvironmentObject`
-read. The state is loaded in `.task` or `.onAppear`. When `MetricsRepository.today` updates
-(triggered by `onBackfillComplete`), the local `@State` does not — the view shows stale data
-until the user navigates away and back.
-
-**Prevention:**
-- Views must read directly from `@EnvironmentObject private var metrics: MetricsRepository`
-  via its `@Published` properties. Use `@State` only for transient UI state (sheet
-  presentation, animation toggles). Never cache repository data in `@State`.
-
-### UI-P5: Hardcoded dark colours break light mode and bypass the semantic colour system
-
-**What goes wrong:** WHOOP's aesthetic uses near-black card backgrounds. Implementing this with
-hardcoded `Color.black` or `Color(red: 0.05, green: 0.05, blue: 0.05)` ignores the system
-appearance setting and produces black-on-white cards in light mode.
-
-**Prevention:**
-- Choose one of two explicit strategies and commit to it:
-  - Apply `.preferredColorScheme(.dark)` to the root `WindowGroup` to lock the entire app to
-    dark mode (acceptable for a sports/fitness app aesthetic, must be documented).
-  - Use `Color(.systemBackground)` and semantic colors (`Color.primary`, `Color.secondary`)
-    combined with a custom `Color` asset that has light and dark appearances.
-- Do not mix strategies across views.
+**Phase to address:** Ghidra deep-dive phase; enforce one-screen-per-session discipline.
 
 ---
 
-## JADX Reference Pitfalls
+### G-P5: Confusing WHOOP 4.0 vs 5.0 artefacts when the IPA targets both generations
 
-### JADX-P1: XML layout hierarchy reveals structure, not data semantics
+**What goes wrong:**
+The WHOOP iOS app 5.37.0 supports both Gen4 and Gen5 hardware. The binary contains code paths
+for both. A UI function found via Ghidra may be Gen4-specific (e.g. a legacy recovery card
+layout) that was replaced in Gen5. Implementing a redesign from the Gen4 code path produces
+a UI that does not match the physical WHOOP 5.0 experience.
 
-**What goes wrong:** An Android `RecyclerView` adapter, `Fragment` arguments, and `ViewModel`
-`LiveData` fields are not visible in layout XML. `<TextView android:id="@+id/recovery_score"/>`
-shows where a number is displayed but not which endpoint provides it, what unit it is in, or
-how it is computed. Building a SwiftUI view with placeholder data from the XML and then binding
-it to the wrong field produces a structurally correct UI with semantically wrong data.
+v3.0 precedent: the endData offset bug was exactly this — frame[17:25] was the Gen4 offset,
+frame[21:29] was the Maverick/Gen5 offset. The same risk applies to UI code paths.
 
-**Prevention:**
-- Use JADX XML only for layout structure (card hierarchy, tab order, field placement). Use
-  `FINDINGS_5.md` and the `openwhoop-algos` output schema as the authoritative data source.
-  Never derive data semantics from XML label strings or Android resource IDs.
-- Before implementing any card, document the data source explicitly: which field in
-  `DailyMetric` or `CachedSleepSession` will bind to this slot. If no source can be
-  identified, the card is not yet buildable — defer until backfill is fixed and real data flows.
+**Why it happens:**
+Feature flags and hardware-generation branching in the binary produce duplicate code paths.
+Without runtime context, Ghidra cannot tell which branch executes for Gen5.
 
-### JADX-P2: Android metric labels may not match `openwhoop-algos` field definitions
+**How to avoid:**
+- When two functions implement the same UI concept (e.g. `recoveryCardView` and
+  `recoveryCardViewV2`), always prefer the one whose name or caller contains `5`, `gen5`,
+  `maverick`, or `v2` (newer).
+- Where no naming signal exists, compare with the live WHOOP app on a Gen5 device using Xcode
+  View Debugger — the live code path is the correct one.
+- Note in FINDINGS_5.md which generation each finding targets.
 
-**What goes wrong:** An Android layout `@string/hrv_label` with value `"HRV (ms)"` appears to
-imply RMSSD in milliseconds. But the WHOOP Android app may compute SDNN and label it "HRV"; the
-units or averaging window may differ from `openwhoop-algos`. Copying the label into the SwiftUI
-card and binding it to `hrv_rmssd` without verifying creates a subtle misrepresentation.
+**Warning signs:**
+- A function implementing a known UI element appears twice with identical structure but
+  different constants — likely a Gen4/Gen5 fork.
+- The function's only callers are inside a branch checking a device-generation flag.
 
-**Prevention:**
-- Cross-reference every metric label found in JADX with `openwhoop-algos` output field names
-  and the WHOOP protocol documentation. When they disagree, use the protocol definition and
-  the algorithm's documented output, not the UI label.
-
-### JADX-P3: Reproducing colour values, spacing constants, or drawable resources is copyright infringement
-
-**What goes wrong:** JADX decompiles `colors.xml`, `dimens.xml`, and drawable resources.
-Copying exact hex colour values or dimension constants constitutes reproduction of copyrighted
-material, even if the visual result looks different. `PROJECT.md` calls this out explicitly
-under Out of Scope.
-
-**Prevention:**
-- Extract structural patterns only: "Recovery card has score prominently at top, three
-  sub-metrics in a horizontal row below." Implement colours, typography, and spacing
-  independently using Apple's Human Interface Guidelines and the existing `Design/` directory.
-- Document in code comments which JADX screen inspired a given view's layout — never which
-  values were copied.
-
-### JADX-P4: Android tab order is a reference, not a contract — use a typed enum from the start
-
-**What goes wrong:** The WHOOP Android app may order tabs as [Overview, Sleep, Strain, Coach].
-The iOS app adds a Device tab not present in the Android app. If tabs are ordered as integers
-and `@SceneStorage` persists those integers, any future reorder silently maps a user's
-persisted selection to the wrong tab.
-
-**Prevention:**
-- Use a `String`-rawValue enum for tab identifiers (see UI-P1). The Device tab gets its own
-  enum case that survives reorders. The JADX tab order is the starting reference, not a
-  permanent constraint.
+**Phase to address:** Ghidra deep-dive phase; flag all findings with `[Gen5-confirmed?]` tag.
 
 ---
 
-## Prevention Strategy
+## Area 2 — SwiftUI: Replicating Proprietary iOS UI from RE Findings
 
-### High-priority gates — block merge if violated
+### UI-P1: RE findings describe intent, not SwiftUI structure — direct translation fails
 
-| Area | Gate |
-|------|------|
-| HealthKit | Entitlement + plist keys present before any HK API call compiles |
-| HealthKit | `authorizationStatus(for:)` checked and surfaced in UI before any write |
-| HealthKit | Conversion layer unit-tested without a live `HKHealthStore` |
-| Backfill | `connectHandshakeDone` never reset except in `didDisconnectPeripheral` |
-| Backfill | Every new `.withResponse` write audited for `didWriteValueFor` re-entry path |
-| Backfill | Every new biometric stream insert path verified as upsert, not plain INSERT |
-| SwiftUI | `TabView(selection:)` binding added before any tab is added or reordered |
-| SwiftUI | No new `@EnvironmentObject` injected lazily (must be in `AppRootCoordinator.init`) |
-| JADX | Every SwiftUI card has a documented data source field before implementation begins |
+**What goes wrong:**
+Ghidra reveals that the Recovery card shows `recovery_score: Int` at the top with a font size
+loaded as `34.0`. Implementing this as `Text("\(score)").font(.system(size: 34))` produces the
+right number in the right approximate size, but the actual WHOOP card uses a custom font weight,
+a specific line height, and a character spacing adjustment that collectively produce the visual
+identity. The result looks "almost right" — harder to notice and fix than something obviously
+broken.
 
-### Testing strategy per area
+**Why it happens:**
+RE findings capture data values and constants. They do not capture SwiftUI modifier chains,
+view composition hierarchy, or the interplay of `ViewModifier` types that produce the final
+rendering.
 
-**HealthKit:**
-- Unit-test `HealthKitExporter` conversions (BPM → count/min, rr_ms → seconds, spo2_int → 0–1)
-  using a protocol mock instead of a live `HKHealthStore`.
-- Manual: deny HealthKit authorization at the iOS prompt → verify a banner appears, not a crash
-  or silent failure. Repeat with "Don't Allow Read" only to verify write failure is also caught.
+**How to avoid:**
+- Use Xcode's View Debugger (attach to the WHOOP process) to inspect the live SwiftUI view
+  hierarchy, not just decompiled constants. The View Debugger shows modifier chains directly.
+- Define all visual constants in `DesignTokens.swift` (`WH.` namespace) before implementing
+  any screen. A card implementation that references `WH.Font.score` is independently testable
+  and revisable without touching view code.
+- Create a `DesignGallery` entry for each new component before wiring it to data. Compare
+  side-by-side with a screenshot of the official app (do not copy assets — compare visually).
 
-**Algorithm integration:**
-- Simulate server downtime (invalid URL in Secrets.xcconfig) → verify locally-derived metrics
-  still appear in TodayView. This is the offline-first regression test.
-- Simulate server returning empty `[]` → verify no crash and local values remain visible with
-  appropriate staleness indicator.
+**Warning signs:**
+- A view is implemented without a corresponding `DesignTokens.swift` entry — fonts and colours
+  are hardcoded inline. This is always wrong.
+- A component passes a "looks right" visual check but has no `DesignGallery` entry — it has
+  never been compared systematically.
 
-**Backfill:**
-- After adding any new `.withResponse` write, run a full backfill session and verify via the
-  `CMD_RESP: cmd=X` log on FD4B0003 that the frame count increases normally (not stuck at 1).
-- On-device only: the type-47 frame counter (`BF: frame #N`) must reach a nonzero count within
-  the first 60 seconds of a bonded session. If it remains at 0, the handshake was re-triggered.
+**Phase to address:** UI implementation phase; DesignTokens gate before each screen.
 
-**SwiftUI:**
-- After adding the selection binding: navigate to Sleep tab → background the app → kill in
-  switcher → relaunch → verify Sleep tab is restored (not TodayView).
-- Fresh install test: verify no "No ObservableObject of type X found" crash with no prior
-  `@SceneStorage` value.
+---
 
-**JADX:**
-- Before any card implementation, review the card's data source field mapping against the
-  actual `DailyMetric` / `CachedSleepSession` schema. Blocked cards (no data source yet) must
-  be marked with a `// TODO(BF-01)` comment linking the dependency to the backfill fix.
+### UI-P2: RE-derived layout breaks on non-canonical device sizes and Dynamic Type
+
+**What goes wrong:**
+WHOOP's app is designed for specific iPhone screen sizes. A spacing constant of `16.0` found
+in Ghidra works correctly on an iPhone 15 Pro Max but clips content on an iPhone SE or with
+large accessibility text. The RE finding is a specific-device constant, not a responsive
+design specification.
+
+**Why it happens:**
+RE extracts what the binary does for the captured execution, not what it should do across all
+configurations. Apple's HIG requires Dynamic Type support (iOS accessibility mandate); WHOOP's
+own app may or may not be compliant.
+
+**How to avoid:**
+- Map every Ghidra-derived spacing constant to the nearest `WH.Spacing.*` token (relative
+  spacing, not fixed points). Use `scaledMetric` for font-size-adjacent spacing.
+- Test each implemented screen on at minimum: iPhone SE (small), iPhone 15 (standard),
+  iPhone 16 Pro Max (large), and with Accessibility → Larger Text at maximum.
+- Accept that the RE-derived layout is the Gen5-device reference layout, not the definitive
+  spec. The SwiftUI implementation adapts it.
+
+**Warning signs:**
+- A view uses `frame(width: X, height: Y)` with hardcoded constants from Ghidra — will clip.
+- A `Text` view with a fixed font size instead of a `Font` token — will not scale with
+  Dynamic Type.
+
+**Phase to address:** UI implementation phase; device-size regression check per screen.
+
+---
+
+### UI-P3: Placeholder data passes visual QA but hides binding bugs until real data flows
+
+**What goes wrong:**
+A Recovery card is built with hardcoded values (`score: 87, hrv: 62, rhr: 54`) to match the
+Ghidra-derived layout. It passes visual review. When wired to `MetricsRepository.today`, the
+optional chain produces `nil` for all three values and the card renders with em-dashes — the
+layout breaks because the hardcoded version never exercised the nil path.
+
+v2.0 precedent: `SleepView.swift:139` had a placeholder headline metric never replaced with
+real data (CONCERNS.md). This pattern is a known recurring failure mode.
+
+**Why it happens:**
+SwiftUI previews use hardcoded values; real data is only available on a physical device with
+an active WHOOP connection or a populated store. The gap between preview-passing and
+real-data-working is where placeholder bugs live.
+
+**How to avoid:**
+- Implement every view with an explicit `empty` state and a `loaded` state. Never write a view
+  whose only state is the happy path.
+- Add a `PreviewProvider` that exercises the nil/empty state alongside the populated state.
+  If the nil state crashes or renders incorrectly in preview, it will crash with real data.
+- The DesignGallery (`ios/OpenWhoop/Design/DesignGallery.swift`) must include both states
+  before a component is marked complete.
+
+**Warning signs:**
+- A `MetricCard` view contains `?? "--"` optionals that were never tested with a nil input.
+- A view's `PreviewProvider` uses hardcoded struct literals instead of the `empty` factory.
+
+**Phase to address:** UI implementation phase; enforced via PreviewProvider gate.
+
+---
+
+### UI-P4: Replicating WHOOP's animation and transition timing from RE is impractical — scope it out
+
+**What goes wrong:**
+Ghidra can reveal `withAnimation(.spring(response: 0.4, dampingFraction: 0.7))` as a constant
+call, but replicating the exact feel of a branded transition requires fine-tuning that RE cannot
+provide. Attempting to exactly replicate animation timing from a decompiled binary wastes
+disproportionate time on an unverifiable result.
+
+**Why it happens:**
+Animation parameters are easy to find in decompiled code but hard to validate — the human
+eye is the only instrument, and it is unreliable for sub-100ms differences.
+
+**How to avoid:**
+- Scope v4.0 UI redesign to static layout, typography, colour, and spacing. Use SwiftUI's
+  standard `.easeInOut` transitions unless an animation is grossly wrong. Mark animation
+  tuning as a post-v4.0 concern.
+- Exception: if a specific animation (e.g. the Recovery ring fill) is load-bearing for the
+  UX (it is in WHOOP's app), timebox one session to it and accept the result.
+
+**Warning signs:**
+- More than 30 minutes spent on a single animation parameter — stop and defer.
+- An animation constant from Ghidra is being debated without a side-by-side comparison
+  against the running WHOOP app.
+
+**Phase to address:** UI implementation phase; animation polish marked out-of-scope in
+phase acceptance criteria.
+
+---
+
+### UI-P5: Legal boundary violation — reproducing copyrighted UI code from Ghidra decompilation
+
+**What goes wrong:**
+A decompiled Swift function body is copied verbatim into the OpenWhoop codebase and adapted
+slightly. Even if the logic is reimplemented, the structural similarity to decompiled output
+creates a copyright risk.
+
+PROJECT.md constraint: "Copiar assets, artwork ou código proprietário do WHOOP — apenas
+referência para estrutura de dados/UI."
+
+**Why it happens:**
+Decompiled code looks like real code. The line between "understanding the algorithm" and
+"reproducing the implementation" is not always obvious when working quickly.
+
+**How to avoid:**
+- Use a "clean room" discipline: Ghidra findings are documented in FINDINGS_5.md as
+  observations ("Recovery card shows score as a large number at top, with three sub-metrics
+  below in a row"). A separate implementation session writes the SwiftUI code from the spec,
+  not from the decompiled output.
+- Never paste decompiled Ghidra pseudocode into Swift files, even as a comment.
+- All RE findings must pass through FINDINGS_5.md before reaching the codebase. If a finding
+  is not in FINDINGS_5.md, it has not been reviewed for legal risk.
+
+**Warning signs:**
+- A Swift file contains a comment with a Ghidra function address or decompiled variable name
+  (`param_1->field_0x18`) — the clean-room boundary was crossed.
+- A new algorithm implementation matches decompiled coefficient arrays exactly without an
+  independent derivation.
+
+**Phase to address:** All phases; FINDINGS_5.md gate is the enforcement mechanism.
+
+---
+
+## Area 3 — BLE Parsing: HRV/RR Offset Errors and Backfill Bugs
+
+### BLE-P1: Byte offset arithmetic errors are silent — wrong values, not crashes
+
+**What goes wrong:**
+An HRV or RR interval is decoded from the wrong byte range of a Maverick frame. The decoded
+value is a plausible number (e.g. 680ms instead of 640ms) — not a crash, not NaN, not an
+obvious error. It passes unit tests if the test fixture was generated from the same wrong
+offset. The bug surfaces only when the output diverges from the official WHOOP app's HRV
+display, which requires a dedicated comparison session.
+
+v2.0/v3.0 precedent: the endData offset bug (`frame[17:25]` vs `frame[21:29]`) is exactly
+this failure mode. It caused the trim cursor to never advance — a functional failure that
+happened to be detectable. RR offset errors are worse because the output is still a valid
+millisecond value.
+
+**Why it happens:**
+- Gen4 and Maverick (Gen5) frames have different inner layouts. The Maverick outer wrapper
+  shifts all inner field offsets by +4 bytes (4-byte role prefix).
+- New RR or HRV fields added to the schema may reference Gen4 offsets from memory or from
+  old FINDINGS documentation without verifying against current Maverick captures.
+
+**How to avoid:**
+- Every offset used in a frame decoder must have a corresponding golden fixture test that
+  uses a real captured Maverick frame (not a synthetic one). The fixture must cover
+  both the live path and the historical offload path.
+- When adding a new field offset, cross-reference against `whoop_protocol_5.json` confidence
+  tags: HYPOTHESIS offsets require a capture validation before merging to main.
+- Run `scripts/gen_golden.py` against fresh captures after any offset change and verify the
+  Python and Swift decoders agree.
+
+**Warning signs:**
+- A new field offset is introduced without a fixture update in `frames.json` + `golden.json`.
+- An RR value in the decoded output is consistently 4 bytes off from the expected value —
+  classic Maverick wrapper shift.
+- The parity test (`ParityTests.swift`) passes but the on-device value diverges from the
+  official app — the fixture was generated from the same wrong code.
+
+**Phase to address:** Bug fix phase; every offset change requires a fixture regression test
+as a merge gate.
+
+---
+
+### BLE-P2: Corrupt RR intervals with NaN/Inf values propagate into RMSSD and crash algorithms
+
+**What goes wrong:**
+A gravity sample or RR interval decoded with a corrupt value (e.g. a NaN from an unvalidated
+float cast, or a zero from a missed null check) propagates into `LocalMetricsComputer`.
+`RMSSD = sqrt(mean(diffs^2))` — a single NaN in the RR array produces NaN for the entire
+night's HRV. The UI shows `--` or a placeholder, not a clear error.
+
+v3.0 fix history: `fix(backfill): skip gravity samples with NaN/Inf components` (commit
+4d6b225) — this pattern already occurred for gravity; RR intervals are the next likely vector.
+
+**Why it happens:**
+The WHOOP 5.0 strap occasionally transmits malformed samples (incomplete frames, clock-domain
+artifacts). The decoder may produce structurally valid but numerically invalid values.
+
+**How to avoid:**
+- Validate every RR interval value at the decode boundary: `rr_ms` must be in [200, 2000]ms.
+  Values outside this range are physiologically impossible and must be discarded, not clamped.
+- `LocalMetricsComputer.computeHRV` must guard against empty input and NaN RMSSD before
+  writing to the store.
+- Add a `testHRVWithCorruptRRValues` unit test that injects NaN, Inf, zero, and out-of-range
+  RR values and verifies the algorithm produces `nil`, not NaN.
+
+**Warning signs:**
+- HRV shows `--` in the UI after a full-night backfill that successfully decoded HR samples.
+- `DailyMetric.hrv` is stored as `NULL` in the DB but `hrSample` count for the same day
+  is non-zero — the algorithm ran on corrupt input and produced no usable output.
+
+**Phase to address:** Bug fix phase; add guard at decode boundary before algorithm integration.
+
+---
+
+### BLE-P3: Backfill cursor stuck — reproducing the v2.0 failure in a new code path
+
+**What goes wrong:**
+After a bug fix or refactor in `Backfiller.swift`, the `strap_trim` cursor stops advancing
+again. The strap retransmits the same chunk indefinitely. The bug is not visible in logs
+unless explicit cursor-advance logging is present.
+
+Root cause taxonomy from v2.0: (a) offset error causing `HISTORY_END` to be misclassified as
+`.other`; (b) a store write failure silently swallowed by `finishChunk`; (c) the
+`connectHandshakeDone` guard causing a premature re-handshake that resets the offload state.
+
+**Why it happens:**
+Any change to `Backfiller.swift`, `BLEManager.swift` handshake sequence, or
+`WhoopStore.setCursor` call site can reintroduce the stuck-cursor invariant violation.
+
+**How to avoid:**
+- The safe-trim invariant must be tested explicitly: inject a store write failure into a
+  `SpyStore` and verify the chunk is not acked (cursor does not advance, no `ackTrim()` is
+  sent). This test exists in the backlog (CONCERNS.md) — it must be written as a merge gate
+  for any `Backfiller` change.
+- Add a debug log line: `"[Backfiller] cursor advanced to \(cursor)"` on every successful
+  `setCursor` call. If this line is not seen during a backfill session, the cursor is stuck.
+- After any BLE-related change, run a full backfill on-device and verify the type-47 frame
+  counter (`BF: frame #N`) reaches the expected count and the cursor advances past the initial
+  position.
+
+**Warning signs:**
+- The WHOOP strap transmits the same `HISTORY_START` marker more than once in a session
+  (strap is retransmitting from the last acked position).
+- `strap_trim` cursor value in the store has not changed after a 5-minute backfill session.
+- `Backfiller.finishChunk` is called but no subsequent `ackTrim()` log line appears.
+
+**Phase to address:** Bug fix phase; safe-trim invariant test as merge gate.
+
+---
+
+### BLE-P4: V128 HRV/RR offsets are not yet VERIFIED — treating HYPOTHESIS as VERIFIED
+
+**What goes wrong:**
+The v128 frame format (HISTORICAL_DATA type 47) has RR offsets that were identified in the
+commit `fix(hrv): remove unverified RR offsets from V128 and purge corrupt data` (e65fa31).
+This implies the previous offsets were wrong and have been removed. If the v4.0 work assumes
+those offsets have been re-verified when they have not, new decode code will silently produce
+wrong RR values again.
+
+**Why it happens:**
+After a fix that removes a wrong offset, there is a temptation to treat the absence of the
+bug as confirmation that the new code is correct. It is not — it only confirms the old code
+was wrong.
+
+**How to avoid:**
+- Check `whoop_protocol_5.json` for the confidence tag on every V128 field before referencing
+  its offset in any decode code. Only `VERIFIED` fields should be used in production code paths.
+- HYPOTHESIS V128 offsets must be captured via a dedicated PacketLogger session before
+  being promoted to VERIFIED. This is a hardware session requirement — schedule it explicitly.
+- Run `SchemaSyncTests.swift` after any schema change to ensure the bundled schema matches
+  the canonical protocol file.
+
+**Warning signs:**
+- A V128 field offset is referenced in Swift code but its `confidence` in
+  `whoop_protocol_5.json` is `"HYPOTHESIS"`.
+- A new RR decode test passes with a synthetic fixture but has never been run against a
+  real Maverick V128 frame from a PacketLogger capture.
+
+**Phase to address:** Bug fix phase; schema confidence gate before any V128 offset reference.
+
+---
+
+## Area 4 — Repo Reorganisation: Mixed Swift/Python Project
+
+### REPO-P1: Moving files breaks Xcode target membership silently — the project.yml is the source of truth
+
+**What goes wrong:**
+A Swift file is moved from `ios/OpenWhoop/BLE/` to a new `ios/OpenWhoop/Protocol/` directory
+as part of a cleanup. The file is present on disk. Xcode's `.xcodeproj` still references the
+old path. The app compiles only if XcodeGen is re-run, which regenerates `project.yml`
+references. If XcodeGen is not run, the file is missing from the compiled target — either a
+compile error (if the move is clean) or a silent duplicate (if the original was not deleted).
+
+**Why it happens:**
+The project uses XcodeGen (`project.yml`) as the Xcode project source of truth. Direct
+manipulation of the file system does not update `project.yml`, and direct manipulation of
+`.xcodeproj` is overwritten on the next XcodeGen run.
+
+**How to avoid:**
+- All Swift file moves must be accompanied by an immediate `xcodegen generate` run and a
+  build verification (`xcodebuild build -scheme OpenWhoop`).
+- Never move files via Finder or `mv` without updating `project.yml` group definitions
+  beforehand.
+- The reorganisation phase should batch all file moves into a single commit that includes:
+  the file moves, the updated `project.yml`, and a green `xcodebuild build` result.
+
+**Warning signs:**
+- `xcodebuild build` produces "file not found" for a file that exists on disk.
+- Xcode shows a file in the navigator with a red icon (unresolved reference).
+- `git status` shows a deleted file and a new file at the new path — the `project.yml` was
+  not updated to match.
+
+**Phase to address:** Repo cleanup phase; `xcodebuild build` as the mandatory post-move gate.
+
+---
+
+### REPO-P2: Swift Package path changes break SPM resolution and WhoopProtocol tests
+
+**What goes wrong:**
+`Packages/WhoopProtocol/` and `Packages/WhoopStore/` are referenced in `ios/project.yml` as
+local SPM dependencies with relative paths. If either package directory is moved (e.g. into a
+new `packages/` top-level directory), SPM cannot resolve the dependency, the Xcode project
+fails to open cleanly, and all cross-package tests fail.
+
+**Why it happens:**
+SPM local package references use path-relative resolution. Both `project.yml` and any
+`Package.swift` that references another local package must be updated simultaneously.
+
+**How to avoid:**
+- Do not move `Packages/WhoopProtocol` or `Packages/WhoopStore` unless the path change is
+  explicitly planned and all referencing `Package.swift` and `project.yml` files are
+  updated atomically.
+- Before any package move: `grep -r "WhoopProtocol\|WhoopStore" . --include="*.yml" --include="*.swift" --include="Package.swift"` to find all reference sites.
+- After any package move: `swift package resolve` from the `ios/` directory, then
+  `xcodebuild build`.
+
+**Warning signs:**
+- Xcode shows "package not found" for a local package that exists on disk.
+- `swift package resolve` exits with a path error.
+
+**Phase to address:** Repo cleanup phase; SPM resolution check as post-move gate.
+
+---
+
+### REPO-P3: Renaming Python modules breaks RE script imports without a clear error
+
+**What goes wrong:**
+`re/analyze_final.py` imports from `whoop_protocol` (the Python package at
+`server/packages/whoop-protocol/`). If the server directory is restructured and the package
+install path changes, all RE scripts fail with `ModuleNotFoundError: No module named 'whoop_protocol'`.
+This is a silent breakage — the scripts still exist, they just cannot be run.
+
+**Why it happens:**
+Python RE scripts depend on the `whoop-protocol` package being installed (`pip install -e`).
+Restructuring `server/packages/` invalidates the editable install symlink without any
+compiler or test runner catching it.
+
+**How to avoid:**
+- If `server/packages/whoop-protocol/` is moved, all `re/*.py` scripts that import from it
+  require `pip install -e <new-path>` to re-establish the editable install.
+- Add a `re/README.md` (if it does not exist) documenting the setup requirement explicitly.
+- Run `python -c "import whoop_protocol; print(whoop_protocol.__file__)"` after any
+  server directory restructure to verify the import path.
+
+**Warning signs:**
+- `python re/analyze_final.py` exits with `ModuleNotFoundError` after a directory move.
+- `pip show whoop-protocol` shows a path that no longer exists.
+
+**Phase to address:** Repo cleanup phase; Python import smoke-test after any server restructure.
+
+---
+
+### REPO-P4: Leaving 4.0 artefacts in a 5.0 codebase creates permanent confusion
+
+**What goes wrong:**
+The STRUCTURE.md still references `whoop_protocol.json` as "Schema defining all WHOOP 4.0
+frame layouts" (as of analysis date 2026-05-30). The notes file `2026-06-01-analisa-codigo-verifica-4-0.md`
+confirms that 4.0 artefacts are still present in the codebase. If the cleanup is partial
+(some files updated, others not), new contributors and future Claude sessions make
+incorrect assumptions about which code targets which generation.
+
+The planning notes themselves state: "analisa todo o codigo e verifica o que está para o 4.0,
+e remove adapta tudo para a whoop para a 5.0 deve estar coisas erradas ainda com a 4.0".
+
+**Why it happens:**
+The project started as a 4.0 fork. v1.0 established the 5.0 framing but did not do a full
+audit of all documentation references. Comments, doc strings, and planning files retain 4.0
+references even when the underlying code was updated.
+
+**How to avoid:**
+- Before marking the cleanup phase complete, run:
+  `grep -r "4\.0\|gen4\|Gen4\|WHOOP 4" . --include="*.swift" --include="*.py" --include="*.md" --include="*.json"`
+  and resolve every occurrence: either update to 5.0, remove, or annotate with a comment
+  explaining why the 4.0 reference is intentional (e.g. "write commands use Gen4 format —
+  D-11 asymmetric framing").
+- STRUCTURE.md, ARCHITECTURE.md, FINDINGS_5.md, and all inline Swift comments must pass
+  this grep before the cleanup phase is closed.
+- Exception: `FINDINGS.md` (the Gen4 reference file) may retain 4.0 content — it is
+  explicitly a Gen4 reference. Distinguish it clearly from `FINDINGS_5.md`.
+
+**Warning signs:**
+- A Swift source file contains a comment referencing `0xAA 0x01` (Maverick magic) but the
+  surrounding code uses Gen4 offsets.
+- `whoop_protocol.json` is referenced in documentation without the `_5` suffix disambiguation.
+- A Python RE script is named without a `_5` suffix but operates on Maverick frames.
+
+**Phase to address:** Repo cleanup phase; grep-based audit as completion gate.
+
+---
+
+### REPO-P5: Moving `re/` scripts without updating `device_local.py` references breaks all RE tooling
+
+**What goes wrong:**
+All 70+ RE scripts in `re/` import from `device_local.py` (gitignored, personal device
+identifiers). If scripts are reorganised into subdirectories (`re/protocol/`, `re/ui/`) without
+updating the import path, every script silently breaks.
+
+**Why it happens:**
+`device_local.py` is not in the repo (gitignored). Its path is relative to each script.
+Moving scripts invalidates the relative import without any test catching it.
+
+**How to avoid:**
+- Do not reorganise the `re/` directory into subdirectories unless the device_local import
+  pattern is refactored to an absolute import (e.g. via a `re/conftest.py` or
+  `re/__init__.py` that injects the path).
+- The simpler approach: leave `re/` flat. The directory is a RE toolbox, not production
+  code. Flat is fine for 70 scripts.
+- If reorganisation is necessary, update all imports as part of the same commit and verify
+  with `python -c "import device_local"` from each subdirectory.
+
+**Warning signs:**
+- `python re/some_script.py` fails with `ModuleNotFoundError: No module named 'device_local'`
+  after a directory move.
+
+**Phase to address:** Repo cleanup phase; flat `re/` structure preferred to avoid this
+entirely.
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Implement UI from Ghidra constants without View Debugger validation | Faster implementation | Wrong colours/spacing locked in, hard to diff later | Never — spend 10 min on View Debugger for each screen |
+| Use HYPOTHESIS V128 offsets in production decode path | Avoids a capture session | Silent wrong HRV values that diverge from official app | Never — HYPOTHESIS fields must be gated out of prod |
+| Move files without running `xcodegen generate` | Faster refactor | Silent Xcode target membership breaks | Never |
+| Keep 4.0 references in 5.0 code with a "// TODO" | Avoids a documentation pass | Future sessions assume wrong generation, bugs reappear | Never — clean up in the cleanup phase itself |
+| Skip golden fixture update after offset change | Saves time on fixture generation | Parity test passes on wrong values; real-device divergence | Never — fixtures are the only offset regression guard |
+| Build UI in happy-path-only mode (no nil/empty state) | Faster to preview | Crashes or blank UI with real data (v2.0 SleepView bug repeated) | Never for any MetricCard component |
+
+---
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Ghidra MCP bridge | Calling `decompile_function` with an ambiguous name and trusting the first result | Always call `list_classes` first with a namespace filter; verify call sites before trusting a decompilation |
+| Xcode View Debugger + WHOOP app | Attaching to a release build that has been stripped — no view names visible | WHOOP app is a release build; use accessibility inspector as a fallback; or capture a screenshot and compare manually |
+| `whoop_protocol_5.json` schema sync | Editing the canonical file but forgetting to run `scripts/sync-schema.sh` | Run `SchemaSyncTests.swift` in CI; it fails if bundled and canonical diverge |
+| GRDB migration | Adding a column without incrementing the migration version number | Always increment `DatabaseMigrator` version; test migration from v8→v9 on a populated store, not just a fresh store |
+| `LocalMetricsComputer` + NaN RR | Passing unvalidated RR array from `WhoopStore.rrIntervals` | Filter at the decode boundary in `Backfiller`; never pass raw store values to the algorithm |
+
+---
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Ghidra decompiling all 477k functions at session start | Ghidra hangs for minutes; MCP bridge timeouts | Use `list_classes` with filters; `decompile_function` one function at a time | Always — never bulk-decompile |
+| Running `pullDerivedWindow` (60 sequential GETs) on cold start | App feels frozen for 30–60s after first launch | Batch endpoint (already in CONCERNS.md backlog) — do not make this worse in v4.0 by adding more sequential pulls | Cold start with > 30 days of data |
+| Saving HealthKit samples inside the BLE notification handler | Blocks `@MainActor` during BLE data bursts; missed frames | Always dispatch HealthKit writes to a background task; keep the BLE path latency-free | Under sustained HR notification rate (1 sample/sec) |
+
+---
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Committing Ghidra analysis session files (.gzf, .rep) that may contain extracted binary segments | Legal/IP exposure if they embed decompiled WHOOP code | Add `*.gzf`, `*.rep`, `*.ghidra/` to `.gitignore`; only commit FINDINGS_5.md observations |
+| Logging decoded biometric values at DEBUG level in production builds | Health data in device logs, visible to any process with log access | Wrap all biometric log lines in `#if DEBUG`; production builds should log frame counts only |
+| Exposing the Ghidra HTTP server (port 8080) on a non-loopback interface | Remote access to full binary decompilation | Ensure `bridge_mcp_ghidra.py` connects only to `127.0.0.1:8080`; never bind Ghidra's server to `0.0.0.0` |
+
+---
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| UI shows RE-derived labels that don't match WHOOP (e.g. "HRV RMSSD" instead of "HRV") | User comparing with the official app sees a discrepancy that undermines trust | Copy the exact label string from FINDINGS_5.md IPA analysis; use v3.0 precedent (SLEEP PERFORMANCE, HOURS OF SLEEP verified via IPA) |
+| Recovery ring animation runs every time the view appears (not just on new data) | Distracting re-animation on every tab switch | Gate the animation trigger on `lastRefreshedAt` change, not on `onAppear` |
+| Ghidra-derived screen layout implemented at fixed-width only | Clips on iPhone SE; empty space on Pro Max | Use proportional layout (`GeometryReader` or `.frame(maxWidth: .infinity)`) for all card widths |
+| DesignGallery left wired as a production tab | Extra tab visible to user | Guard with `#if DEBUG` — already flagged in CONCERNS.md, must be fixed in cleanup phase |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Ghidra finding:** Every constant in FINDINGS_5.md is tagged VERIFIED or HYPOTHESIS — no untagged entries.
+- [ ] **Ghidra finding:** Every class identified has been verified by caller context, not just by demangled name.
+- [ ] **SwiftUI screen:** Every screen has a `PreviewProvider` that exercises the empty/nil state.
+- [ ] **SwiftUI screen:** Every screen has a corresponding `DesignGallery` entry that has been compared against a screenshot of the official WHOOP app.
+- [ ] **HRV/RR offset:** Every changed offset has a golden fixture update (`frames.json` + `golden.json`) and a passing `ParityTests.swift`.
+- [ ] **HRV/RR offset:** The V128 confidence tag in `whoop_protocol_5.json` is VERIFIED, not HYPOTHESIS, before the offset is used in production.
+- [ ] **Backfill fix:** The safe-trim invariant test (inject store write failure, verify no ackTrim) is written and passing.
+- [ ] **Repo cleanup:** `grep -r "4\.0\|gen4\|Gen4" . --include="*.swift"` returns zero results (or each result is annotated as intentional D-11 reference).
+- [ ] **Repo cleanup:** `xcodebuild build` passes after every file move.
+- [ ] **Repo cleanup:** `SchemaSyncTests.swift` passes (bundled schema == canonical).
+- [ ] **Repo cleanup:** `DesignGallery` is guarded with `#if DEBUG`.
+
+---
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Wrong Ghidra offset used in production decode | MEDIUM | Identify correct offset from PacketLogger capture; update `whoop_protocol_5.json`; regenerate golden fixtures; patch Swift decoder; run parity tests |
+| Wrong V128 RR offsets producing bad HRV | MEDIUM | Run `fix(hrv): remove unverified RR offsets` pattern (already established in e65fa31); purge corrupt data from store via a migration or manual SQL delete; re-run backfill |
+| Backfill cursor stuck (re-introduced) | HIGH (requires hardware session) | Add `setCursor` debug log; on-device backfill session; identify which invariant was broken (offset, store failure, handshake storm); targeted fix + safe-trim test |
+| Xcode target membership broken by file move | LOW | Re-run `xcodegen generate`; verify all files have green icons in navigator; `xcodebuild build` |
+| Python RE scripts broken by directory move | LOW | `pip install -e <new-path>` for whoop-protocol; verify `import whoop_protocol` from each affected script |
+| Legal exposure from pasted decompiled code | HIGH | Remove immediately; review git history; replace with clean-room reimplementation documented from FINDINGS_5.md observations only |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| G-P1: Swift name mangling — demangled names are hypotheses | Ghidra deep-dive | Every Ghidra class in FINDINGS_5.md has a VERIFIED or HYPOTHESIS tag; none untagged |
+| G-P2: ARM64 Swift calling convention misread | Ghidra deep-dive | No decompiled argument list trusted without caller context verification |
+| G-P3: Ghidra constants treated as ground truth | Ghidra deep-dive + UI implementation | Every visual constant validated via View Debugger or output comparison before implementation |
+| G-P4: Unbounded Ghidra exploration | Ghidra deep-dive | Session scoped to one screen; FINDINGS_5.md entry committed before next screen |
+| G-P5: Gen4 vs Gen5 code path confusion | Ghidra deep-dive | All FINDINGS_5.md entries tagged [Gen5-confirmed?]; ambiguous ones flagged HYPOTHESIS |
+| UI-P1: RE findings describe intent, not SwiftUI structure | UI implementation | DesignTokens.swift updated before each screen; no hardcoded constants in view files |
+| UI-P2: RE layout breaks on non-canonical device sizes | UI implementation | Screen tested on iPhone SE + iPhone 16 Pro Max + Accessibility Large Text |
+| UI-P3: Placeholder data hides nil binding bugs | UI implementation | PreviewProvider for empty state exists and does not crash |
+| UI-P4: Animation timing over-scoped | UI implementation | Animation polish explicitly out of scope in phase acceptance criteria |
+| UI-P5: Legal boundary — decompiled code reproduced | All phases | Clean-room discipline; no Ghidra pseudocode in Swift files; FINDINGS_5.md gate enforced |
+| BLE-P1: Byte offset arithmetic errors are silent | Bug fix phase | Every changed offset has a golden fixture and passes ParityTests |
+| BLE-P2: NaN/Inf RR values propagate into RMSSD | Bug fix phase | `testHRVWithCorruptRRValues` unit test passes with NaN, Inf, zero, out-of-range inputs |
+| BLE-P3: Backfill cursor stuck re-introduced | Bug fix phase | Safe-trim invariant test (SpyStore write failure → no ackTrim) passes |
+| BLE-P4: V128 HYPOTHESIS offsets treated as VERIFIED | Bug fix phase | Schema confidence check: no HYPOTHESIS offset referenced in production Swift decode |
+| REPO-P1: File moves break Xcode target membership | Repo cleanup phase | `xcodebuild build` green after every file move commit |
+| REPO-P2: SPM package path changes break resolution | Repo cleanup phase | `swift package resolve` green; no "package not found" in Xcode |
+| REPO-P3: Python module rename breaks RE scripts | Repo cleanup phase | `python -c "import whoop_protocol"` passes after any server restructure |
+| REPO-P4: 4.0 artefacts remain in 5.0 codebase | Repo cleanup phase | `grep -r "4\.0\|gen4\|Gen4"` returns zero unintentional results in Swift/Python source |
+| REPO-P5: `re/` script moves break device_local imports | Repo cleanup phase | Flat `re/` structure maintained; no subdirectory reorganisation |
+
+---
+
+## Sources
+
+- Project RETROSPECTIVE.md — v1.0/v2.0/v3.0 lessons: endData offset bug, haptics payload assumption, IPA class-name RE pattern, safe-trim invariant, offline-first architecture
+- Project CONCERNS.md — `_cachedSchema` Swift 6 concurrency issue, `pullDerivedWindow` serial HTTP, `finishChunk` silent error swallowing, `BLEManager` 8-flag reset requirement, placeholder SleepView headline
+- Project ARCHITECTURE.md — BLE pipeline data flow, Maverick frame paths, safe-trim invariant definition
+- Project TESTING.md — SpyStore pattern, golden fixture structure, parity test gate, schema sync test
+- Git log entries: e65fa31 (V128 RR offsets removed), 4d6b225 (LocalMetricsComputer BLE disconnect), 17896ce (gravity NaN skip), 4c17952 (HISTORICAL_DATA v128 decode), c354f39 (STATE.md session discoveries)
+- Known v2.0 failure: endData offset `frame[17:25]` vs correct `frame[21:29]` (Maverick +4 byte shift)
+- Known v3.0 fix: RunAppDrivenHapticsCommandPacket payload — assumption wrong, PacketLogger verified
+- Ghidra Swift ARM64 RE domain: Swift ABI documentation (x20 self register, x8 indirect return, x21 error register) — HIGH confidence from Swift ABI specification
+
+---
+*Pitfalls research for: WHOOP 5.0 iOS client — v4.0 Ghidra RE + UI redesign + BLE bug fixes + repo cleanup*
+*Researched: 2026-06-01*

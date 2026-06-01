@@ -1,277 +1,434 @@
-# Architecture: iOS v2.0 Integration
+# Architecture Research
 
-**Milestone:** v2.0 — Backfill fix, HealthKit, algorithm results, WHOOP-style UI
-**Researched:** 2026-05-31
-**Confidence:** HIGH — based on direct reading of existing source files
-
----
-
-## Summary
-
-The existing architecture is already well-structured for v2.0 extensions. The core data pipeline is:
-
-```
-WHOOP 5.0 strap
-  → BLEManager (CoreBluetooth, @MainActor)
-  → Backfiller (historical type-47 frames, chunk state machine)
-  → WhoopStore (GRDB actor, decoded tables: hr, rr, spo2, skin_temp, resp, gravity)
-  → Uploader (POST /v1/ingest-decoded, opportunistic, 30s timer)
-  → Server (FastAPI + TimescaleDB)
-    → compute_day() → daily_metrics + sleep_sessions + exercise_sessions
-  → ServerSync.pullDerived() → DailyMetric + CachedSleepSession back to phone
-  → MetricsRepository (@MainActor, @Published today/lastNight)
-  → RootTabView → TodayView / SleepView / TrendsView / WorkoutsView
-```
-
-All four v2.0 integration points slot into this pipeline without restructuring it. The key insight: **the algorithm results already flow through the pipeline via /v1/daily and ServerSync.pullDerived()**. The UI already consumes DailyMetric fields for recovery, strain, sleep. The gaps are: (1) HealthKit write layer does not exist yet, (2) the Backfiller has a known stuck state, and (3) the UI needs card-level enhancement for WHOOP-style presentation.
+**Domain:** iOS BLE wearable — Ghidra RE + SwiftUI 1:1 redesign over existing offline-first app
+**Researched:** 2026-06-01
+**Confidence:** HIGH — based on direct reading of source files, existing notes, and Ghidra session findings
 
 ---
 
-## HealthKit Integration Pattern
+## Standard Architecture
 
-### Recommended pattern: write-on-ingest, singleton HKHealthStore
-
-**Why not on-demand:** On-demand export requires the user to trigger it manually and creates a sync-state problem (which rows have been exported?). Write-on-ingest makes HealthKit a passive mirror that stays current automatically.
-
-**Why not background:** Background HealthKit writes via `HKObserverQuery` or background tasks add complexity (entitlements, background modes, BGTaskScheduler) with no benefit here — we already have the data when the BLE backfill completes.
-
-**Correct trigger point:**
+### System Overview
 
 ```
-BLEManager.onBackfillComplete
-  → MetricsRepository.computeLocalMetrics()   (already wired in AppRootCoordinator)
-  → [NEW] HealthKitExporter.exportNewSamples() (add after computeLocalMetrics returns)
+┌──────────────────────────────────────────────────────────────────────┐
+│  GHIDRA RE LAYER (Mac, offline, pre-dev)                             │
+│  ┌────────────────┐  ┌──────────────────┐  ┌────────────────────┐   │
+│  │  IPA 5.37.0    │  │  Ghidra MCP      │  │  RE Scripts        │   │
+│  │  (477k funcs)  │  │  (query bridge)  │  │  re/*.py           │   │
+│  └───────┬────────┘  └────────┬─────────┘  └────────────────────┘   │
+│          └─────────────────────┘                                      │
+│                    │ findings → FINDINGS_5.md, notes/                 │
+├────────────────────┼─────────────────────────────────────────────────┤
+│  iOS APP LAYER     ↓                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐     │
+│  │  Design/Components/   (card-level UI — replaces existing)   │     │
+│  │  RecoveryCard  SleepCard  StrainCard  HypnogramView          │     │
+│  │  MetricCard    ZoneRingView  Sparkline  RecoveryRing         │     │
+│  └───────────────────────────┬─────────────────────────────────┘     │
+│  ┌────────────────────────────┴────────────────────────────────┐     │
+│  │  Tabs/   (screen-level views — update in-place)             │     │
+│  │  TodayView  SleepView  StrainView  TrendsView  Device       │     │
+│  └───────────────────────────┬─────────────────────────────────┘     │
+│  ┌────────────────────────────┴────────────────────────────────┐     │
+│  │  Metrics Layer                                               │     │
+│  │  MetricsRepository (@EnvironmentObject, @Published)         │     │
+│  │  LocalMetricsComputer (offline-first, sole truth)           │     │
+│  └───────────────────────────┬─────────────────────────────────┘     │
+│  ┌────────────────────────────┴────────────────────────────────┐     │
+│  │  Collect / BLE Layer                                         │     │
+│  │  BLEManager  Backfiller  Collector  WhoopStore (GRDB actor) │     │
+│  └─────────────────────────────────────────────────────────────┘     │
+├──────────────────────────────────────────────────────────────────────┤
+│  SERVER (optional backup — gonzaga / Dockge)                         │
+│  FastAPI + TimescaleDB — upload only; server pull disabled           │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-`HealthKitExporter` holds a singleton `HKHealthStore` and a cursor per stream type (`hk_hw_hr`, `hk_hw_rr`, `hk_hw_sleep`) stored in UserDefaults. On each call it reads rows from WhoopStore above the cursor, writes them to HealthKit, then advances the cursor only on success.
+### Component Responsibilities
 
-**Authorization flow:**
-
-- `HKHealthStore.requestAuthorization(toShare:read:)` must be called before the first write. This shows the system sheet once; subsequent calls to authorized types are no-ops.
-- Call it once from the first view that needs it (TodayView.task{} or a dedicated onboarding step). NOT inside AppRootCoordinator.init() — the sheet can only appear when a view is on screen.
-- Request only the types you write: `.heartRate`, `.heartRateVariabilitySDNN`, `.oxygenSaturation`, `.sleepAnalysis`. Do not request read permissions unless displaying Apple Health data in the app.
-
-**HKHealthStore singleton:**
-
-```swift
-// HealthKitStore.swift
-final class HealthKitStore {
-    static let shared = HKHealthStore()
-}
-```
-
-One `HKHealthStore` instance per app. Do NOT create one per view or per export call.
-
-**Write types and HealthKit sample mapping:**
-
-| WhoopStore data | HealthKit type | HK sample type |
-|-----------------|---------------|----------------|
-| HRSample (ts, bpm) | .heartRate | HKQuantitySample, unit: count/min |
-| RRInterval (ts, rrMs) | .heartRateVariabilitySDNN | HKQuantitySample, unit: ms — NOTE: HealthKit only stores ONE SDNN/RMSSD value per sample, not individual intervals; compute RMSSD over an RR window before writing |
-| SpO2Sample (red, ir) | .oxygenSaturation | HKQuantitySample, unit: % — DEFER until PROTO-11 VERIFIED; write only calibrated values |
-| CachedSleepSession | .sleepAnalysis | HKCategorySample per stage segment; parse stagesJSON to generate per-stage samples (Deep/REM/Light/Awake) |
-
-**RMSSD vs SDNN naming:** Despite the type name `.heartRateVariabilitySDNN`, Apple's Health app writes RMSSD values to this type. Use RMSSD from your RR windows. The server's `hrv.nightly_hrv()` already computes RMSSD per segment.
-
-**Cursor strategy:** Advance only after `HKHealthStore.save(_:withCompletion:)` calls back with no error. Batch up to 1000 samples per save call. Never advance the cursor before the write succeeds.
-
-**Where to wire it:** `AppRootCoordinator.wireBackfill()` already runs `computeLocalMetrics()` after each backfill. Add the HealthKit export call after that:
-
-```swift
-l.onBackfillComplete {
-    Task {
-        await m.computeLocalMetrics()
-        await HealthKitExporter.shared.exportNewSamples()  // NEW
-    }
-}
-```
-
-Also hook it in `MetricsRepository.refresh()` after `runLocalCompute()` for the manual pull-to-refresh path.
-
-**Entitlements required:** Add `com.apple.developer.healthkit` to the app entitlements file and `NSHealthShareUsageDescription` + `NSHealthUpdateUsageDescription` to Info.plist. Without NSHealthUpdateUsageDescription the app crashes on the first authorization request.
+| Component | Responsibility | Status for v4.0 |
+|-----------|----------------|-----------------|
+| Ghidra MCP | Query IPA 5.37.0 ARM64 Swift binary for UI structure, labels, data layout | Input tool — used in RE phase, not shipped |
+| `re/*.py` scripts | Protocol analysis, biometric offset verification | Existing, expand as needed |
+| `Design/DesignTokens.swift` | `WH.*` colour/spacing/font constants — single visual truth | Update tokens if Ghidra reveals IPA colours |
+| `Design/Components/*.swift` | Card-level reusable views (RecoveryCard, SleepCard, StrainCard, etc.) | Modify in-place OR replace with 1:1 IPA replica |
+| `Tabs/*.swift` | Screen-level tab views; consume MetricsRepository | Update in-place to use revised components |
+| `MetricsRepository` | `@EnvironmentObject`; publishes `today`, `lastNight`, trend arrays | No change for v4.0 |
+| `LocalMetricsComputer` | Offline-first algorithm engine — sole source of truth | No change for v4.0 |
+| `WhoopStore` (GRDB actor) | On-device SQLite; WAL mode; migration versioned | Bug fixes only (schema v9 is current) |
+| `BLEManager` | CoreBluetooth orchestrator; Maverick protocol | Bug fixes only |
+| Server (FastAPI) | Upload backup only; pull disabled | No change for v4.0 |
 
 ---
 
-## Algorithm Data Flow
+## Ghidra → SwiftUI Integration Workflow
 
-### Current state
+This is the critical architecture question for v4.0. The workflow has three phases that must not overlap:
 
-The algorithm results already exist in the data flow. `compute_day()` on the server produces:
-- `recovery` (0.0–1.0 float, requires multi-night baseline — null until calibrated)
-- `strain` (0.0–21.0 float, TRIMP-based)
-- `avg_hrv` (RMSSD ms)
-- `resting_hr` (bpm)
-- `total_sleep_min`, `efficiency`, `deep_min`, `rem_min`, `light_min`
-- `spo2_pct`, `skin_temp_dev_c`, `resp_rate_bpm`
-- `sleep_sessions` with `stages` JSON per night
-- `exercise_sessions` with `zone_time_pct`, `calories_kcal`
-
-`ServerSync.pullDerived()` already fetches all of this via `/v1/daily` and `/v1/sleep` and upserts into GRDB. `MetricsRepository` reads those tables and publishes `today: DailyMetric` and `lastNight: CachedSleepSession`. `TodayView` already reads `metrics.today?.recovery`, `.strain`, `.totalSleepMin`, `.avgHrv`, `.restingHr`.
-
-**The server-to-app algorithm data flow is already complete.** The requirement is to confirm the data surfaces correctly after a working backfill, not to build a new pipeline.
-
-### What is actually missing
-
-1. **Recovery cold-start UX:** `recovery` is null until the server has enough nights for the Winsorized-EWMA baseline. The UI shows "—" which is correct, but there is no explanation for why. Add a `recoveryCalibrating` state that TodayView displays as "Calibrating (N nights needed)".
-
-2. **No need for new REST endpoints.** The existing `/v1/daily` and `/v1/sleep` endpoints return all algorithm outputs. Do NOT add per-metric endpoints (`/v1/recovery`, `/v1/strain`) — they duplicate `/v1/daily`.
-
-3. **Trigger timing:** The 120s recompute cooldown on the server means there may be up to 2 minutes of lag between data upload and metrics appearing. The app should not poll — the pull-to-refresh on TodayView.task{} handles this.
-
-### Local vs server computation split
-
-| Computation | Location | Rationale |
-|-------------|----------|-----------|
-| Sleep detection | Both (LocalMetricsComputer + server) | Server wins via ON CONFLICT DO UPDATE |
-| Resting HR | Both | Server wins |
-| HRV (RMSSD) | Both | Server's last-SWS tiered RMSSD is more accurate |
-| Recovery score | Server only | Needs multi-night baseline, heavy computation |
-| Strain | Server only | Needs 90-day HRmax history |
-| Sleep stages (REM/Deep/Light) | Server only | Uses neurokit pipeline |
-| Exercise sessions | Server only | Needs HRmax, calorie formula, user profile |
-
----
-
-## UI Architecture Evolution
-
-### Current structure
-
-`RootTabView` has five tabs: Today / Sleep / Trends / Workouts / Device. All tabs are implemented. This is already close to WHOOP-style.
-
-**WHOOP tab structure (from JADX reference goal):**
-Overview (today summary) / Sleep / Strain / Coach. The main difference: WHOOP uses "Strain" not "Trends", and "Coach" for recommendations.
-
-### Recommended evolution: minimal restructure, evolve in-place
-
-Do NOT rebuild from scratch. The existing tab structure maps cleanly:
-
-| Current tab | Target state |
-|-------------|-------------|
-| Today | Rename label to "Overview", enhance recovery ring with colour zones |
-| Sleep | Add stage minutes bar (deep/REM/light), SpO2/skin-temp signals when non-nil |
-| Trends | Rename to "Strain", surface daily strain score + HR zone chart |
-| Workouts | Keep as-is |
-| Device | Keep as-is (BLE diagnostics) |
-
-### Component pattern
-
-- Cards are `View` structs with init params, no `@EnvironmentObject` inside — data comes from the parent view.
-- Async loading stays in `.task{}` modifiers in the tab-level views via `MetricsRepository`.
-- `NavigationLink` wraps cards for drill-down (already done in TodayView for all cards).
-
-**Recovery ring:** Already `RecoveryRing(percent:size:strokeWidth:)`. Add colour gradient: green (>67%), yellow (34–66%), red (<34%).
-
-**Sleep card (UI-04):** `CachedSleepSession.stagesJSON` contains stage segments. Parse them in SleepView to render a stacked bar. `DailyMetric.deepMin`, `.remMin`, `.lightMin` are already populated by the server.
-
-**Strain card (UI-05):** `DailyMetric.strain` (0–21) is already in MetricsRepository. Render a gauge arc. HR zone data from exercise_sessions (WorkoutsView) can be reused.
-
-### @EnvironmentObject injection — keep current pattern
-
-`MetricsRepository` and `LiveViewModel` injected at `AppRoot` as `@EnvironmentObject` is correct. Do not change. New v2.0 concern: `HealthKitExporter` should NOT be an `@EnvironmentObject` — it has no published state that views observe. Keep it as a singleton.
-
----
-
-## Backfill Investigation
-
-### What the Backfiller does
-
-The `Backfiller.ingest(_:)` state machine expects:
-1. `HISTORY_START` frame → opens chunk, `chunkOpen = true`
-2. `HISTORICAL_DATA` frames (type-47) → accumulates into `chunk[]`
-3. `HISTORY_END` frame → `finishChunk()`: insert decoded → enqueueRaw → setCursor("strap_trim") → ackTrim
-4. `HISTORY_COMPLETE` frame → `isBackfilling = false`
-
-High-freq-sync sends records before the START frame, so `begin()` sets `chunkOpen = true` immediately on session start.
-
-### Identified failure modes (ordered by likelihood)
-
-**1. FF key exchange race — MEDIUM risk**
-
-`requestSync(.connect)` fires via `asyncAfter(1.5s)` after the connect handshake. The FF exchange (SEND_NEXT_FF rounds + SET_FF_VALUE) is async and takes ~4 rounds × ~300ms = ~1.2s on a clean link. On a slow/congested BLE link the exchange can take >1.5s, causing SEND_HISTORICAL_DATA to fire before SET_FF_VALUE completes. The strap then returns HISTORY_COMPLETE with 0 frames (silent fail).
-
-**Fix:** Gate `requestSync(.connect)` on `ffExchangePending == false` instead of a fixed delay. `setFFValues()` already sets `ffExchangePending = false` at the end of the exchange — use that as the trigger to call `requestSync(.connect)`.
-
-**2. Handshake storm — CONFIRMED root cause, already fixed**
-
-`didWriteValueFor` re-fires on every `.withResponse` write (bond write, every SEND_HISTORICAL_DATA, every HISTORY_END ack). Without `connectHandshakeDone`, the app re-sent GET_HELLO + SET_CLOCK + START_FF_KEY_EXCHANGE during the offload, interrupting type-47 streaming. The `connectHandshakeDone` guard is in place. Verify it holds across reconnects — the guard resets to `false` on disconnect, which is correct.
-
-**3. gen4DataNotifChar fragmentation — UNKNOWN risk**
-
-Historical frames arrive on `61080005` (gen4DataNotifChar). The BLEManager routes gen4 notifications directly to `routeBackfillFrame(bytes)` without passing through the `Reassembler`. If gen4 frames exceed the negotiated BLE MTU (typically 247 bytes on iOS 16+ with DLE), they are fragmented into multiple notifications. Without reassembly, the Backfiller receives partial frames and the state machine silently produces corrupt chunks.
-
-**Detection:** Log the byte length of the first 50 gen4 notifications. If any are exactly 244 bytes (common fragmentation MTU), reassembly is needed.
-
-**Fix (if fragmentation confirmed):** Pass gen4 frames through the existing `Reassembler` before `routeBackfillFrame`.
-
-**4. Idle timeout during legitimate inter-chunk pause — LOW-MEDIUM risk**
-
-The idle watchdog is 60s, reset only by genuine offload frames (types 47/48/49/50). The strap waits for the HISTORY_END ack before sending the next chunk. The ack is a `.withResponse` write that may take several seconds on a congested link. If the ack round-trip exceeds 60s the watchdog fires and tears down the session.
-
-**Fix:** Also reset the watchdog in `didWriteValueFor` for the `historicalDataResult` characteristic write (the ack). This keeps the timer alive during the ack round-trip.
-
-**5. strap_trim cursor not set (cold start) — LOW risk**
-
-If `setCursor("strap_trim")` has never been called (brand-new install), the Backfiller has no cursor to restore from and the strap resends all data from the beginning. This is correct behavior. But if the cursor is set to a value in the far past or future (e.g. due to a clock bug), the strap may serve 0 frames. Log the cursor value at session start.
-
-**6. Stuck detector false positive during large first sync — LOW risk**
-
-`StuckStrapDetector` compares `strapNewestTs` (from GET_DATA_RANGE) with the local frontier (max HR ts). On a large first sync, the frontier advances slowly — potentially triggering the "stuck" condition while the backfill is working normally. The 10-minute window and 5-minute `behindGapSeconds` need calibration against observed sync speeds.
-
-**7. WHOOP 5.0 silent HISTORY_COMPLETE (caught-up case) — NOT a bug**
-
-If the strap is already fully synced (local strap_trim == strap's newest ts), it sends HISTORY_COMPLETE immediately with 0 frames. The Backfiller handles this correctly. Log the distinction: "caught up (0 frames)" vs "stuck (0 frames after N seconds)".
-
----
-
-## Build Order
-
-### Phase 1: Fix Backfill (BF-01, BF-02) — FIRST, blocks everything else
-
-**Rationale:** All iOS validation (IOS-03/04/05) requires real historical data. Without the backfill, MetricsRepository returns nil/empty for all metrics. The UI shows "—" not because of UI bugs but because there is no data.
-
-**Concrete first actions:**
-1. Fix the FF exchange race: add `guard !ffExchangePending` to `beginBackfill()`, and call `requestSync(.connect)` from inside `setFFValues()` once the exchange completes.
-2. Log gen4 frame byte lengths to determine if reassembly is needed on the gen4 channel.
-3. Add chunk-level logging: frames received per chunk, rows decoded per chunk, strap_trim value.
-4. Add a debug read of the GRDB cursor table to confirm `strap_trim` is being set.
-
-### Phase 2: Validate biometric streams with real data (PROTO-11/12/13/14, IOS-03/04/05)
-
-After a working backfill, the data pipeline self-validates:
-- WhoopStore tables populate.
-- Uploader sends data to the server.
-- `compute_day()` runs (throttled 120s).
-- `pullDerived()` fetches metrics back.
-- MetricsRepository publishes non-nil `today` and `lastNight`.
-
-Validate each field manually against ground truth (oximeter for SpO2, thermometer for skin_temp, HR monitor for HR).
-
-### Phase 3: HealthKit export (HK-01, HK-02, HK-04 — then HK-03 after PROTO-11)
-
-Implement after Phase 1/2 so there is real data to write. Build the exporter with synthetic fixtures first (unit-testable), then validate with real data.
-
-### Phase 4: UI redesign (UI-01 through UI-05)
-
-Build last — when the data pipeline is confirmed and you can validate that card values are correct.
-
-**UI-01 (JADX analysis)** is independent of the data pipeline and can start at any time. It is a pure research task.
-
-### Dependency graph
+### Phase A — RE (Ghidra) — Produces findings, not code
 
 ```
-BF-01 Backfill fixed
-  ├── IOS-03/04/05  real data in views
-  │     ├── UI-03/04/05  UI redesign validated with real data
-  │     └── ALG-01/02/03  algorithms visible (pipeline already built, needs data)
-  ├── PROTO-11/12/13/14  biometric verification (needs real backfill data)
-  └── HK-01/02/04  HealthKit export (needs real store data)
-        └── HK-03  SpO2 export (AFTER PROTO-11 VERIFIED)
-
-UI-01  JADX APK analysis (independent, can start now)
+Ghidra MCP query (Mac)
+  → Identify IPA view controller hierarchy
+  → Map Swift class names → screen purpose
+  → Extract string constants (labels, units, formats)
+  → Identify data fields used per screen
+  → Document in FINDINGS_5.md / notes/
+  → Commit findings as plain text/markdown BEFORE touching Swift
 ```
 
-### What can run in parallel after BF-01
+Ghidra output is research only. No code comes out of Ghidra directly. Output goes into:
+- `FINDINGS_5.md` — protocol + UI structure additions
+- `.planning/notes/` — session findings
+- Potentially a new `docs/specs/v4-ui-map.md` — screen-by-screen IPA map
 
-- HealthKit implementation can be developed and unit-tested with synthetic data while PROTO-11 is pending.
-- JADX APK analysis (UI-01) is independent of the data pipeline.
-- Server-side algorithm validation can run as soon as the upload pipeline delivers data to the server.
+### Phase B — Design Decisions — Translates findings to component decisions
+
+Before writing any Swift, for each screen found in Phase A, decide:
+
+| Decision | Criteria |
+|----------|----------|
+| Modify existing component | IPA screen structure matches current SwiftUI card; only label/colour/layout changes |
+| Replace component | IPA reveals fundamentally different layout (e.g. different metric grouping, new ring type) |
+| Add new component | IPA screen has no equivalent in current codebase |
+
+This decision lives in a per-screen spec (e.g. `docs/specs/v4-today-screen.md`).
+
+### Phase C — SwiftUI Implementation — Only after Phase B decisions are documented
+
+```
+Ghidra findings (Phase A)
+  → Design decisions (Phase B)
+  → SwiftUI implementation (Phase C)
+      → Update DesignTokens.swift (colours, spacing from IPA)
+      → Modify OR replace components in Design/Components/
+      → Update Tabs/ views to use revised components
+      → Update DesignGallery.swift for QA
+```
+
+The three phases run sequentially per screen/feature cluster. Do not interleave RE and implementation.
+
+---
+
+## New vs Modified Components
+
+### Components to MODIFY in-place
+
+These exist and have the right purpose — update layout/labels/metrics to match IPA findings:
+
+| Component | Current File | What Changes |
+|-----------|-------------|--------------|
+| `RecoveryCard` | `Design/Components/RecoveryCard.swift` | Labels verified IPA; ring colour thresholds confirmed (green ≥67, yellow 33–66, red <34) |
+| `SleepCard` | `Design/Components/SleepCard.swift` | Stage bar layout; "SLEEP PERFORMANCE" / "HOURS OF SLEEP" labels already IPA-verified in v3.0 |
+| `StrainCard` | `Design/Components/StrainCard.swift` | Gauge arc design; Training State badge |
+| `MetricCard` | `Design/Components/MetricCard.swift` | HRV / RHR / Calories / Sleep Needed metric tiles |
+| `HypnogramView` | `Tabs/HypnogramView.swift` | Stage colour mapping (already done in v3.0); timeline resolution |
+| `RecoveryRing` | `Design/Components/RecoveryRing.swift` | Gradient fill; stroke width from IPA measurements |
+| `DesignTokens.swift` | `Design/DesignTokens.swift` | Add/adjust any colour hex values found in IPA |
+| `TodayView` | `Tabs/TodayView.swift` | Layout order, ScreenHeader format |
+| `SleepView` | `Tabs/SleepView.swift` | Stage breakdown bar, "SKIN TEMP FROM BASELINE" section |
+| `StrainView` | `Tabs/StrainView.swift` | Full strain screen layout |
+| `TrendsView` | `Tabs/TrendsView.swift` | Metric selector, chart style |
+
+### Components to POTENTIALLY REPLACE (decide after RE)
+
+These may need a full rewrite if the IPA reveals fundamentally different structure:
+
+| Component | Trigger for Replacement |
+|-----------|------------------------|
+| `ZoneRingView` | If IPA uses a different zone visualisation (stacked bar vs ring) |
+| `SevenNightChart` | If IPA sleep week view differs significantly |
+| `TrendChartCard` | If IPA trends section uses different chart type |
+
+### New Components (if Ghidra reveals screens with no current equivalent)
+
+To be determined from RE phase. Candidates:
+- A "Coach" screen equivalent (WHOOP app has coaching recommendations)
+- A detailed Strain drill-down beyond current WorkoutsView
+- Day-level recovery detail screen
+
+New components go in `Design/Components/NewComponentName.swift` following the existing pattern: pure `View` structs, init params only, no `@EnvironmentObject` inside.
+
+---
+
+## Bug Fix Architecture
+
+### Where bug fix commits live relative to feature work
+
+Bug fixes and UI feature work are distinct commit streams. The ordering principle:
+
+```
+Phase 1: Bug fixes (isolated, non-destructive)
+  → Each bug fix is a standalone commit on main
+  → Does NOT touch UI component files
+  → Does NOT touch DesignTokens.swift
+
+Phase 2: RE findings (Ghidra, markdown only)
+  → Commits to FINDINGS_5.md, notes/, docs/specs/
+  → No Swift changes
+
+Phase 3: Design token updates (DesignTokens.swift only)
+  → Single commit or small PR
+  → UI components may break briefly — acceptable
+
+Phase 4: Component updates (Design/Components/ and Tabs/)
+  → One commit per component or screen
+  → Additive: new components in new files; modified components in-place
+```
+
+This ordering ensures:
+- Bug fixes are bisect-safe (no mixed-purpose commits)
+- RE phase produces a clean audit trail (markdown only)
+- UI changes are reversible per component
+
+### Known Bug Fix Targets (from v3.0 analysis and notes)
+
+| Bug | Location | Fix Strategy |
+|-----|----------|--------------|
+| RR offset / HRV corrupt data | `WhoopStore`, `LocalMetricsComputer` | Isolated fix; no UI changes |
+| Backfill stuck mid-session | `BLEManager`, `Backfiller` | Isolated BLE fix; no UI changes |
+| UI placeholders not resolving | `TodayView`, `SleepView` | Data pipeline check before UI work |
+| WHOOP 4.0 remnants in 5.0 code | Various files | Code audit pass; standalone refactor commits |
+
+### Bug Fix Commit Strategy
+
+Each bug fix is its own commit with the pattern:
+```
+fix(scope): description of what was wrong and what changed
+```
+
+Bug fix commits precede feature commits on the same branch. If a bug fix and a UI change both touch the same file (e.g. `SleepView.swift`), the bug fix ships first in a separate commit.
+
+---
+
+## Recommended Project Structure (v4.0 additions)
+
+No structural changes to the existing layout. Additions only:
+
+```
+ios/OpenWhoop/
+└── Design/
+    ├── Components/
+    │   ├── [existing components — modified in-place]
+    │   └── [new components from RE — new files]
+    └── DesignTokens.swift   ← primary v4.0 change target
+
+docs/
+└── specs/
+    └── v4-ui-map.md         ← NEW: IPA screen-by-screen map from Ghidra
+
+FINDINGS_5.md                ← extended with UI findings from Ghidra
+```
+
+No new Swift Packages. No new app targets. No new server routes.
+
+---
+
+## Architectural Patterns
+
+### Pattern 1: RE-First, Code-Second
+
+**What:** All Ghidra querying completes and produces a written findings document before any Swift file is modified.
+
+**When to use:** Every v4.0 feature that originates from IPA analysis.
+
+**Trade-offs:** Adds a mandatory RE step before coding; prevents incomplete IPA analysis leading to mid-implementation pivots.
+
+### Pattern 2: Modify-in-Place Over Rebuild
+
+**What:** Existing component files are updated rather than replaced unless the IPA reveals a fundamentally incompatible structure.
+
+**When to use:** Label changes, colour updates, metric reordering, ring stroke adjustments.
+
+**Trade-offs:** Preserves git history and reduces merge surface. Replacement is reserved for cases where IPA structure and current SwiftUI structure genuinely differ.
+
+### Pattern 3: DesignTokens as Single Gate
+
+**What:** All visual constants (colour hex, spacing values, font sizes) live in `DesignTokens.swift` (`WH.*` namespace). Component files reference only `WH.*` tokens — no hardcoded hex or pt values.
+
+**When to use:** Every new or updated component for v4.0.
+
+**Trade-offs:** One token update propagates to all consumers. Means DesignTokens must be updated before components, not after.
+
+### Pattern 4: Pure View structs for components
+
+**What:** Card/component views take init parameters only. No `@EnvironmentObject` inside `Design/Components/`. All data binding at the tab-level parent.
+
+**When to use:** Every component in `Design/Components/`.
+
+**Trade-offs:** Enforces testability and composability. DesignGallery can render any component without a MetricsRepository mock.
+
+### Pattern 5: Isolated Bug Fixes
+
+**What:** Bug fix commits change one logical layer and do not touch UI layout code. UI commits change layout code and do not touch data pipeline logic.
+
+**When to use:** All v4.0 work.
+
+**Trade-offs:** More commits, cleaner history, easier bisect.
+
+---
+
+## Data Flow (unchanged from v3.0)
+
+### Algorithm source of truth
+
+```
+WhoopStore (GRDB)
+  → LocalMetricsComputer.computeAll()
+      → Recovery (HRV baseline 28 nights, Winsorized-EWMA)
+      → Strain (TRIMP zones)
+      → Sleep Performance (ALG-10)
+      → Training State (ALG-11, recovery_to_strain.json bundled)
+      → Sleep Needed (ALG-12)
+      → Calories (ALG-13, Mifflin-St Jeor + Keytel workout)
+  → WhoopStore upsert (dailyMetric table, v9 schema)
+  → MetricsRepository.load()
+  → @Published → SwiftUI re-render
+```
+
+Server path is backup-only and does not affect v4.0 UI work. `pullFromServer()` is a no-op.
+
+### UI consumption pattern (preserved in v4.0)
+
+```
+Tab view (e.g. TodayView)
+  @EnvironmentObject var metrics: MetricsRepository
+  var today: DailyMetric? = metrics.today
+  var lastNight: CachedSleepSession? = metrics.lastNight
+
+  → RecoveryCard(score: today?.recovery, hrv: today?.avgHrv, ...)
+  → SleepCard(session: lastNight, ...)
+  → StrainCard(strain: today?.strain, trainingState: today?.trainingState, ...)
+```
+
+Components receive typed values, not the repository itself.
+
+---
+
+## Integration Points
+
+### Ghidra MCP → Swift Implementation
+
+| Ghidra Finding Type | How It Enters the Codebase |
+|--------------------|---------------------------|
+| UI label string constants | `DesignTokens.swift` or hardcoded in View struct (not l10n needed) |
+| Colour hex values | `WH.Color.*` in `DesignTokens.swift` |
+| Screen hierarchy / component grouping | `Tabs/*.swift` layout restructure |
+| Data field names / metric order | Component init param order in `Design/Components/*.swift` |
+| Algorithm coefficients | `LocalMetricsComputer` (already correct; Keytel confirmed via Ghidra) |
+| Protocol packet offsets | `WhoopProtocol` Swift Package (bug fixes) |
+
+### Internal Boundaries
+
+| Boundary | Communication | v4.0 Change? |
+|----------|---------------|--------------|
+| Ghidra MCP → Swift | Markdown findings docs → manual implementation | One-way; no automated code gen |
+| Tabs → Components | Function call (init params) | No change to pattern |
+| Tabs → MetricsRepository | `@EnvironmentObject` read | No change |
+| MetricsRepository → LocalMetricsComputer | Direct call on `BLEManager.onBackfillComplete` | No change |
+| LocalMetricsComputer → WhoopStore | GRDB actor calls | No change |
+| iOS → Server | Uploader POST (upload only; pull disabled) | No change |
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Coding Before RE Is Complete
+
+**What people do:** Start updating `RecoveryCard.swift` while still querying Ghidra for the Recovery screen layout.
+
+**Why it's wrong:** Mid-implementation Ghidra findings often require restructuring the partially written component, wasting time and producing messy diffs.
+
+**Do this instead:** Complete the Ghidra query for a screen, document findings in a spec, then implement. For large milestones, complete all RE before any Swift changes.
+
+### Anti-Pattern 2: Mixing Bug Fixes and UI Changes in One Commit
+
+**What people do:** Fix the RR offset bug while also updating the HRV label in MetricCard.
+
+**Why it's wrong:** Makes bisect impossible. If the RR fix is reverted, the label change is also reverted (or requires cherry-pick).
+
+**Do this instead:** Separate commits with separate scopes. `fix(hrv): remove RR offset` and `feat(ui): update HRV label to match IPA` are two commits.
+
+### Anti-Pattern 3: Hardcoding Values Found in IPA
+
+**What people do:** See `recoveryGreen = #16EC06` in Ghidra output, hardcode it inside `RecoveryCard.swift`.
+
+**Why it's wrong:** Next time a colour needs changing, it must be found and updated in every component instead of one token file.
+
+**Do this instead:** Update `WH.Color.recoveryGreen` in `DesignTokens.swift`; component references `WH.Color.recoveryGreen` already.
+
+### Anti-Pattern 4: Adding @EnvironmentObject to Component Views
+
+**What people do:** Give `RecoveryCard` a `@EnvironmentObject var metrics: MetricsRepository` to avoid passing parameters.
+
+**Why it's wrong:** Breaks `DesignGallery` preview, makes component untestable in isolation, couples visual component to data layer.
+
+**Do this instead:** Pass typed values from the parent tab view. Component receives only what it displays.
+
+### Anti-Pattern 5: Restructuring the Repo Mid-Milestone
+
+**What people do:** Move `ios/OpenWhoop/Tabs/` to `ios/OpenWhoop/Screens/` mid-feature development.
+
+**Why it's wrong:** Creates a massive rename diff that obscures the actual feature work, breaks in-progress branches, and confuses git blame.
+
+**Do this instead:** Repo cleanup is its own isolated phase with no concurrent feature work. The notes indicate "reorganizar o repositório" — this should be a standalone phase after all bug fixes and before UI work, or at the very end.
+
+---
+
+## Phase Build Order for v4.0
+
+The build order follows the dependency graph of what unblocks what:
+
+```
+Phase 1: Bug Fixes (isolated, no UI)
+  ↓ (fixes data pipeline integrity)
+
+Phase 2: Ghidra RE — Full IPA screen map
+  ↓ (produces specs, no Swift)
+
+Phase 3: Repo Cleanup (rename/reorganise files)
+  ↓ (clean slate for UI work)
+
+Phase 4: DesignTokens update (token-level only)
+  ↓ (components can now reference correct tokens)
+
+Phase 5: Component updates (Design/Components/ and Tabs/)
+  — one component per plan, RE-spec-driven
+  — modify in-place or replace per Phase 2 decision
+
+Phase 6: Hardware validation (PROTO-11/12/13/14)
+  — parallel with Phase 5 where possible
+  — gated on physical WHOOP + iPhone session
+```
+
+Phase 3 (repo cleanup) must complete before Phase 4–5 to avoid renames conflicting with active UI diffs. Phase 6 is hardware-dependent and can run in parallel with any software phase when hardware is available.
+
+---
+
+## Scaling Considerations
+
+This is a single-device, single-user iOS app. Scaling concerns are not applicable. The constraints that matter:
+
+| Concern | Current approach | v4.0 change? |
+|---------|-----------------|-------------|
+| App binary size | 61 Swift files, ~15k LOC — fine | Adding ~5–10 component files; negligible |
+| GRDB migration safety | Versioned migrations v1–v9; actor-isolated | Bug fix migrations add v10+ |
+| BLE reliability | Maverick protocol, safe-trim invariant | Bug fixes only |
+| Offline-first | LocalMetricsComputer is sole truth | Preserved |
+
+---
+
+## Sources
+
+- Direct reading of `ios/OpenWhoop/Design/`, `Tabs/`, `BLE/`, `Metrics/` — HIGH confidence
+- `.planning/notes/ghidra-ios-algorithm-findings.md` — Ghidra session 2026-06-01 — HIGH confidence
+- `.planning/notes/ghidra-ios-phases-scope.md` — Ghidra utility analysis — HIGH confidence
+- `.planning/codebase/ARCHITECTURE.md` — existing codebase architecture — HIGH confidence
+- `.planning/codebase/STRUCTURE.md` — existing codebase structure — HIGH confidence
+- `.planning/research/ARCHITECTURE.md` (v2.0) — prior milestone architecture research — HIGH confidence
+- `.planning/notes/2026-06-01-ble-sync-discoveries.md` — protocol discoveries — HIGH confidence
+
+---
+*Architecture research for: iOS v4.0 — Ghidra RE + 1:1 UI Redesign + Bug Fixes*
+*Researched: 2026-06-01*
