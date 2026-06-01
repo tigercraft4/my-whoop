@@ -136,7 +136,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 | 10. Algorithms Display + Server Endpoint | v2.0 | 3/3 | Complete   | 2026-05-31 |
 | 11. HealthKit Export | v2.0 | 4/4 | Complete    | 2026-05-31 |
 | 12. UI Parity | v3.0 | 3/3 | Complete | 2026-06-01 |
-| 13. Backend Parity | v3.0 | 0/4 | Planned | - |
+| 13. Backend Parity | v3.0 | 1/4 | In Progress|  |
 
 ### Phase 12: UI Parity
 **Goal**: Corrigir todos os labels e métricas identificados via IPA analysis (WHOOP 5.37.0) para atingir paridade visual com a app oficial
@@ -182,8 +182,8 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 - **Calorias**: RMR (Mifflin–St Jeor com perfil corporal) + calorias de exercício já computadas (Keytel). Classes: `CalorieCalculator`, `BasalMetabolicRateModel`
 - **Haptics Gen5**: `RunAppDrivenHapticsCommandPacket` → DRV2605 waveform effects (até 8 por chamada). Sem patternId simples — envia sequências de efeitos pré-definidos. Requer PacketLogger capture para reverse-engineer os bytes exactos.
 
-**Plans:** 4 plans
-- [ ] 13-01-PLAN.md — REQUIREMENTS.md ALG-10–13 + DB schema (4 colunas) + read.py + store.py
+**Plans:** 1/4 plans executed
+- [x] 13-01-PLAN.md — REQUIREMENTS.md ALG-10–13 + DB schema (4 colunas) + read.py + store.py
 - [ ] 13-02-PLAN.md — sleep_performance_score() em sleep.py + integração em daily.py (ALG-10)
 - [ ] 13-03-PLAN.md — training_state_from_lookup() + sleep_needed() em daily.py (ALG-11, ALG-12)
 - [ ] 13-04-PLAN.md — rmr_kcal_per_day() + total_calories em daily.py + iOS stack completo (ALG-13)

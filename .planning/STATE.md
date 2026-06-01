@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: — WHOOP Parity
-status: planning
-last_updated: "2026-06-01T00:00:00.000Z"
-last_activity: 2026-06-01
+status: executing
+last_updated: "2026-06-01T10:32:24.190Z"
+last_activity: 2026-06-01 -- Phase 13 execution started
 progress:
-  total_phases: 13
-  completed_phases: 12
-  total_plans: 26
-  completed_plans: 26
-  percent: 92
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 7
+  completed_plans: 3
+  percent: 25
 ---
 
 # State — WHOOP 5.0
@@ -26,16 +26,16 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Phase 13 — Backend Parity (Sleep Performance, Training State server-side, Sleep Needed, Calories)
+**Current focus:** Phase 13 — backend-parity
 
 ---
 
 ## Current Position
 
-Phase: 13
-Plan: 4/4 planned (0 executed)
-Status: Ready to execute
-Last activity: 2026-06-01
+Phase: 13 (backend-parity) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 13
+Last activity: 2026-06-01 -- Phase 13 execution started
 
 Progress: [████████████] 92%
 
