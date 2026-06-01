@@ -50,6 +50,9 @@ public enum WhoopCommand: UInt8, CaseIterable {
     // MARK: HYPOTHESIS (5.0 unverified) — inherited from 4.0, retained because referenced
     /// HYPOTHESIS (5.0 unverified) — used by BLEManager connect handshake.
     case getAdvertisingNameHarvard = 76
+    /// Get advertising name — WHOOP 5.0 variant (cmd 141=0x8D). Verified from PacketLogger 2026-06-01.
+    /// The official app sends this with payload=[0x01] immediately after GET_HELLO.
+    case getAdvertisingName = 141
     /// HYPOTHESIS (5.0 unverified) — used by BLEManager.captureRawAccel (on-demand IMU).
     case startRawData          = 81
     /// HYPOTHESIS (5.0 unverified) — used by BLEManager.captureRawAccel (on-demand IMU).
@@ -124,6 +127,7 @@ public enum WhoopCommand: UInt8, CaseIterable {
         case .sendNextFF:            return "Send Next FF"
         case .setFFValue:            return "Set FF Value"
         case .getAdvertisingNameHarvard: return "Get Advertising Name (Harvard)"
+        case .getAdvertisingName:        return "Get Advertising Name (5.0)"
         case .startRawData:          return "Start Raw Data"
         case .stopRawData:           return "Stop Raw Data"
         case .enterHighFreqSync:     return "Enter High-Freq Sync"

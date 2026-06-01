@@ -833,40 +833,39 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
         connectHandshakeDone = true
         backfillStarted = true
 
-        // WHOOP 5.0 connect lifecycle — sequence confirmed from capture_all-V3.pklg (official WHOOP app):
-        //   GET_HELLO(145,[0x01]) → GET_ADVERTISING_NAME(141,[0x01]) → DISABLE_ALARM(69,...) →
-        //   START_FF_KEY_EXCHANGE(117,[0x01]) → GET_DATA_RANGE(34) → SEND_HISTORICAL_DATA(22)
+        // WHOOP 5.0 connect lifecycle — VERIFIED from PacketLogger 2026-06-01 (official WHOOP app):
+        //   GET_HELLO(145,[01]) → SET_CLOCK(10) → GET_ADVERTISING_NAME(141,[01]) →
+        //   START_FF_KEY_EXCHANGE(117,[01]) → [FF exchange: SEND_NEXT_FF×15 → SET_FF_VALUE×15] →
+        //   HAPTICS(19) → GET_DATA_RANGE(34) → SEND_HISTORICAL_DATA(22,[00])
         //
-        // Key facts from the golden corpus:
-        //   • GET_HELLO (cmd 145) replaces GET_HELLO_HARVARD (cmd 35, Gen4-only) on the 5.0.
-        //   • START_FF_KEY_EXCHANGE (cmd 117) is REQUIRED before SEND_HISTORICAL_DATA will be served.
-        //     Without it the strap receives the command but returns 0 frames (silent HISTORY_COMPLETE).
-        //   • ENTER_HIGH_FREQ_SYNC (cmd 96) NEVER appears in the official 5.0 app capture — omitted.
-        //   • TOGGLE_REALTIME_HR (cmd 3,[0x01]) enables the FD4B0005 data stream (realtime HR + history).
-        send(.getHello, payload: [0x01])             // WHOOP 5.0 hello (cmd 145)
-        send(.getAdvertisingNameHarvard)             // get device name (cmd 76, also observed as 141)
-        send(.setClock, payload: BLEManager.setClockPayload())
-        if clockRef == nil && !clockRequested {
-            clockRequested = true
-            send(.getClock, payload: [])
-        }
-        send(.sendR10R11Realtime, payload: [0x00])   // stop type-43 raw flood
-        send(.toggleRealtimeHR, payload: [0x01])     // activate FD4B0005 data channel
+        // CRITICAL: TOGGLE_REALTIME_HR and R10/R11 must NOT be sent before START_FF_KEY_EXCHANGE.
+        // In the official app they appear only during the offload phase (~+77s into the session).
+        // Sending them early causes the WHOOP state machine to enter a different mode and stop
+        // responding to START_FF_KEY_EXCHANGE entirely (observed: FF exchange timeout every connect).
+        send(.getHello, payload: [0x01])                            // cmd 145 — WHOOP 5.0 hello
+        send(.setClock, payload: BLEManager.setClockPayload())      // cmd 10  — sync clock
+        send(.getAdvertisingName, payload: [0x01])                  // cmd 141 — 5.0 advertising name
         ffExchangePending = true
         ffRoundsRemaining = 0
         ffNames = []
-        send(.startFFKeyExchange, payload: [0x01])   // REQUIRED: begin FF exchange before historical data
-        send(.getDataRange)                          // refresh strap's stored range for the watchdog
+        send(.startFFKeyExchange, payload: [0x01])                  // cmd 117 — REQUIRED gate
+        send(.getDataRange)                                         // cmd 34  — refresh watchdog range
         ffExchangeTimeout?.cancel()
         let ffTimeoutItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            // WHOOP 5.0 never acknowledges FF exchange — 3s is enough to know it won't respond.
-            BLEManager.logger.notice("BF: FF exchange timeout — clearing pending, attempting backfill")
+            BLEManager.logger.notice("BF: FF exchange timeout — no response to START_FF_KEY_EXCHANGE; falling back")
             self.ffExchangePending = false
+            // Still stop the raw flood and enable HR before trying backfill
+            self.send(.sendR10R11Realtime, payload: [0x00])
+            self.send(.toggleRealtimeHR, payload: [0x01])
+            if self.clockRef == nil && !self.clockRequested {
+                self.clockRequested = true
+                self.send(.getClock, payload: [])
+            }
             self.requestSync(.connect)
         }
         ffExchangeTimeout = ffTimeoutItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: ffTimeoutItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: ffTimeoutItem)  // 10s — 15 rounds × ~0.06s + margin
         uploadOpportunistically()
         // NOTE: the server pull + cloud-restore are deliberately NOT kicked here. They share the
         // WhoopStore actor with the historical offload, and a large first-run pull would starve the
@@ -924,6 +923,13 @@ extension BLEManager: @preconcurrency CBPeripheralDelegate {
         ffExchangeTimeout?.cancel()
         ffExchangeTimeout = nil
         ffExchangePending = false
+        // Send R10/R11 and Toggle Realtime HR AFTER FF exchange (not before) — official app sequence.
+        send(.sendR10R11Realtime, payload: [0x00])  // stop type-43 raw flood
+        send(.toggleRealtimeHR, payload: [0x01])    // activate FD4B0005 data channel
+        if clockRef == nil && !clockRequested {
+            clockRequested = true
+            send(.getClock, payload: [])
+        }
         requestSync(.connect)
         BLEManager.logger.notice("BF: FF exchange complete (\(names.count, privacy: .public) flags) — requestSync(.connect) triggered")
     }
