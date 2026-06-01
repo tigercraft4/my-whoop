@@ -42,6 +42,13 @@
 - [ ] **ALG-03**: Strain score (0–21, Edwards TRIMP) calculado pelo servidor (`strain.py`) e apresentado na Strain view
 - [ ] **ALG-04**: Endpoint `GET /v1/today?device=<id>` adicionado ao servidor — retorna o `daily_metrics` row mais recente sem edge case de UTC no client
 
+### Backend Parity Algorithms
+
+- [ ] **ALG-10**: `sleep.py`: Sleep Performance = score ponderado 0–100 com fórmula composta (duração × W_dur=0.45 + eficiência × W_eff=0.25 + staging_ratio/0.40 × W_stg=0.20 + consistência × W_con=0.10); persiste em coluna separada `sleep_performance REAL` no `daily_metrics`; exposto pelo `/v1/today`
+- [ ] **ALG-11**: `daily.py`: Training State calculado server-side a partir de (recovery × 100, strain) via `recovery_to_strain.json`; retorna "RESTORATIVE" | "OPTIMAL" | "OVERREACHING" | null; persiste na coluna `training_state TEXT` do `daily_metrics`; exposto pelo `/v1/today`; iOS prefere o valor do servidor quando não nulo, fallback ao cálculo client-side
+- [ ] **ALG-12**: `daily.py`: Sleep Needed = baseline rolling 7d (média `total_sleep_min`) + strain_debt (f(strain_yesterday), máx 60 min) + sleep_debt (50% do défice acumulado, máx 120 min); clamp [300, 660] min; persiste na coluna `sleep_needed_min REAL` do `daily_metrics`; exposto pelo `/v1/today`; retorna None se menos de 3 noites de histórico
+- [ ] **ALG-13**: `daily.py`/`calories.py`: Calorias totais diárias = RMR via Mifflin–St Jeor (nova função `rmr_kcal_per_day`) + calorias de exercício já computadas por sessão; persiste na coluna `total_calories_kcal REAL` do `daily_metrics`; exposto pelo `/v1/today`; None se sem perfil; iOS Today view mostra o valor num MetricCard "CALORIES"
+
 ### HealthKit Export
 
 - [x] **HK-01**: Amostras de HR exportadas para HealthKit (`HKQuantityType(.heartRate)`, unidade `count/min`) após cada ingest/backfill; cursor de highwater em UserDefaults para idempotência
@@ -106,6 +113,10 @@ Um requisito está **Done** quando:
 | ALG-02 | Phase 10 | Pending |
 | ALG-03 | Phase 10 | Pending |
 | ALG-04 | Phase 10 | Pending |
+| ALG-10 | Phase 13 | Pending |
+| ALG-11 | Phase 13 | Pending |
+| ALG-12 | Phase 13 | Pending |
+| ALG-13 | Phase 13 | Pending |
 | HK-01 | Phase 11 | Complete |
 | HK-02 | Phase 11 | Complete |
 | HK-03 | Phase 11 | Complete |
