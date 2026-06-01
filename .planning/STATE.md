@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: — WHOOP Parity
 status: executing
-last_updated: "2026-06-01T10:32:24.190Z"
-last_activity: 2026-06-01 -- Phase 13 execution started
+last_updated: "2026-06-01T11:03:20.338Z"
+last_activity: 2026-06-01
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 3
-  percent: 25
+  completed_plans: 7
+  percent: 50
 ---
 
 # State — WHOOP 5.0
@@ -32,12 +32,12 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 ## Current Position
 
-Phase: 13 (backend-parity) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 13
-Last activity: 2026-06-01 -- Phase 13 execution started
+Phase: 13 (backend-parity) — COMPLETE (4 of 4 plans)
+Plan: 4 of 4 (13-04 complete)
+Status: Phase 13 complete — ready for verification
+Last activity: 2026-06-01 -- 13-04 executed (ALG-13 calories + iOS field propagation)
 
-Progress: [████████████] 92%
+Progress: [██████████] 100%
 
 ---
 
@@ -95,6 +95,17 @@ Root cause: All gaps require physical hardware not available in sandbox.
 
 ## Session Continuity
 
-Last session: 2026-06-01T00:00:00.000Z
-Stopped at: Phase 12 complete — ready to plan Phase 13
+Last session: 2026-06-01T11:03:20.333Z
+Stopped at: Completed 13-04-PLAN.md
 Resume file: None
+
+## Decisions
+
+- [Phase 13]: RMR usa Mifflin-St Jeor (_MIFFLIN_COEFFS) distinto do Harris-Benedict (_COEFFS, burn por bout)
+- [Phase 13]: iOS display server-first com fallback client-side (trainingState, sleepPerformance) para linhas pre-Fase-13
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Notes |
+|-------|------|----------|-------|
+| Phase 13 P04 | 25 | 2 tasks | 9 files |
