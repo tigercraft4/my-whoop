@@ -54,7 +54,7 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 
 ### 🚧 v4.0 — UI Redesign + Bug Fix (Phases 14–18) — IN PROGRESS
 
-- [ ] **Phase 14: Critical Bug Fixes (Data Layer)** — Wire computed metrics into views and clean corrupt HRV baseline
+- [x] **Phase 14: Critical Bug Fixes (Data Layer)** — Wire computed metrics into views and clean corrupt HRV baseline (completed 2026-06-01)
 - [ ] **Phase 15: Ghidra IPA Deep-Dive** — Map every official-app screen and decode Keytel coefficients; produce the UI source-of-truth
 - [ ] **Phase 16: Repo Cleanup + Gen4 Sweep** — Reorganise folders and remove dead WHOOP 4.0 code without architecture changes
 - [ ] **Phase 17: UI Redesign 1:1** — Replicate each screen against Ghidra findings with snapshot + simulator validation
@@ -140,7 +140,7 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 | 11. HealthKit Export | v2.0 | 4/4 | Complete | 2026-05-31 |
 | 12. UI Parity | v3.0 | 3/3 | Complete | 2026-06-01 |
 | 13. Backend Parity | v3.0 | 4/4 | Complete | 2026-06-01 |
-| 14. Critical Bug Fixes (Data Layer) | v4.0 | 0/? | Not started | - |
+| 14. Critical Bug Fixes (Data Layer) | v4.0 | 2/2 | Complete   | 2026-06-01 |
 | 15. Ghidra IPA Deep-Dive | v4.0 | 0/? | Not started | - |
 | 16. Repo Cleanup + Gen4 Sweep | v4.0 | 0/? | Not started | - |
 | 17. UI Redesign 1:1 | v4.0 | 0/? | Not started | - |
