@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-06-01T19:24:42.337Z"
 last_activity: 2026-06-01
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -16,7 +16,7 @@ progress:
 # State — WHOOP 5.0
 
 **Project:** my-whoop (clean fork for WHOOP 5.0)
-**Last updated:** 2026-06-01 (Phase 12 complete — Phase 13 next)
+**Last updated:** 2026-06-01 (v4.0 roadmap created — Phases 14–18 defined)
 
 ---
 
@@ -26,20 +26,27 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Phase 999.1 — follow up — phase 1 android device items (backlog)
+**Current focus:** v4.0 — UI Redesign + Bug Fix. Phase 14 (Critical Bug Fixes — Data Layer) is next.
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-06-01 — Milestone v4.0 started
+Phase: 14 — Critical Bug Fixes (Data Layer)
+Plan: — (roadmap created, not yet planned)
+Status: Roadmap complete — ready for /gsd-plan-phase 14
+Last activity: 2026-06-01 — v4.0 roadmap created (Phases 14–18, 17 requirements mapped)
+
+**v4.0 phase map:**
+- Phase 14: Critical Bug Fixes (Data Layer) — BUGFIX-01/02/03 — unblocks accurate metric display
+- Phase 15: Ghidra IPA Deep-Dive — GHIDRA-01/02, BUGFIX-04 — markdown only, feeds UI; GHIDRA-01 gates UI
+- Phase 16: Repo Cleanup + Gen4 Sweep — CLEAN-01/02/03 — before UI to keep diffs clean
+- Phase 17: UI Redesign 1:1 — UI-01/02/03/04 — depends on Phase 15+16; UI-01 gates UI-02/03
+- Phase 18: Hardware Validation (parallel-eligible) — GHIDRA-03, PROTO-11/12/13 — does NOT gate v4.0 ship
 
 ## Accumulated Context
 
-### Key Decisions (v2.0 / v3.0)
+### Key Decisions (v2.0 / v3.0 / v4.0)
 
 | # | Decision | Rationale |
 |---|----------|-----------|
@@ -54,15 +61,21 @@ Last activity: 2026-06-01 — Milestone v4.0 started
 | 9 | Maverick token determinístico por payload_len | lookup table: pl=1→01E671, pl=9→01E0D1, pl=65→01F3B1, etc. |
 | 10 | endData offset é Maverick não Gen4 | frame[21:29] não frame[17:25] — bug corrigido em 2026-06-01 (trim sempre=60 → cursor nunca avançava) |
 | 11 | Servidor é backup only | pullFromServer() e restoreFromServerIfNeeded() desactivados; LocalMetricsComputer é única fonte de verdade |
+| 12 | v4.0: bug fixes (Fase 14) antes de Ghidra/UI | Limpam o data layer (sleepNeededMin, sleepPerformance, avgHrv corrupto) para que UI e RE assentem em métricas correctas |
+| 13 | v4.0: Ghidra (Fase 15) é markdown-only, gate da UI | GHIDRA-01 (FINDINGS_5.md + v4-ui-map.md) tem de estar commitado antes de UI-01/UI-02; nenhum ficheiro Swift tocado na fase RE |
+| 14 | v4.0: cleanup (Fase 16) entre RE e UI | Reorganização de pastas + Gen4 sweep antes do trabalho de componentes para não contaminar diffs da UI |
+| 15 | v4.0: UI-01 (DesignTokens) gateia UI-02/03 | Tokens WH.* verificados no Ghidra têm de estar commitados antes de mexer em componentes/snapshots |
+| 16 | v4.0: hardware validation (Fase 18) é parallel-eligible | Hardware-gated; corre em paralelo com Fase 17 quando houver hardware; NÃO gateia o ship de v4.0 |
 
 ### Blockers / Concerns (actualizados 2026-06-01)
 
 - **BF-P1:** RESOLVIDO — handshake movido para `didUpdateNotificationStateFor` (FD4B0003 confirmado antes dos comandos)
 - **HK-P1:** HealthKit entitlement + plist keys must be added BEFORE importing HealthKit framework
 - **HK-P2:** Unit conversions are not optional — SpO₂ must be 0.0–1.0 (not 0–100) for HealthKit
-- **PROTO-11/12/14:** Backfill agora funciona (sync confirmado com 16000+ frames type=47). Validação de biométricos ainda pendente.
+- **PROTO-11/12/13:** Backfill agora funciona (sync confirmado com 16000+ frames type=47). Validação de biométricos pendente — Fase 18 (hardware-gated).
 - **Haptics:** RESOLVIDO — payload verificado via PacketLogger 2026-06-01. Alarme às 9h disparou buzz, capturado evento 60+100.
 - **Sync-Repeat:** RESOLVIDO — endData offset corrigido (frame[21:29]). Trim cursor agora avança corrrectamente.
+- **v4.0 clean-room:** Nenhum asset, artwork ou pseudocódigo Ghidra pode ser copiado para ficheiros Swift — apenas estrutura/dados.
 
 ### Pending Todos
 
@@ -114,9 +127,9 @@ Known deferred items at v3.0 close: 11 (see Deferred Items above)
 
 ## Session Continuity
 
-Last session: 2026-06-01T19:04:58.654Z
-Stopped at: Phase 999.1 context gathered
-Resume file: .planning/phases/999.1-follow-up-phase-1-android-device-items-backlog/999.1-CONTEXT.md
+Last session: 2026-06-01 — v4.0 roadmap created
+Stopped at: ROADMAP.md / REQUIREMENTS.md / STATE.md updated for v4.0 (Phases 14–18)
+Resume file: .planning/ROADMAP.md (v4.0 section)
 
 ## Decisions
 
@@ -131,4 +144,4 @@ Resume file: .planning/phases/999.1-follow-up-phase-1-android-device-items-backl
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the first v4.0 phase with /gsd-plan-phase 14

@@ -63,20 +63,20 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUGFIX-01 | TBD | Pending |
-| BUGFIX-02 | TBD | Pending |
-| BUGFIX-03 | TBD | Pending |
-| BUGFIX-04 | TBD | Pending |
-| GHIDRA-01 | TBD | Pending |
-| GHIDRA-02 | TBD | Pending |
-| GHIDRA-03 | TBD | Pending |
-| CLEAN-01 | TBD | Pending |
-| CLEAN-02 | TBD | Pending |
-| CLEAN-03 | TBD | Pending |
-| UI-01 | TBD | Pending |
-| UI-02 | TBD | Pending |
-| UI-03 | TBD | Pending |
-| UI-04 | TBD | Pending |
-| PROTO-11 | TBD | Pending |
-| PROTO-12 | TBD | Pending |
-| PROTO-13 | TBD | Pending |
+| BUGFIX-01 | Phase 14 | Pending |
+| BUGFIX-02 | Phase 14 | Pending |
+| BUGFIX-03 | Phase 14 | Pending |
+| BUGFIX-04 | Phase 15 | Pending |
+| GHIDRA-01 | Phase 15 | Pending |
+| GHIDRA-02 | Phase 15 | Pending |
+| GHIDRA-03 | Phase 18 | Pending |
+| CLEAN-01 | Phase 16 | Pending |
+| CLEAN-02 | Phase 16 | Pending |
+| CLEAN-03 | Phase 16 | Pending |
+| UI-01 | Phase 17 | Pending |
+| UI-02 | Phase 17 | Pending |
+| UI-03 | Phase 17 | Pending |
+| UI-04 | Phase 17 | Pending |
+| PROTO-11 | Phase 18 | Pending |
+| PROTO-12 | Phase 18 | Pending |
+| PROTO-13 | Phase 18 | Pending |
