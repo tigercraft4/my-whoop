@@ -40,6 +40,15 @@ struct RecoveryCard: View {
         daily?.sleepPerformance.map { "\(Int($0.rounded()))%" } ?? "—"
     }
 
+    private var sleepNeededLabel: String {
+        guard let m = daily?.sleepNeededMin, m > 0 else { return "—" }
+        let hours = Int(m) / 60
+        let mins  = Int(m) % 60
+        if hours > 0 && mins > 0 { return "\(hours)h \(mins)m" }
+        if hours > 0              { return "\(hours)h" }
+        return "\(mins)m"
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -76,11 +85,15 @@ struct RecoveryCard: View {
                     .frame(height: 36)
                     .background(WH.Color.separator)
                 statColumn(label: "SLEEP", value: sleepLabel)
+                Divider()
+                    .frame(height: 36)
+                    .background(WH.Color.separator)
+                statColumn(label: "NEED", value: sleepNeededLabel)
             }
             .padding(.top, WH.Spacing.xs)
         }
         .padding(WH.Spacing.lg)
-        .background(Color.black,
+        .background(WH.Color.surface,
                     in: RoundedRectangle(cornerRadius: WH.Radius.card, style: .continuous))
     }
 

@@ -141,6 +141,22 @@ struct TodayView: View {
         }
     }
 
+    // MARK: - Strain zone color helper
+
+    /// Returns the appropriate strain zone color for the given strain value.
+    /// - nil or 0 → textSecondary (no strain)
+    /// - < 10     → strainBlue (low, Restorative zone)
+    /// - < 18     → strainBlueMedium (medium, Optimal zone)
+    /// - ≥ 18     → strainBlueHigh (high, Overreaching zone)
+    private func strainZoneColor(_ strain: Double?) -> Color {
+        guard let s = strain, s > 0 else { return WH.Color.textSecondary }
+        switch s {
+        case ..<10: return WH.Color.strainBlue
+        case ..<18: return WH.Color.strainBlueMedium
+        default:    return WH.Color.strainBlueHigh
+        }
+    }
+
     // MARK: - Strain card
 
     private var strainCard: some View {
@@ -152,7 +168,7 @@ struct TodayView: View {
         return MetricCard(title: "Day Strain",
                           value: value,
                           unit: hasStrain ? "/ 21" : nil,
-                          accentColor: hasStrain ? WH.Color.strainBlue : WH.Color.textSecondary)
+                          accentColor: strainZoneColor(metrics.today?.strain))
     }
 
     // MARK: - Sleep card
