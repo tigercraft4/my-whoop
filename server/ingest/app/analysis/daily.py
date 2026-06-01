@@ -539,13 +539,32 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
     # Build Winsorized-EWMA baselines from the trailing _BASELINE_DAYS of history.
     baselines = _build_baselines(conn, device_id, day)
 
+    # ── ALG-12 Sleep Needed: rolling prior-7d sleep baseline + yesterday's load ──
+    # Read the trailing 7 calendar days of daily_metrics (oldest → newest). The
+    # personalised need needs >= 3 valid nights; with fewer it returns None.
+    _prior_7d = read.query_daily(
+        conn, device_id, day - _dt.timedelta(days=7), day - _dt.timedelta(days=1))
+    _prior_sleep_min = [
+        float(r["total_sleep_min"]) for r in _prior_7d
+        if r.get("total_sleep_min") is not None
+    ]
+    _last = _prior_7d[-1] if _prior_7d else None
+    _strain_yesterday = (
+        float(_last["strain"]) if _last and _last.get("strain") is not None else None
+    )
+    _sleep_yesterday = (
+        float(_last["total_sleep_min"])
+        if _last and _last.get("total_sleep_min") is not None else None
+    )
+    _sleep_needed = sleep_needed(_prior_sleep_min, _strain_yesterday, _sleep_yesterday)
+
     # Sleep efficiency (0..1) as the sleep-performance proxy.
     sleep_perf: float | None = sleep_summary.get("efficiency")
 
     # ALG-10 Sleep Performance composite (0..100) — separate from sleep_perf,
-    # which stays as efficiency (0..1) for recovery_score. sleep_needed_min=None
-    # uses the internal 420-min fallback; ALG-12 (Plan 13-03) will supply a
-    # personalised need.
+    # which stays as efficiency (0..1) for recovery_score. sleep_needed_min is the
+    # ALG-12 personalised need (or None → internal 420-min fallback when there is
+    # insufficient history).
     _sleep_perf_score: float | None = None
     if sleep_summary.get("total_sleep_min") is not None:
         _sleep_perf_score = _sleep.sleep_performance_score(
@@ -554,7 +573,7 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
             deep_min=sleep_summary.get("deep_min") or 0.0,
             rem_min=sleep_summary.get("rem_min") or 0.0,
             disturbances=int(sleep_summary.get("disturbances") or 0),
-            sleep_needed_min=None,  # ALG-12 (Plan 13-03); None → 420-min fallback
+            sleep_needed_min=_sleep_needed,  # ALG-12; None → 420-min fallback
         )
 
     recovery = None
@@ -595,6 +614,11 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
         max_hr=eff_max_hr,
         resting_hr=float(resting_hr) if resting_hr is not None else _strain.DEFAULT_RESTING_HR)
 
+    # ── ALG-11 Training State (today's recovery + strain → optimal band lookup) ──
+    # recovery_score is already on a 0..100 scale (recovery.py returns [0,100]), so
+    # it is passed through unchanged. None when recovery or strain is None.
+    _training_state = training_state_from_lookup(recovery, strain_val)
+
     # ── Exercise (calendar day; explicit resting_hr + personalized HRmax) ─────
     # Read the device profile for calorie estimation (None → calories stay None).
     device_profile = read.query_profile(conn, device_id)
@@ -628,6 +652,8 @@ def compute_day(conn, device_id: str, day: _dt.date) -> dict[str, Any]:
         "skin_temp_dev_c": signals["skin_temp_dev_c"],
         "resp_rate_bpm": signals["resp_rate_bpm"],
         "sleep_performance": _sleep_perf_score,
+        "training_state": _training_state,
+        "sleep_needed_min": _sleep_needed,
     }
     # Delete the day's existing session rows first, then insert the fresh set, so a
     # recompute yielding FEWER sessions can't leave stale rows (which would desync
