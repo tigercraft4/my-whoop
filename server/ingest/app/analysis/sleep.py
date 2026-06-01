@@ -624,6 +624,66 @@ def hypnogram_metrics(session: SleepSession) -> dict[str, float | int]:
 
 
 # ===========================================================================
+# Sleep Performance score (ALG-10)
+# ===========================================================================
+
+def sleep_performance_score(
+    total_sleep_min: float,
+    efficiency: float,
+    deep_min: float,
+    rem_min: float,
+    disturbances: int,
+    sleep_needed_min: float | None = None,
+) -> float:
+    """Composite Sleep Performance score in [0.0, 100.0] (ALG-10).
+
+    APPROXIMATE — the proprietary WHOOP formula is not published. This is an
+    independent composite over four published sleep-quality dimensions, each
+    normalised to [0, 1] and combined with fixed weights:
+
+        W_dur = 0.45  duration vs. need (TST / sleep_needed)
+        W_eff = 0.25  sleep efficiency (TST / TIB, already 0..1)
+        W_stg = 0.20  restorative staging ((deep + rem) / TST, target 40%)
+        W_con = 0.10  sleep consistency (fewer post-onset disturbances)
+
+    Args:
+        total_sleep_min:  AASM total sleep time (TST), minutes.
+        efficiency:       Sleep efficiency 0.0..1.0 (TST / time-in-bed).
+        deep_min:         Deep-sleep minutes.
+        rem_min:          REM-sleep minutes.
+        disturbances:     Count of post-onset wake runs.
+        sleep_needed_min: Personalised sleep need (minutes). If None, falls
+                          back to 420 (7 h). ALG-12 (Plan 13-03) will supply
+                          a computed value.
+
+    Returns:
+        Score rounded to one decimal, clamped to [0.0, 100.0]. Returns 0.0
+        when there is no sleep (TST = 0 zeroes every component).
+
+    Pure function — no DB, no streams. Division guards (``max(.., 1.0)``)
+    prevent divide-by-zero when TST or the target is 0 (mitigation T-13-02-03).
+
+    No-sleep short-circuit: with ``total_sleep_min <= 0`` there is no sleep to
+    score, so the result is 0.0. Without this guard the consistency term
+    (W_con) would award 10 points for "0 disturbances" on a night with no
+    sleep at all — see ALG-10 must-have "retorna 0 para TST=0".
+    """
+    if total_sleep_min <= 0:
+        return 0.0
+
+    target = sleep_needed_min if sleep_needed_min is not None else 420.0
+
+    w_dur = min(total_sleep_min / max(target, 1.0), 1.0) * 0.45
+    w_eff = efficiency * 0.25
+    restorative_ratio = (deep_min + rem_min) / max(total_sleep_min, 1.0)
+    w_stg = min(restorative_ratio / 0.40, 1.0) * 0.20
+    w_con = (1.0 - min(disturbances / 10.0, 1.0)) * 0.10
+
+    score = (w_dur + w_eff + w_stg + w_con) * 100.0
+    return round(max(0.0, min(100.0, score)), 1)
+
+
+# ===========================================================================
 # Daily sleep summary  (UNCHANGED output keys)
 # ===========================================================================
 
