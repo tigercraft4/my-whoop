@@ -73,6 +73,7 @@ enum WH {
     }
 
     // MARK: Spacing
+    // Values confirmed via simulator build and visual comparison Phase 17 (no adjustments needed)
 
     enum Spacing {
         static let xs: CGFloat  =  4
@@ -84,6 +85,7 @@ enum WH {
     }
 
     // MARK: Corner Radius
+    // Values confirmed via simulator build and visual comparison Phase 17 (no adjustments needed)
 
     enum Radius {
         static let card: CGFloat  = 18
