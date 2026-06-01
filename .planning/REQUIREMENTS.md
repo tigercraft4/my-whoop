@@ -13,12 +13,12 @@
 - [x] **BUGFIX-01**: SleepCard e SleepView mostram `sleepNeededMin` (resultado ALG-12) — campo é calculado pelo LocalMetricsComputer mas nenhuma view o exibe actualmente
 - [x] **BUGFIX-02**: SleepCard e RecoveryCard lêem `DailyMetric.sleepPerformance` (ALG-10, score composto 0–100) em vez de `efficiency` (raw 0.0–1.0) — correcção em 2 sítios
 - [x] **BUGFIX-03**: Migration GRDB v10 para purgar/sinalizar valores `avgHrv` armazenados antes do commit e65fa31 (offsets V128 RR incorrectos) — baseline de recovery fica limpo
-- [ ] **BUGFIX-04**: Bugs adicionais identificados durante a fase Ghidra RE (GHIDRA-01) — scope concreto definido após análise do IPA
+- [x] **BUGFIX-04**: Bugs adicionais identificados durante a fase Ghidra RE (GHIDRA-01) — scope concreto definido após análise do IPA
 
 ### Ghidra IPA Analysis
 
-- [ ] **GHIDRA-01**: Screen map completo de todos os ecrãs da app oficial WHOOP 5.37.0 via PyGhidra batch extraction + decompilação dirigida — output em `FINDINGS_5.md` e `docs/specs/v4-ui-map.md`; nenhum ficheiro Swift tocado nesta fase; um ecrã por sessão, findings commitados antes de avançar
-- [ ] **GHIDRA-02**: Decodar os 8 doubles LE @ `0x1058a5a80` (coeficientes Keytel sex-specific para ALG-13) e validar/corrigir `calories.py` e `LocalMetricsComputer.swift`
+- [x] **GHIDRA-01**: Screen map completo de todos os ecrãs da app oficial WHOOP 5.37.0 via PyGhidra batch extraction + decompilação dirigida — output em `FINDINGS_5.md` e `docs/specs/v4-ui-map.md`; nenhum ficheiro Swift tocado nesta fase; um ecrã por sessão, findings commitados antes de avançar
+- [x] **GHIDRA-02**: Decodar os 8 doubles LE @ `0x1058a5a80` (coeficientes Keytel sex-specific para ALG-13) e validar/corrigir `calories.py` e `LocalMetricsComputer.swift`
 - [ ] **GHIDRA-03**: Confirmar offsets V128 para SpO₂ (PROTO-11), skin temp (PROTO-12) e respiration (PROTO-13) via Ghidra + PacketLogger quando hardware disponível
 
 ### Repo Cleanup + Device Validation
@@ -66,9 +66,9 @@
 | BUGFIX-01 | Phase 14 | Complete |
 | BUGFIX-02 | Phase 14 | Complete |
 | BUGFIX-03 | Phase 14 | Complete |
-| BUGFIX-04 | Phase 15 | Pending |
-| GHIDRA-01 | Phase 15 | Pending |
-| GHIDRA-02 | Phase 15 | Pending |
+| BUGFIX-04 | Phase 15 | Complete |
+| GHIDRA-01 | Phase 15 | Complete |
+| GHIDRA-02 | Phase 15 | Complete |
 | GHIDRA-03 | Phase 18 | Pending |
 | CLEAN-01 | Phase 16 | Pending |
 | CLEAN-02 | Phase 16 | Pending |

@@ -4,14 +4,14 @@ milestone: v4.0
 milestone_name: — UI Redesign + Bug Fix
 status: executing
 stopped_at: Phase 15 context gathered
-last_updated: "2026-06-01T20:40:35.728Z"
-last_activity: 2026-06-01 -- Phase null planning complete
+last_updated: "2026-06-01T21:01:16.722Z"
+last_activity: 2026-06-01
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 2
-  percent: 14
+  completed_plans: 5
+  percent: 29
 ---
 
 # State — WHOOP 5.0
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Phase 15 — ghidra ipa deep dive
+**Current focus:** Phase null
 
 ---
 
 ## Current Position
 
-Phase: 15
+Phase: 16
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-01 -- Phase null planning complete
+Status: Executing Phase null
+Last activity: 2026-06-01
 
 **v4.0 phase map:**
 
