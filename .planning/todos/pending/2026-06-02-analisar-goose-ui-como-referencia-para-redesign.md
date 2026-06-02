@@ -1,13 +1,33 @@
 ---
 created: 2026-06-02T22:32:54.094Z
-title: Analisar Goose UI como referência para redesign
-area: ui
+title: Analisar Goose — UI e protocolo (Puffin/tipos 51-56)
+area: general
 files: []
 ---
 
 ## Problem
 
 Fork identificado: https://github.com/tigercraft4/goose (original: b-nnett/goose)
+
+**⚠️ DESCOBERTA CRÍTICA: Protocolo — não é só UI!**
+
+O Rust core (Rust/core/src/protocol.rs) documenta packet types e device types que não temos:
+
+### Packet types novos (desconhecidos para nós)
+- **Tipo 37**: PUFFIN_COMMAND
+- **Tipo 38**: PUFFIN_COMMAND_RESPONSE
+- **Tipo 51**: REALTIME_IMU_DATA_STREAM
+- **Tipo 52**: HISTORICAL_IMU_DATA_STREAM
+- **Tipo 53**: RELATIVE_PUFFIN_EVENTS
+- **Tipo 54**: PUFFIN_EVENTS_FROM_STRAP
+- **Tipo 55**: RELATIVE_BATTERY_PACK_CONSOLE_LOGS
+- **Tipo 56**: PUFFIN_METADATA
+
+### Device type "Puffin" — nova geração WHOOP!
+```rust
+pub enum DeviceType { Gen4, Maverick, Puffin, Goose }
+```
+O "Puffin" usa o mesmo framing de 8 bytes que o Maverick (WHOOP 5.0). Provavelmente WHOOP 6.0 ou variante próxima. Ainda não documentado por nós.
 
 O Goose é um cliente local-first para WHOOP 5.0 muito semelhante ao nosso projecto. Pontos-chave:
 
