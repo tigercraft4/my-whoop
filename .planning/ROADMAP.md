@@ -134,7 +134,10 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
   3. Skin temperature is VERIFIED against a thermometer ground truth (PROTO-12).
   4. Respiration rate is VERIFIED within the 12–20 rpm range via TOGGLE_IMU_MODE capture (PROTO-13).
 
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 18-01-PLAN.md — Analise Ghidra: confirmar offsets V128 SpO2/skin temp/respiration (GHIDRA-03, sem hardware)
+- [ ] 18-02-PLAN.md — Sessao hardware TOGGLE_IMU_MODE: validar SpO2/skin temp/respiration contra ground truth (PROTO-11/12/13)
 
 ---
 
@@ -159,7 +162,7 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 | 15. Ghidra IPA Deep-Dive | v4.0 | 3/3 | Complete    | 2026-06-01 |
 | 16. Repo Cleanup + Gen4 Sweep | v4.0 | 4/4 | Complete    | 2026-06-01 |
 | 17. UI Redesign 1:1 | v4.0 | 5/5 | Complete    | 2026-06-01 |
-| 18. Hardware Validation (parallel-eligible) | v4.0 | 0/? | Not started | - |
+| 18. Hardware Validation (parallel-eligible) | v4.0 | 0/2 | Not started | - |
 
 ---
 
