@@ -59,6 +59,7 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 - [x] **Phase 16: Repo Cleanup + Gen4 Sweep** — Reorganise folders and remove dead WHOOP 4.0 code without architecture changes (completed 2026-06-01)
 - [x] **Phase 17: UI Redesign 1:1** — Replicate each screen against Ghidra findings with snapshot + simulator validation (completed 2026-06-01)
 - [ ] **Phase 18: Hardware Validation (parallel-eligible)** — Verify SpO₂, skin temp and respiration against ground truth; does NOT gate v4.0 ship
+- [ ] **Phase 19: Puffin Protocol Hardening + IMU Streams** — Add defensive handling for Puffin packet types (56, 38) discovered via Goose analysis; decode IMU raw streams (51/52)
 
 ---
 
@@ -198,6 +199,26 @@ Plans:
 
 Plans:
 - [x] ALG-RE-01: Calibração Recovery — regressão linear HRV+RHR → WHOOP score (completed 2026-06-02)
+
+### Phase 19: Puffin Protocol Hardening + IMU Streams
+
+**Goal**: Close the protocol gaps discovered via analysis of the Goose (b-nnett/goose) Rust core: add defensive support for Puffin packet types that the WHOOP 5.0 may emit, and implement decoding of the raw IMU data streams.
+**Depends on:** Phase 18 (protocol verification baseline)
+**Requirements:** PROTO-PUFFIN-01, PROTO-PUFFIN-02, PROTO-IMU-01
+**Success Criteria:**
+1. `whoop_protocol_5.json` documents types 38 (PUFFIN_COMMAND_RESPONSE) and 56 (PUFFIN_METADATA) as documented aliases of 36 and 49 respectively.
+2. `classifyHistoricalMeta()` returns `.end`/`.complete` for both type 49 AND type 56 frames — backfill never hangs on a PUFFIN_METADATA HISTORY_END.
+3. BLE command response routing handles type 38 identically to type 36.
+4. Types 51 (REALTIME_IMU_DATA_STREAM) and 52 (HISTORICAL_IMU_DATA_STREAM) are parsed and stored in a new `imuSample` table in WhoopStore.
+5. `FINDINGS_5.md` updated with Puffin/IMU stream documentation sourced from Goose analysis.
+**Plans:** TBD
+**Source:** Analysis of https://github.com/b-nnett/goose Rust/core/src/protocol.rs — Puffin is a WHOOP 5.0 firmware variant using same 8-byte Maverick framing with alternate packet type numbers.
+
+Plans:
+- [ ] PROTO-PUFFIN-01: Schema + classifyHistoricalMeta defensive fix (types 38 + 56)
+- [ ] PROTO-PUFFIN-02: BLE command routing for type 38
+- [ ] PROTO-IMU-01: IMU stream decode + WhoopStore imuSample table (types 51/52)
+- [ ] PROTO-PUFFIN-DOCS: Update FINDINGS_5.md with Puffin + IMU documentation
 
 ### Phase 999.2: Hardware validation — v1.0 UNCERTAIN items (BACKLOG)
 
