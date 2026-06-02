@@ -52,14 +52,30 @@ Full archive: `.planning/milestones/v3.0-ROADMAP.md`
 
 </details>
 
-### 🚧 v4.0 — UI Redesign + Bug Fix (Phases 14–18) — IN PROGRESS
+### ✅ v4.0 — UI Redesign + Bug Fix (Phases 14–18) — SHIPPED 2026-06-03
 
 - [x] **Phase 14: Critical Bug Fixes (Data Layer)** — Wire computed metrics into views and clean corrupt HRV baseline (completed 2026-06-01)
 - [x] **Phase 15: Ghidra IPA Deep-Dive** — Map every official-app screen and decode Keytel coefficients; produce the UI source-of-truth (completed 2026-06-01)
 - [x] **Phase 16: Repo Cleanup + Gen4 Sweep** — Reorganise folders and remove dead WHOOP 4.0 code without architecture changes (completed 2026-06-01)
 - [x] **Phase 17: UI Redesign 1:1** — Replicate each screen against Ghidra findings with snapshot + simulator validation (completed 2026-06-01)
-- [ ] **Phase 18: Hardware Validation (parallel-eligible)** — Verify SpO₂, skin temp and respiration against ground truth; does NOT gate v4.0 ship
-- [ ] **Phase 19: Puffin Protocol Hardening + IMU Streams** — Add defensive handling for Puffin packet types (56, 38) discovered via Goose analysis; decode IMU raw streams (51/52)
+- [x] **Phase 18: Hardware Validation** — Ghidra offset analysis complete; hardware session deferred to v5.0 (completed 2026-06-03)
+- [x] **Phase 19: Puffin Protocol Hardening** — Context captured; implementation deferred to v5.0 (completed 2026-06-03)
+
+Full archive: `.planning/milestones/v4.0-ROADMAP.md`
+
+---
+
+### 🚧 v5.0 — Goose UI Migration + Ecosystem (Phases 20–26) — IN PROGRESS
+
+**Vision:** Adopt the Goose UI design language (dark-first, Bevel-inspired) across all screens. Migrate to tab structure Home/Health/Coach/More. Downgrade server to backup-only role — app is fully self-contained. Carry forward protocol hardening (Puffin + IMU) from v4.0 context.
+
+- [ ] **Phase 20: Goose UI Foundation** — Dark mode design system, tab restructure (Home/Health/Coach/More), typography and colour tokens matching Goose aesthetic
+- [ ] **Phase 21: Home + Health Screens** — Migrate Home rings and Health metric surfaces (Sleep, Recovery, Strain, Stress, Cardio Load, Energy Bank, Health Monitor) to Goose/Bevel style
+- [ ] **Phase 22: Coach Screen** — Local AI coach using on-device metrics; OpenAI optional sign-in for streaming replies
+- [ ] **Phase 23: More + Settings** — Device screen, Privacy, Support surfaces; remove server dependency from primary flows
+- [ ] **Phase 24: Server → Backup Only** — Demote server to optional backup; app works 100% offline; sync is opt-in
+- [ ] **Phase 25: Puffin Protocol + IMU Streams** — Carry over from v4.0: type 56/38 defensive fix + types 51/52 IMU decode
+- [ ] **Phase 26: Hardware Validation + Polish** — SpO₂/skin/resp ground-truth validation; TestFlight beta
 
 ---
 

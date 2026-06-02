@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: — UI Redesign + Bug Fix
+milestone: v5.0
+milestone_name: — Goose UI Migration + Ecosystem
 status: executing
 last_updated: "2026-06-02T00:30:00.000Z"
-last_activity: 2026-06-02 -- Phase 18.1.1.1 complete — Recovery calibration (R²=0.49, MAE=12.0 pts)
+last_activity: 2026-06-02 -- v5.0 iniciada — Goose UI Migration; v4.0 fechada 2026-06-03
 progress:
   total_phases: 10
   completed_phases: 6
@@ -26,13 +26,13 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Own your WHOOP 5.0 biometric data — read it from your own device over BLE, store it locally, analyse it without WHOOP cloud dependency.
 
-**Current focus:** Fase 18.1.1.1 COMPLETA — próxima: fase 18 (hardware validation) ou 999.3 (cloud API)
+**Current focus:** v5.0 Phase 20 — Goose UI Foundation (dark mode, tab restructure)
 
 ---
 
 ## Current Position
 
-Phase: 18.1.1.1 (algorithm-re-recovery-sleep-local-model) — COMPLETE
+Phase: 20 (goose-ui-foundation) — PENDING
 Plan: 1 of 1
 Status: Fase completa — Recovery calibrado (R²=0.49, MAE=12 pts)
 Last activity: 2026-06-02 -- Phase 18.1.1.1 execution complete
